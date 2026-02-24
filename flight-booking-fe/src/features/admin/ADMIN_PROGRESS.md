@@ -32,9 +32,16 @@
 
 ## 🚀 Next Steps
 
-- [ ] **Auth Guard** — Tạo `ProtectedRoute` component, redirect về `/login` nếu chưa xác thực (kiểm tra JWT trong localStorage/cookie).
-- [ ] **Login Page** — Xây dựng trang `/login` với form đăng nhập, gọi API auth.
+- [x] **Auth Guard** — Tạo `ProtectedRoute` component, redirect về `/login` nếu chưa xác thực (kiểm tra JWT trong localStorage/cookie).
+- [x] **Login Page** — Xây dựng trang `/login` với form đăng nhập, gọi API auth.
 - [ ] **API Integration** — Kết nối Dashboard với backend (tổng vé, doanh thu thực từ API).
 - [ ] **Flights Management** — Hiện thực trang `/admin/flights` (CRUD chuyến bay).
 - [ ] **Bookings Management** — Hiện thực trang `/admin/bookings` (xem, cập nhật trạng thái đặt vé).
 - [ ] **Error Boundary** — Bọc routes bằng Error Boundary để xử lý lỗi render.
+
+---
+
+## 🔧 Ghi chú kỹ thuật (Auth)
+
+- Đã triển khai `ProtectedRoute` dựa trên `localStorage`.
+- Đã tích hợp `ProtectedRoute` và `LoginPage` vào `App.tsx`.

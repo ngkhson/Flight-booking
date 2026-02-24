@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AdminLayout from './layout/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import LoginPage from './pages/auth/LoginPage';
+import ProtectedRoute from './features/auth/ProtectedRoute';
 
 function App() {
   return (
@@ -9,8 +11,18 @@ function App() {
         {/* Redirect root to admin dashboard */}
         <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
 
-        {/* Admin routes — wrapped by AdminLayout */}
-        <Route path="/admin" element={<AdminLayout />}>
+        {/* Public routes */}
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Admin routes — protected by ProtectedRoute, wrapped by AdminLayout */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
           {/* Placeholder routes for future features */}
