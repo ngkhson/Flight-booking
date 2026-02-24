@@ -1,43 +1,99 @@
-const stats = [
+import { useState, useEffect } from 'react';
+import { getDashboardStats, type DashboardStats } from '../../features/admin/services/adminApi';
+
+// ─── Stat card config ─────────────────────────────────────────────────────────
+
+interface StatCard {
+    label: string;
+    value: string;
+    icon: string;
+    change: string;
+    color: string;
+    iconBg: string;
+    textColor: string;
+}
+
+/** Format số nguyên → chuỗi có dấu phân cách hàng nghìn */
+const fmtNumber = (n: number) => n.toLocaleString('vi-VN');
+
+/** Format tiền VND → "₫ x.xx tỷ" hoặc "₫ xxx tr" */
+const fmtRevenue = (vnd: number): string => {
+    if (vnd >= 1_000_000_000) return `₫ ${(vnd / 1_000_000_000).toFixed(2)} tỷ`;
+    if (vnd >= 1_000_000) return `₫ ${(vnd / 1_000_000).toFixed(0)} tr`;
+    return `₫ ${fmtNumber(vnd)}`;
+};
+
+/** Chuyển DashboardStats API → mảng StatCard cho UI */
+const buildStatCards = (data: DashboardStats): StatCard[] => [
     {
         label: 'Tổng số vé',
-        value: '3,842',
+        value: fmtNumber(data.totalBookings),
         icon: '🎟️',
-        change: '+12% so với tháng trước',
+        change: 'Cập nhật từ API',
         color: 'bg-indigo-50 border-indigo-200',
         iconBg: 'bg-indigo-100',
         textColor: 'text-indigo-700',
     },
     {
         label: 'Tổng doanh thu',
-        value: '₫ 1.24 tỷ',
+        value: fmtRevenue(data.totalRevenue),
         icon: '💰',
-        change: '+8.3% so với tháng trước',
+        change: 'Cập nhật từ API',
         color: 'bg-emerald-50 border-emerald-200',
         iconBg: 'bg-emerald-100',
         textColor: 'text-emerald-700',
     },
     {
         label: 'Chuyến bay hôm nay',
-        value: '47',
+        value: fmtNumber(data.flightsToday),
         icon: '✈️',
-        change: '6 đang chờ xử lý',
+        change: 'Cập nhật từ API',
         color: 'bg-sky-50 border-sky-200',
         iconBg: 'bg-sky-100',
         textColor: 'text-sky-700',
     },
     {
         label: 'Khách hàng mới',
-        value: '128',
+        value: fmtNumber(data.newCustomers),
         icon: '👤',
-        change: '+5.2% so với tuần trước',
+        change: 'Cập nhật từ API',
         color: 'bg-violet-50 border-violet-200',
         iconBg: 'bg-violet-100',
         textColor: 'text-violet-700',
     },
 ];
 
+/** Stats hiển thị khi đang load hoặc chưa có dữ liệu */
+const FALLBACK_STATS: StatCard[] = [
+    { label: 'Tổng số vé', value: '—', icon: '🎟️', change: 'Đang tải...', color: 'bg-indigo-50 border-indigo-200', iconBg: 'bg-indigo-100', textColor: 'text-indigo-700' },
+    { label: 'Tổng doanh thu', value: '—', icon: '💰', change: 'Đang tải...', color: 'bg-emerald-50 border-emerald-200', iconBg: 'bg-emerald-100', textColor: 'text-emerald-700' },
+    { label: 'Chuyến bay hôm nay', value: '—', icon: '✈️', change: 'Đang tải...', color: 'bg-sky-50 border-sky-200', iconBg: 'bg-sky-100', textColor: 'text-sky-700' },
+    { label: 'Khách hàng mới', value: '—', icon: '👤', change: 'Đang tải...', color: 'bg-violet-50 border-violet-200', iconBg: 'bg-violet-100', textColor: 'text-violet-700' },
+];
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function AdminDashboard() {
+    const [stats, setStats] = useState<StatCard[]>(FALLBACK_STATS);
+    const [apiError, setApiError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        getDashboardStats()
+            .then((data) => {
+                if (!cancelled) setStats(buildStatCards(data));
+            })
+            .catch((err: unknown) => {
+                if (!cancelled) {
+                    console.error('[AdminDashboard] getDashboardStats failed:', err);
+                    setApiError('Không thể tải số liệu. Backend chưa sẵn sàng.');
+                }
+            });
+
+        return () => { cancelled = true; };   // cleanup: tránh setState sau unmount
+    }, []);
+
     return (
         <div className="space-y-6">
             {/* Page heading */}
@@ -49,6 +105,14 @@ export default function AdminDashboard() {
                     Tổng quan hệ thống đặt vé máy bay
                 </p>
             </div>
+
+            {/* API error banner */}
+            {apiError && (
+                <div className="px-4 py-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm flex items-center gap-2">
+                    <span>⚠️</span>
+                    <span>{apiError} — Đang hiển thị dữ liệu mẫu.</span>
+                </div>
+            )}
 
             {/* Stats grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
@@ -76,9 +140,7 @@ export default function AdminDashboard() {
             {/* Placeholder recent bookings table */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100">
-                    <h2 className="text-base font-semibold text-gray-700">
-                        Đặt vé gần đây
-                    </h2>
+                    <h2 className="text-base font-semibold text-gray-700">Đặt vé gần đây</h2>
                 </div>
                 <div className="divide-y divide-gray-50">
                     {[

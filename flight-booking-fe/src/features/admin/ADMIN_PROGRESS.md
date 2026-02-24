@@ -13,10 +13,16 @@
 | File | Hành động |
 |---|---|
 | `src/layout/AdminLayout.tsx` | Tạo mới |
-| `src/pages/admin/AdminDashboard.tsx` | Tạo mới |
+| `src/pages/admin/AdminDashboard.tsx` | Tạo mới → Cập nhật (API) |
 | `src/App.tsx` | Cập nhật |
 | `vite.config.ts` | Cập nhật |
 | `src/index.css` | Cập nhật |
+| `src/features/auth/ProtectedRoute.tsx` | Tạo mới |
+| `src/pages/auth/LoginPage.tsx` | Tạo mới |
+| `src/components/common/ErrorBoundary.tsx` | Tạo mới |
+| `src/features/admin/services/adminApi.ts` | Tạo mới |
+| `src/pages/admin/FlightsPage.tsx` | Tạo mới |
+| `src/pages/admin/BookingsPage.tsx` | Tạo mới |
 
 ---
 
@@ -34,10 +40,10 @@
 
 - [x] **Auth Guard** — Tạo `ProtectedRoute` component, redirect về `/login` nếu chưa xác thực (kiểm tra JWT trong localStorage/cookie).
 - [x] **Login Page** — Xây dựng trang `/login` với form đăng nhập, gọi API auth.
-- [ ] **API Integration** — Kết nối Dashboard với backend (tổng vé, doanh thu thực từ API).
-- [ ] **Flights Management** — Hiện thực trang `/admin/flights` (CRUD chuyến bay).
-- [ ] **Bookings Management** — Hiện thực trang `/admin/bookings` (xem, cập nhật trạng thái đặt vé).
-- [ ] **Error Boundary** — Bọc routes bằng Error Boundary để xử lý lỗi render.
+- [x] **API Integration** — Kết nối Dashboard với backend qua `getDashboardStats()`; graceful fallback khi backend chưa sẵn sàng.
+- [x] **Flights Management** — Hiện thực trang `/admin/flights`: bảng dữ liệu + search + status badge.
+- [x] **Bookings Management** — Hiện thực trang `/admin/bookings`: bảng dữ liệu + lọc trạng thái.
+- [x] **Error Boundary** — `ErrorBoundary` class component bọc `AdminLayout`; nút "Try Again" reset state.
 
 ---
 
@@ -45,3 +51,12 @@
 
 - Đã triển khai `ProtectedRoute` dựa trên `localStorage`.
 - Đã tích hợp `ProtectedRoute` và `LoginPage` vào `App.tsx`.
+
+---
+
+## 🔧 Ghi chú kỹ thuật (API & Error Handling)
+
+- `adminApi.ts` export 3 hàm typed: `getDashboardStats()`, `getFlights()`, `getBookings()` — tất cả dùng `apiClient` (axios instance đã cấu hình interceptor).
+- `AdminDashboard` gọi API trong `useEffect` với cleanup flag để tránh setState sau unmount.
+- `ErrorBoundary` dùng `getDerivedStateFromError` + `componentDidCatch`; sẵn sàng tích hợp Sentry.
+- `FlightsPage` và `BookingsPage` gọi API thực và hiển thị skeleton loading; fallback hiển thị mock data kèm warning banner khi API lỗi.

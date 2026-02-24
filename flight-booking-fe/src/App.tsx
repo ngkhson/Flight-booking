@@ -1,8 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AdminLayout from './layout/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import FlightsPage from './pages/admin/FlightsPage';
+import BookingsPage from './pages/admin/BookingsPage';
 import LoginPage from './pages/auth/LoginPage';
 import ProtectedRoute from './features/auth/ProtectedRoute';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 function App() {
   return (
@@ -14,34 +17,21 @@ function App() {
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* Admin routes — protected by ProtectedRoute, wrapped by AdminLayout */}
+        {/* Admin routes — protected + error-safe */}
         <Route
           path="/admin"
           element={
             <ProtectedRoute>
-              <AdminLayout />
+              <ErrorBoundary>
+                <AdminLayout />
+              </ErrorBoundary>
             </ProtectedRoute>
           }
         >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
-          {/* Placeholder routes for future features */}
-          <Route
-            path="flights"
-            element={
-              <div className="text-gray-500 text-sm">
-                ✈️ Flights management — coming soon
-              </div>
-            }
-          />
-          <Route
-            path="bookings"
-            element={
-              <div className="text-gray-500 text-sm">
-                🎟️ Bookings management — coming soon
-              </div>
-            }
-          />
+          <Route path="flights" element={<FlightsPage />} />
+          <Route path="bookings" element={<BookingsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
