@@ -2,8 +2,9 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 const navItems = [
     { to: '/admin/dashboard', label: '📊 Dashboard' },
-    { to: '/admin/flights', label: '✈️ Flights' },
-    { to: '/admin/bookings', label: '🎟️ Bookings' },
+    { to: '/admin/flights', label: '✈️ Chuyến bay' },
+    { to: '/admin/bookings', label: '🎟️ Đặt vé' },
+    { to: '/admin/users', label: '👥 Người dùng' },
 ];
 
 export default function AdminLayout() {

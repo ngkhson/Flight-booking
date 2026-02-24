@@ -3,6 +3,7 @@ import AdminLayout from './layout/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import FlightManagement from './pages/admin/FlightManagement';
 import BookingManagement from './pages/admin/BookingManagement';
+import UserManagement from './pages/admin/UserManagement';
 import LoginPage from './pages/auth/LoginPage';
 import ForbiddenPage from './pages/auth/ForbiddenPage';
 import ProtectedRoute from './features/auth/ProtectedRoute';
@@ -34,6 +35,14 @@ function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="flights" element={<FlightManagement />} />
           <Route path="bookings" element={<BookingManagement />} />
+          <Route
+            path="users"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <UserManagement />
+              </ProtectedRoute>
+            }
+          />
         </Route>
       </Routes>
     </BrowserRouter>
