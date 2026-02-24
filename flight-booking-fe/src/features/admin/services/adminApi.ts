@@ -47,6 +47,19 @@ export interface PaginationParams {
     size?: number;
 }
 
+// ─── Payload Types (form input) ───────────────────────────────────────────────
+
+export interface FlightPayload {
+    flightNumber: string;
+    origin: string;
+    destination: string;
+    departureTime: string;   // datetime-local string
+    arrivalTime: string;     // datetime-local string
+    availableSeats: number;
+    price: number;
+    status: Flight['status'];
+}
+
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 /**
@@ -66,6 +79,27 @@ export const getFlights = (
     apiClient.get('/admin/flights', { params });
 
 /**
+ * Thêm chuyến bay mới.
+ * POST /admin/flights
+ */
+export const createFlight = (payload: FlightPayload): Promise<Flight> =>
+    apiClient.post('/admin/flights', payload);
+
+/**
+ * Cập nhật thông tin chuyến bay.
+ * PUT /admin/flights/:id
+ */
+export const updateFlight = (id: string, payload: FlightPayload): Promise<Flight> =>
+    apiClient.put(`/admin/flights/${id}`, payload);
+
+/**
+ * Xoá chuyến bay.
+ * DELETE /admin/flights/:id
+ */
+export const deleteFlight = (id: string): Promise<void> =>
+    apiClient.delete(`/admin/flights/${id}`);
+
+/**
  * Lấy danh sách đặt vé (có phân trang).
  * GET /admin/bookings?page=0&size=20
  */
@@ -73,3 +107,13 @@ export const getBookings = (
     params: PaginationParams = { page: 0, size: 20 },
 ): Promise<PaginatedResponse<Booking>> =>
     apiClient.get('/admin/bookings', { params });
+
+/**
+ * Cập nhật trạng thái đơn đặt vé.
+ * PATCH /admin/bookings/:id/status
+ */
+export const updateBookingStatus = (
+    id: string,
+    status: Booking['status'],
+): Promise<Booking> =>
+    apiClient.patch(`/admin/bookings/${id}/status`, { status });

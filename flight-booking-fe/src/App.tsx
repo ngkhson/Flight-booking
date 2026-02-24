@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AdminLayout from './layout/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
-import FlightsPage from './pages/admin/FlightsPage';
-import BookingsPage from './pages/admin/BookingsPage';
+import FlightManagement from './pages/admin/FlightManagement';
+import BookingManagement from './pages/admin/BookingManagement';
 import LoginPage from './pages/auth/LoginPage';
 import ProtectedRoute from './features/auth/ProtectedRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
@@ -30,8 +30,8 @@ function App() {
         >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="flights" element={<FlightsPage />} />
-          <Route path="bookings" element={<BookingsPage />} />
+          <Route path="flights" element={<FlightManagement />} />
+          <Route path="bookings" element={<BookingManagement />} />
         </Route>
       </Routes>
     </BrowserRouter>
