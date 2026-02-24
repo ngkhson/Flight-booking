@@ -41,6 +41,7 @@
 - [x] **RBAC** — `ProtectedRoute` với `allowedRoles[]`; trang 403 `ForbiddenPage`.
 - [x] **User Management** — Trang `/admin/users` (ADMIN-only): phân quyền + lock/unlock tài khoản.
 - [x] **Revenue Chart** — `LineChart` (recharts) doanh thu 7 ngày, responsive + custom Tooltip.
+- [x] **API Integration (all pages)** — Đã hoàn tất tích hợp adminApi cho toàn bộ các trang CRUD (Dashboard, FlightManagement, BookingManagement, UserManagement). `IFlight`, `IBooking`, `IUser` thay thế toàn bộ legacy types.
 
 ---
 

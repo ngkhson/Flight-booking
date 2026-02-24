@@ -2,8 +2,11 @@ import { useState, useEffect, useCallback, type ChangeEvent } from 'react';
 import {
     getBookings,
     updateBookingStatus,
-    type Booking,
+    type IBooking,
 } from '../../features/admin/services/adminApi';
+
+// Convenience alias so the rest of the file stays concise
+type Booking = IBooking;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -38,12 +41,12 @@ const fmtVND = (n: number) =>
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
-const MOCK_BOOKINGS: Booking[] = [
-    { id: '1', bookingCode: 'BK-001', passengerName: 'Nguyễn Văn A', flightNumber: 'VN-201', route: 'HAN → SGN', status: 'CONFIRMED', totalAmount: 1_250_000, createdAt: '2026-02-24T08:00:00' },
-    { id: '2', bookingCode: 'BK-002', passengerName: 'Trần Thị B', flightNumber: 'VN-305', route: 'SGN → DAD', status: 'PENDING', totalAmount: 890_000, createdAt: '2026-02-24T09:30:00' },
-    { id: '3', bookingCode: 'BK-003', passengerName: 'Lê Văn C', flightNumber: 'QH-102', route: 'HAN → PQC', status: 'CONFIRMED', totalAmount: 1_580_000, createdAt: '2026-02-23T14:20:00' },
-    { id: '4', bookingCode: 'BK-004', passengerName: 'Phạm Thị D', flightNumber: 'VJ-411', route: 'SGN → HAN', status: 'CANCELLED', totalAmount: 1_100_000, createdAt: '2026-02-23T11:00:00' },
-    { id: '5', bookingCode: 'BK-005', passengerName: 'Hoàng Văn E', flightNumber: 'VN-789', route: 'HAN → DAD', status: 'PENDING', totalAmount: 750_000, createdAt: '2026-02-22T16:45:00' },
+const MOCK_BOOKINGS: IBooking[] = [
+    { id: '1', pnr: 'BK-001', customerName: 'Nguyễn Văn A', flightId: 'f1', flightNumber: 'VN-201', route: 'HAN → SGN', status: 'CONFIRMED', totalAmount: 1_250_000, createdAt: '2026-02-24T08:00:00' },
+    { id: '2', pnr: 'BK-002', customerName: 'Trần Thị B', flightId: 'f2', flightNumber: 'VN-305', route: 'SGN → DAD', status: 'PENDING', totalAmount: 890_000, createdAt: '2026-02-24T09:30:00' },
+    { id: '3', pnr: 'BK-003', customerName: 'Lê Văn C', flightId: 'f3', flightNumber: 'QH-102', route: 'HAN → PQC', status: 'CONFIRMED', totalAmount: 1_580_000, createdAt: '2026-02-23T14:20:00' },
+    { id: '4', pnr: 'BK-004', customerName: 'Phạm Thị D', flightId: 'f4', flightNumber: 'VJ-411', route: 'SGN → HAN', status: 'CANCELLED', totalAmount: 1_100_000, createdAt: '2026-02-23T11:00:00' },
+    { id: '5', pnr: 'BK-005', customerName: 'Hoàng Văn E', flightId: 'f5', flightNumber: 'VN-789', route: 'HAN → DAD', status: 'PENDING', totalAmount: 750_000, createdAt: '2026-02-22T16:45:00' },
 ];
 
 type FilterStatus = 'ALL' | Booking['status'];
@@ -171,8 +174,8 @@ export default function BookingManagement() {
         const q = search.toLowerCase();
         return (
             !q ||
-            b.bookingCode.toLowerCase().includes(q) ||
-            b.passengerName.toLowerCase().includes(q) ||
+            b.pnr.toLowerCase().includes(q) ||
+            b.customerName.toLowerCase().includes(q) ||
             b.flightNumber.toLowerCase().includes(q) ||
             b.route.toLowerCase().includes(q)
         );
@@ -190,9 +193,10 @@ export default function BookingManagement() {
                     prev.map((b) => b.id === id ? { ...b, status: newStatus } : b),
                 );
             } else {
-                const updated = await updateBookingStatus(id, newStatus);
+                // API returns updated booking; merge back into list
+                await updateBookingStatus(id, newStatus);
                 setBookings((prev) =>
-                    prev.map((b) => b.id === updated.id ? updated : b),
+                    prev.map((b) => b.id === id ? { ...b, status: newStatus } : b),
                 );
             }
             setToast({ msg: `Đã cập nhật trạng thái → ${STATUS_LABELS[newStatus]}.`, type: 'success' });
@@ -300,8 +304,8 @@ export default function BookingManagement() {
                                 )
                                 : visible.map((b) => (
                                     <tr key={b.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-4 py-3 font-mono font-semibold text-gray-800">{b.bookingCode}</td>
-                                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{b.passengerName}</td>
+                                        <td className="px-4 py-3 font-mono font-semibold text-gray-800">{b.pnr}</td>
+                                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{b.customerName}</td>
                                         <td className="px-4 py-3 font-medium text-gray-700">{b.flightNumber}</td>
                                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{b.route}</td>
                                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtDate(b.createdAt)}</td>

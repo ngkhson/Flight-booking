@@ -100,11 +100,11 @@ function validatePayload(p: FlightPayload): FieldErrors {
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
 const MOCK_FLIGHTS: Flight[] = [
-    { id: '1', flightNumber: 'VN-201', origin: 'HAN', destination: 'SGN', departureTime: '2026-02-25T06:00:00', arrivalTime: '2026-02-25T08:10:00', status: 'SCHEDULED', availableSeats: 120, price: 1_250_000 },
-    { id: '2', flightNumber: 'VN-305', origin: 'SGN', destination: 'DAD', departureTime: '2026-02-25T10:30:00', arrivalTime: '2026-02-25T11:45:00', status: 'DELAYED', availableSeats: 45, price: 890_000 },
-    { id: '3', flightNumber: 'QH-102', origin: 'HAN', destination: 'PQC', departureTime: '2026-02-25T14:00:00', arrivalTime: '2026-02-25T16:05:00', status: 'SCHEDULED', availableSeats: 78, price: 1_580_000 },
-    { id: '4', flightNumber: 'VJ-411', origin: 'SGN', destination: 'HAN', departureTime: '2026-02-24T18:00:00', arrivalTime: '2026-02-24T20:15:00', status: 'COMPLETED', availableSeats: 0, price: 1_100_000 },
-    { id: '5', flightNumber: 'VN-789', origin: 'HAN', destination: 'DAD', departureTime: '2026-02-25T20:00:00', arrivalTime: '2026-02-25T21:30:00', status: 'CANCELLED', availableSeats: 0, price: 750_000 },
+    { id: '1', flightNumber: 'VN-201', airline: 'Vietnam Airlines', origin: 'HAN', destination: 'SGN', departureTime: '2026-02-25T06:00:00', arrivalTime: '2026-02-25T08:10:00', status: 'SCHEDULED', availableSeats: 120, price: 1_250_000 },
+    { id: '2', flightNumber: 'VN-305', airline: 'Vietnam Airlines', origin: 'SGN', destination: 'DAD', departureTime: '2026-02-25T10:30:00', arrivalTime: '2026-02-25T11:45:00', status: 'DELAYED', availableSeats: 45, price: 890_000 },
+    { id: '3', flightNumber: 'QH-102', airline: 'Bamboo Airways', origin: 'HAN', destination: 'PQC', departureTime: '2026-02-25T14:00:00', arrivalTime: '2026-02-25T16:05:00', status: 'SCHEDULED', availableSeats: 78, price: 1_580_000 },
+    { id: '4', flightNumber: 'VJ-411', airline: 'VietJet Air', origin: 'SGN', destination: 'HAN', departureTime: '2026-02-24T18:00:00', arrivalTime: '2026-02-24T20:15:00', status: 'COMPLETED', availableSeats: 0, price: 1_100_000 },
+    { id: '5', flightNumber: 'VN-789', airline: 'Vietnam Airlines', origin: 'HAN', destination: 'DAD', departureTime: '2026-02-25T20:00:00', arrivalTime: '2026-02-25T21:30:00', status: 'CANCELLED', availableSeats: 0, price: 750_000 },
 ];
 
 const EMPTY_PAYLOAD: FlightPayload = {
@@ -214,7 +214,7 @@ function FlightModal({ open, editTarget, isMock, onClose, onSaved }: FlightModal
             let saved: Flight;
             if (isMock) {
                 await new Promise((r) => setTimeout(r, 400));
-                saved = { ...normalized, id: editTarget?.id ?? String(Date.now()) };
+                saved = { ...normalized, airline: '', id: editTarget?.id ?? String(Date.now()) };
             } else if (editTarget) {
                 saved = await updateFlight(editTarget.id, normalized);
             } else {
@@ -549,8 +549,8 @@ export default function FlightManagement() {
             {toast && (
                 <div
                     className={`fixed top-5 right-5 z-[100] flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium ${toast.type === 'success'
-                            ? 'bg-green-50 border border-green-200 text-green-700'
-                            : 'bg-red-50 border border-red-200 text-red-700'
+                        ? 'bg-green-50 border border-green-200 text-green-700'
+                        : 'bg-red-50 border border-red-200 text-red-700'
                         }`}
                 >
                     <span>{toast.type === 'success' ? '✅' : '❌'}</span>
