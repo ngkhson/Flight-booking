@@ -97,18 +97,9 @@ function validatePayload(p: FlightPayload): FieldErrors {
     return err;
 }
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const MOCK_FLIGHTS: Flight[] = [
-    { id: '1', flightNumber: 'VN-201', airline: 'Vietnam Airlines', origin: 'HAN', destination: 'SGN', departureTime: '2026-02-25T06:00:00', arrivalTime: '2026-02-25T08:10:00', status: 'SCHEDULED', availableSeats: 120, price: 1_250_000 },
-    { id: '2', flightNumber: 'VN-305', airline: 'Vietnam Airlines', origin: 'SGN', destination: 'DAD', departureTime: '2026-02-25T10:30:00', arrivalTime: '2026-02-25T11:45:00', status: 'DELAYED', availableSeats: 45, price: 890_000 },
-    { id: '3', flightNumber: 'QH-102', airline: 'Bamboo Airways', origin: 'HAN', destination: 'PQC', departureTime: '2026-02-25T14:00:00', arrivalTime: '2026-02-25T16:05:00', status: 'SCHEDULED', availableSeats: 78, price: 1_580_000 },
-    { id: '4', flightNumber: 'VJ-411', airline: 'VietJet Air', origin: 'SGN', destination: 'HAN', departureTime: '2026-02-24T18:00:00', arrivalTime: '2026-02-24T20:15:00', status: 'COMPLETED', availableSeats: 0, price: 1_100_000 },
-    { id: '5', flightNumber: 'VN-789', airline: 'Vietnam Airlines', origin: 'HAN', destination: 'DAD', departureTime: '2026-02-25T20:00:00', arrivalTime: '2026-02-25T21:30:00', status: 'CANCELLED', availableSeats: 0, price: 750_000 },
-];
-
 const EMPTY_PAYLOAD: FlightPayload = {
     flightNumber: '',
+    airline: '',
     origin: '',
     destination: '',
     departureTime: '',
@@ -179,6 +170,7 @@ function FlightModal({ open, editTarget, isMock, onClose, onSaved }: FlightModal
         if (editTarget) {
             setForm({
                 flightNumber: editTarget.flightNumber,
+                airline: editTarget.airline,
                 origin: editTarget.origin,
                 destination: editTarget.destination,
                 departureTime: toDatetimeLocal(editTarget.departureTime),
@@ -214,7 +206,7 @@ function FlightModal({ open, editTarget, isMock, onClose, onSaved }: FlightModal
             let saved: Flight;
             if (isMock) {
                 await new Promise((r) => setTimeout(r, 400));
-                saved = { ...normalized, airline: '', id: editTarget?.id ?? String(Date.now()) };
+                saved = { ...normalized, airline: normalized.airline || '', id: editTarget?.id ?? String(Date.now()) };
             } else if (editTarget) {
                 saved = await updateFlight(editTarget.id, normalized);
             } else {
@@ -271,6 +263,17 @@ function FlightModal({ open, editTarget, isMock, onClose, onSaved }: FlightModal
                     )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="Hãng hàng không">
+                            <input
+                                id="fm-airline"
+                                type="text"
+                                placeholder="VD: Vietnam Airlines"
+                                value={form.airline}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => patch('airline', e.target.value)}
+                                className={inputCls()}
+                            />
+                        </Field>
+
                         <Field label="Số hiệu chuyến bay *" error={errors.flightNumber}>
                             <input
                                 id="fm-flightNumber"
@@ -481,7 +484,7 @@ function DeleteModal({ target, onClose, onConfirm }: DeleteModalProps) {
 export default function FlightManagement() {
     const [flights, setFlights] = useState<Flight[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isMock, setIsMock] = useState(false);
+    const [isMock] = useState(false); // no longer set; kept for handleDelete guard
     const [search, setSearch] = useState('');
 
     const [modalOpen, setModalOpen] = useState(false);
@@ -498,15 +501,22 @@ export default function FlightManagement() {
     }, [toast]);
 
     // Load flights on mount
+    const [apiError, setApiError] = useState<string | null>(null);
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
+        setApiError(null);
         getFlights({ page: 0, size: 100 })
             .then((res) => {
                 if (!cancelled) { setFlights(res.content); setLoading(false); }
             })
-            .catch(() => {
-                if (!cancelled) { setFlights(MOCK_FLIGHTS); setIsMock(true); setLoading(false); }
+            .catch((err: unknown) => {
+                if (!cancelled) {
+                    const msg = err instanceof Error ? err.message : 'Không thể tải danh sách chuyến bay.';
+                    setApiError(msg);
+                    setFlights([]);
+                    setLoading(false);
+                }
             });
         return () => { cancelled = true; };
     }, []);
@@ -548,6 +558,8 @@ export default function FlightManagement() {
             {/* Toast */}
             {toast && (
                 <div
+                    role="alert"
+                    aria-live="polite"
                     className={`fixed top-5 right-5 z-[100] flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium ${toast.type === 'success'
                         ? 'bg-green-50 border border-green-200 text-green-700'
                         : 'bg-red-50 border border-red-200 text-red-700'
@@ -556,6 +568,15 @@ export default function FlightManagement() {
                     <span>{toast.type === 'success' ? '✅' : '❌'}</span>
                     <span>{toast.msg}</span>
                     <button onClick={() => setToast(null)} className="ml-2 hover:opacity-70" aria-label="Đóng thông báo">✕</button>
+                </div>
+            )}
+
+            {/* API error banner */}
+            {apiError && !loading && (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+                    <span>⚠️</span>
+                    <span>{apiError}</span>
+                    <button onClick={() => { setApiError(null); }} className="ml-auto text-xs underline hover:no-underline">Bỏ qua</button>
                 </div>
             )}
 

@@ -196,7 +196,7 @@ export default function UserManagement() {
         <div className="space-y-5">
             {/* Toast */}
             {toast && (
-                <div className={`fixed top-5 right-5 z-[100] flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium border ${toastCls(toast.type)}`}>
+                <div role="alert" aria-live="polite" className={`fixed top-5 right-5 z-[100] flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium border ${toastCls(toast.type)}`}>
                     <span>{toast.type === 'success' ? '✅' : toast.type === 'error' ? '❌' : 'ℹ️'}</span>
                     <span>{toast.msg}</span>
                     <button onClick={() => setToast(null)} className="ml-2 hover:opacity-70" aria-label="Đóng">✕</button>

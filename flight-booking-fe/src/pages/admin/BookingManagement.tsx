@@ -39,15 +39,6 @@ const fmtDate = (iso: string) =>
 const fmtVND = (n: number) =>
     n.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const MOCK_BOOKINGS: IBooking[] = [
-    { id: '1', pnr: 'BK-001', customerName: 'Nguyễn Văn A', flightId: 'f1', flightNumber: 'VN-201', route: 'HAN → SGN', status: 'CONFIRMED', totalAmount: 1_250_000, createdAt: '2026-02-24T08:00:00' },
-    { id: '2', pnr: 'BK-002', customerName: 'Trần Thị B', flightId: 'f2', flightNumber: 'VN-305', route: 'SGN → DAD', status: 'PENDING', totalAmount: 890_000, createdAt: '2026-02-24T09:30:00' },
-    { id: '3', pnr: 'BK-003', customerName: 'Lê Văn C', flightId: 'f3', flightNumber: 'QH-102', route: 'HAN → PQC', status: 'CONFIRMED', totalAmount: 1_580_000, createdAt: '2026-02-23T14:20:00' },
-    { id: '4', pnr: 'BK-004', customerName: 'Phạm Thị D', flightId: 'f4', flightNumber: 'VJ-411', route: 'SGN → HAN', status: 'CANCELLED', totalAmount: 1_100_000, createdAt: '2026-02-23T11:00:00' },
-    { id: '5', pnr: 'BK-005', customerName: 'Hoàng Văn E', flightId: 'f5', flightNumber: 'VN-789', route: 'HAN → DAD', status: 'PENDING', totalAmount: 750_000, createdAt: '2026-02-22T16:45:00' },
-];
 
 type FilterStatus = 'ALL' | Booking['status'];
 
@@ -135,7 +126,6 @@ function StatusDropdown({ bookingId, current, onChange }: StatusDropdownProps) {
 export default function BookingManagement() {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isMock, setIsMock] = useState(false);
     const [filter, setFilter] = useState<FilterStatus>('ALL');
     const [search, setSearch] = useState('');
 
@@ -149,15 +139,17 @@ export default function BookingManagement() {
     }, [toast]);
 
     // Load bookings — exposed as callback so handleStatusChange can refresh
+    const [apiError, setApiError] = useState<string | null>(null);
     const loadBookings = useCallback(async () => {
         setLoading(true);
+        setApiError(null);
         try {
             const res = await getBookings({ page: 0, size: 100 });
             setBookings(res.content);
-            setIsMock(false);
-        } catch {
-            setBookings(MOCK_BOOKINGS);
-            setIsMock(true);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Không thể tải danh sách đặt vé.';
+            setApiError(msg);
+            setBookings([]);
         } finally {
             setLoading(false);
         }
@@ -189,30 +181,24 @@ export default function BookingManagement() {
         newStatus: Booking['status'],
     ): Promise<void> => {
         try {
-            if (isMock) {
-                // Simulate latency in mock mode (no server)
-                await new Promise((r) => setTimeout(r, 350));
-                setBookings((prev) =>
-                    prev.map((b) => b.id === id ? { ...b, status: newStatus } : b),
-                );
-            } else {
-                await updateBookingStatus(id, newStatus);
-                // Refresh từ server → đảm bảo UI phản ánh trạng thái thực
-                await loadBookings();
-            }
+            await updateBookingStatus(id, newStatus);
+            // Refresh từ server → đảm bảo UI phản ánh trạng thái thực
+            await loadBookings();
             setToast({ msg: `Đã cập nhật trạng thái → ${STATUS_LABELS[newStatus]}.`, type: 'success' });
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : 'Lỗi không xác định.';
             setToast({ msg: `Không thể cập nhật: ${msg}`, type: 'error' });
             throw e; // rethrow so StatusDropdown can rollback
         }
-    }, [isMock]);
+    }, [loadBookings]);
 
     return (
         <div className="space-y-5">
             {/* Toast */}
             {toast && (
                 <div
+                    role="alert"
+                    aria-live="polite"
                     className={`fixed top-5 right-5 z-[100] flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium ${toast.type === 'success'
                         ? 'bg-green-50 border border-green-200 text-green-700'
                         : 'bg-red-50 border border-red-200 text-red-700'
@@ -230,11 +216,12 @@ export default function BookingManagement() {
                 <p className="mt-0.5 text-sm text-gray-500">Xem và cập nhật trạng thái đơn đặt vé</p>
             </div>
 
-            {/* Mock-data warning */}
-            {isMock && (
-                <div className="px-4 py-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm flex items-center gap-2">
+            {/* API error banner */}
+            {apiError && !loading && (
+                <div className="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2">
                     <span>⚠️</span>
-                    <span>Không thể kết nối API — đang dùng dữ liệu mẫu. Thay đổi trạng thái cập nhật cục bộ.</span>
+                    <span>{apiError}</span>
+                    <button onClick={loadBookings} className="ml-auto text-xs font-semibold underline hover:no-underline">Thử lại</button>
                 </div>
             )}
 
@@ -337,7 +324,7 @@ export default function BookingManagement() {
                 {!loading && (
                     <div className="px-4 py-3 border-t border-gray-100 text-xs text-gray-400 flex items-center justify-between">
                         <span>Hiển thị {visible.length} / {bookings.length} đơn đặt vé</span>
-                        {isMock && <span className="text-yellow-600 font-medium">● Dữ liệu mẫu</span>}
+                        {apiError && <span className="text-red-500 font-medium">● Lỗi tải dữ liệu</span>}
                     </div>
                 )}
             </div>

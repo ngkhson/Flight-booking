@@ -114,29 +114,10 @@ export const updateUserRole = (
     apiClient.patch(`/admin/users/${userId}/role`, { role });
 
 
+
 // ═══════════════════════════════════════════════════════════════════════════════
-// ─── Section 2: Legacy exports (kept for backward-compat with existing pages) ─
+// ─── Section 2: Flight & Booking CRUD helpers (used by management pages) ──────
 // ═══════════════════════════════════════════════════════════════════════════════
-
-/** @deprecated Dùng IDashboardStats thay thế */
-export type DashboardStats = Pick<IDashboardStats,
-    'totalRevenue' | 'totalBookings' | 'flightsToday' | 'newCustomers'
->;
-
-/** @deprecated Dùng IFlight thay thế */
-export type Flight = IFlight;
-
-/** @deprecated Dùng IBooking thay thế */
-export interface Booking {
-    id: string;
-    bookingCode: string;   // maps to IBooking.pnr
-    passengerName: string;   // maps to IBooking.customerName
-    flightNumber: string;
-    route: string;
-    status: 'CONFIRMED' | 'PENDING' | 'CANCELLED';
-    totalAmount: number;
-    createdAt: string;
-}
 
 export interface PaginatedResponse<T> {
     content: T[];
@@ -151,25 +132,23 @@ export interface PaginationParams {
     size?: number;
 }
 
+/** Payload for creating / updating a flight via the admin API. */
 export interface FlightPayload {
     flightNumber: string;
+    airline: string;
     origin: string;
     destination: string;
     departureTime: string;
     arrivalTime: string;
     availableSeats: number;
     price: number;
-    status: Flight['status'];
+    status: IFlight['status'];
 }
 
-/** @deprecated Dùng getDashboardStats (trả về IDashboardStats) thay thế */
-export const getLegacyDashboardStats = (): Promise<DashboardStats> =>
-    apiClient.get('/admin/dashboard/stats');
-
-export const createFlight = (payload: FlightPayload): Promise<Flight> =>
+export const createFlight = (payload: FlightPayload): Promise<IFlight> =>
     apiClient.post('/admin/flights', payload);
 
-export const updateFlight = (id: string, payload: FlightPayload): Promise<Flight> =>
+export const updateFlight = (id: string, payload: FlightPayload): Promise<IFlight> =>
     apiClient.put(`/admin/flights/${id}`, payload);
 
 export const deleteFlight = (id: string): Promise<void> =>
@@ -177,6 +156,9 @@ export const deleteFlight = (id: string): Promise<void> =>
 
 export const updateBookingStatus = (
     id: string,
-    status: Booking['status'],
-): Promise<Booking> =>
+    status: IBooking['status'],
+): Promise<IBooking> =>
     apiClient.patch(`/admin/bookings/${id}/status`, { status });
+
+/** @internal Convenience alias — prefer IFlight directly. */
+export type Flight = IFlight;
