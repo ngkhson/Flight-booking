@@ -4,6 +4,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import FlightManagement from './pages/admin/FlightManagement';
 import BookingManagement from './pages/admin/BookingManagement';
 import LoginPage from './pages/auth/LoginPage';
+import ForbiddenPage from './pages/auth/ForbiddenPage';
 import ProtectedRoute from './features/auth/ProtectedRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
 
@@ -16,12 +17,13 @@ function App() {
 
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/403" element={<ForbiddenPage />} />
 
         {/* Admin routes — protected + error-safe */}
         <Route
           path="/admin"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['ADMIN', 'ACCOUNTANT']}>
               <ErrorBoundary>
                 <AdminLayout />
               </ErrorBoundary>
