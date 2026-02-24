@@ -103,6 +103,17 @@ export const updateUserStatus = (
 ): Promise<IUser> =>
     apiClient.patch(`/admin/users/${userId}/status`, { status });
 
+/**
+ * Cập nhật role tài khoản người dùng.
+ * PATCH /admin/users/:userId/role
+ */
+export const updateUserRole = (
+    userId: string,
+    role: IUser['role'],
+): Promise<IUser> =>
+    apiClient.patch(`/admin/users/${userId}/role`, { role });
+
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // ─── Section 2: Legacy exports (kept for backward-compat with existing pages) ─
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     getUsers,
     updateUserStatus,
+    updateUserRole,
     type IUser,
 } from '../../features/admin/services/adminApi';
 
@@ -52,22 +53,32 @@ function SkeletonRow() {
 interface RoleDropdownProps {
     userId: string;
     current: IUser['role'];
-    onChangeRole: (id: string, role: IUser['role']) => void;
+    busy?: boolean;  // true while role API call is in-flight
+    onChangeRole: (id: string, role: IUser['role']) => void | Promise<void>;
 }
 
-function RoleDropdown({ userId, current, onChangeRole }: RoleDropdownProps) {
+function RoleDropdown({ userId, current, busy = false, onChangeRole }: RoleDropdownProps) {
     const [open, setOpen] = useState(false);
 
     return (
         <div className="relative">
             <button
-                onClick={() => setOpen((o) => !o)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition"
+                onClick={() => !busy && setOpen((o) => !o)}
+                disabled={busy}
+                className={[
+                    'inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition',
+                    busy
+                        ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-60'
+                        : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100',
+                ].join(' ')}
                 aria-label={`Đổi role cho ${userId}`}
                 aria-expanded={open}
             >
-                🔄 Đổi Role
-                <span className="text-[10px] opacity-60">▾</span>
+                {busy
+                    ? <span className="inline-block w-3 h-3 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin" />
+                    : '🔄'}
+                {' '}Đổi Role
+                {!busy && <span className="text-[10px] opacity-60">▾</span>}
             </button>
 
             {open && (
@@ -103,7 +114,8 @@ export default function UserManagement() {
     const [isLoading, setIsLoading] = useState(true);
     const [apiError, setApiError] = useState<string | null>(null);
     const [search, setSearch] = useState('');
-    const [lockingId, setLockingId] = useState<string | null>(null); // row being updated
+    const [lockingId, setLockingId] = useState<string | null>(null); // status toggle
+    const [roleUpdatingId, setRoleUpdatingId] = useState<string | null>(null); // role change
 
     const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'info' } | null>(null);
 
@@ -129,11 +141,20 @@ export default function UserManagement() {
 
     useEffect(() => { loadUsers(); }, [loadUsers]);
 
-    // ── Role change (local only — no updateUserRole API yet) ──────────────────
-    const handleChangeRole = useCallback((id: string, role: IUser['role']) => {
-        setUsers((prev) => prev.map((u) => u.id === id ? { ...u, role } : u));
-        showToast(`Đã đổi role → ${ROLE_LABELS[role]}.`);
-    }, [showToast]);
+    // ── Role change → API → refresh ──────────────────────────────────────────
+    const handleChangeRole = useCallback(async (id: string, role: IUser['role']) => {
+        setRoleUpdatingId(id);
+        try {
+            await updateUserRole(id, role);
+            await loadUsers(); // refresh từ server
+            showToast(`Đã đổi role → ${ROLE_LABELS[role]}.`);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Lỗi không xác định.';
+            showToast(`Không thể đổi role: ${msg}`, 'error');
+        } finally {
+            setRoleUpdatingId(null);
+        }
+    }, [loadUsers, showToast]);
 
     // ── Status toggle → API → refresh ────────────────────────────────────────
     const handleToggleStatus = useCallback(async (user: IUser) => {
@@ -275,6 +296,7 @@ export default function UserManagement() {
                                                 <RoleDropdown
                                                     userId={u.id}
                                                     current={u.role}
+                                                    busy={roleUpdatingId === u.id}
                                                     onChangeRole={handleChangeRole}
                                                 />
                                                 <button

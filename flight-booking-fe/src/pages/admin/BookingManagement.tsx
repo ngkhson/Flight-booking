@@ -148,19 +148,22 @@ export default function BookingManagement() {
         return () => clearTimeout(id);
     }, [toast]);
 
-    // Load bookings
-    useEffect(() => {
-        let cancelled = false;
+    // Load bookings — exposed as callback so handleStatusChange can refresh
+    const loadBookings = useCallback(async () => {
         setLoading(true);
-        getBookings({ page: 0, size: 100 })
-            .then((res) => {
-                if (!cancelled) { setBookings(res.content); setLoading(false); }
-            })
-            .catch(() => {
-                if (!cancelled) { setBookings(MOCK_BOOKINGS); setIsMock(true); setLoading(false); }
-            });
-        return () => { cancelled = true; };
+        try {
+            const res = await getBookings({ page: 0, size: 100 });
+            setBookings(res.content);
+            setIsMock(false);
+        } catch {
+            setBookings(MOCK_BOOKINGS);
+            setIsMock(true);
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => { loadBookings(); }, [loadBookings]);
 
     // Counts per status for filter badges
     const counts = bookings.reduce<Record<Booking['status'], number>>(
@@ -187,17 +190,15 @@ export default function BookingManagement() {
     ): Promise<void> => {
         try {
             if (isMock) {
-                // Simulate latency in mock mode
+                // Simulate latency in mock mode (no server)
                 await new Promise((r) => setTimeout(r, 350));
                 setBookings((prev) =>
                     prev.map((b) => b.id === id ? { ...b, status: newStatus } : b),
                 );
             } else {
-                // API returns updated booking; merge back into list
                 await updateBookingStatus(id, newStatus);
-                setBookings((prev) =>
-                    prev.map((b) => b.id === id ? { ...b, status: newStatus } : b),
-                );
+                // Refresh từ server → đảm bảo UI phản ánh trạng thái thực
+                await loadBookings();
             }
             setToast({ msg: `Đã cập nhật trạng thái → ${STATUS_LABELS[newStatus]}.`, type: 'success' });
         } catch (e: unknown) {

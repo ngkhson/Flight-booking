@@ -11,8 +11,9 @@ export default function AdminLayout() {
     const navigate = useNavigate();
 
     const handleLogout = () => {
-        // TODO: clear auth tokens
-        navigate('/');
+        localStorage.removeItem('token');
+        localStorage.removeItem('userRole');
+        navigate('/login');
     };
 
     return (
