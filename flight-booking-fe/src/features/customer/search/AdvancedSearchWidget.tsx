@@ -2,6 +2,7 @@ import { MapPin, Calendar, Users, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PassengerSelector } from './PassengerSelector';
+import { FlightDatePicker } from './FlightDatePicker';
 
 export const AdvancedSearchWidget = () => {
   return (
@@ -26,14 +27,14 @@ export const AdvancedSearchWidget = () => {
       </div>
 
       {/* 3. Ngày bay */}
-      <div className="flex-1 w-full">
+      {/* <div className="flex-1 w-full">
         <label className="text-xs font-semibold text-slate-500 uppercase ml-1">Ngày đi</label>
         <div className="relative mt-1">
           <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-          {/* Tạm thời dùng thẻ input type date chuẩn của HTML */}
           <input type="date" className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-md shadow-sm transition-colors pl-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
         </div>
-      </div>
+      </div> */}
+      <FlightDatePicker />
 
       {/* 4. Hành khách */}
       {/* <div className="flex-1 w-full">
