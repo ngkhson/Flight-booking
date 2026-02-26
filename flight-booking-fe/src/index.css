@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/* :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -70,7 +70,7 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
-
+*/
 
 
 @layer base {
@@ -127,4 +127,4 @@ button:focus-visible {
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
-}
+} 
