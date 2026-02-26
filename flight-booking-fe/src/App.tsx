@@ -37,6 +37,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { CustomerLayout } from './layout/CustomerLayout';
 import { HomePage } from './pages/customer/HomePage';
+import { SearchPage } from './pages/customer/SearchPage';
 
 function App() {
   return (
@@ -46,6 +47,7 @@ function App() {
         <Route path="/" element={<CustomerLayout />}>
           <Route index element={<HomePage />} />
           {/* Sau này thêm: <Route path="search" element={<SearchPage />} /> */}
+          <Route path="search" element={<SearchPage />} />
         </Route>
 
         {/* Tuyến đường dành cho Admin (FE 2 sẽ vào đây làm việc sau) */}
