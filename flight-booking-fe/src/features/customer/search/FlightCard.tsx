@@ -6,6 +6,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+// 1. Thêm import này lên đầu file
+import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { selectFlight } from '@/store/bookingSlice';
 
 // 1. Khuôn mẫu dữ liệu cho một chuyến bay
 export interface Flight {
@@ -25,6 +29,13 @@ export interface Flight {
 
 // 2. Giao diện thẻ chuyến bay
 export const FlightCard = ({ flight }: { flight: Flight }) => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const handleSelectFlight = () => {
+    dispatch(selectFlight(flight.id)); // Lưu ID vào Redux
+    navigate('/booking'); // Chuyển sang trang Đặt vé
+  };
   return (
     <Accordion type="single" collapsible className="w-full bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow mb-4">
       <AccordionItem value="details" className="border-none">
@@ -66,7 +77,7 @@ export const FlightCard = ({ flight }: { flight: Flight }) => {
             <p className="text-2xl font-extrabold text-orange-500">
               {flight.price.toLocaleString('vi-VN')} <span className="text-sm font-normal text-slate-500 underline decoration-dotted">đ</span>
             </p>
-            <Button className="w-full mt-2 bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-md">
+            <Button onClick={handleSelectFlight} className="w-full mt-2 bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-md">
               Chọn vé
             </Button>
           </div>
