@@ -1,57 +1,79 @@
 import { useState } from 'react';
 import { AdvancedSearchWidget } from '../../features/customer/search/AdvancedSearchWidget';
 import { FlightCard, type Flight } from '../../features/customer/search/FlightCard';
-import { FlightFilter } from '../../features/customer/search/FlightFilter'; // <-- Import Bộ lọc
+import { FlightFilter, TIME_BLOCKS } from '../../features/customer/search/FlightFilter'; // Import thêm TIME_BLOCKS
 
-// DỮ LIỆU ẢO (Mock Data)
+// MOCK_FLIGHTS Giữ nguyên
 const MOCK_FLIGHTS: Flight[] = [
-  {
-    id: "VN123", airline: "Vietnam Airlines", airlineLogo: "VN",
-    departureTime: "08:00", arrivalTime: "10:10", duration: "2h 10m",
-    originCode: "HAN", destinationCode: "SGN", price: 1850000,
-    aircraft: "Airbus A321", baggage: "Xách tay 12kg, Ký gửi 23kg", flightClass: "Phổ thông tiêu chuẩn"
-  },
-  {
-    id: "VJ456", airline: "Vietjet Air", airlineLogo: "VJ",
-    departureTime: "09:30", arrivalTime: "11:35", duration: "2h 05m",
-    originCode: "HAN", destinationCode: "SGN", price: 1150000,
-    aircraft: "Airbus A320", baggage: "Xách tay 7kg", flightClass: "Phổ thông (Eco)"
-  },
-  {
-    id: "QH789", airline: "Bamboo Airways", airlineLogo: "QH",
-    departureTime: "14:15", arrivalTime: "16:20", duration: "2h 05m",
-    originCode: "HAN", destinationCode: "SGN", price: 1450000,
-    aircraft: "Boeing 787", baggage: "Xách tay 7kg, Ký gửi 20kg", flightClass: "Phổ thông Plus"
-  }
+  { id: "VN123", airline: "Vietnam Airlines", airlineLogo: "VN", departureTime: "08:30", arrivalTime: "10:40", duration: "2h 10m", durationMinutes: 130, stops: 0, originCode: "HAN", destinationCode: "SGN", price: 1850000, aircraft: "Airbus A321", baggage: "Xách tay 12kg, Ký gửi 23kg", flightClass: "Phổ thông tiêu chuẩn" },
+  { id: "VJ456", airline: "Vietjet Air", airlineLogo: "VJ", departureTime: "19:00", arrivalTime: "21:05", duration: "2h 05m", durationMinutes: 125, stops: 0, originCode: "HAN", destinationCode: "SGN", price: 1150000, aircraft: "Airbus A320", baggage: "Xách tay 7kg", flightClass: "Phổ thông (Eco)" },
+  { id: "QH789", airline: "Bamboo Airways", airlineLogo: "QH", departureTime: "14:15", arrivalTime: "18:20", duration: "4h 05m", durationMinutes: 245, stops: 1, originCode: "HAN", destinationCode: "SGN", price: 1450000, aircraft: "Boeing 787", baggage: "Xách tay 7kg, Ký gửi 20kg", flightClass: "Phổ thông Plus" },
+  { id: "VJ999", airline: "Vietjet Air", airlineLogo: "VJ", departureTime: "05:15", arrivalTime: "07:20", duration: "2h 05m", durationMinutes: 125, stops: 0, originCode: "HAN", destinationCode: "SGN", price: 950000, aircraft: "Airbus A320", baggage: "Xách tay 7kg", flightClass: "Phổ thông (Eco)" }, // Thêm 1 chuyến bay sớm giá rẻ để test Sort
 ];
 
 export const SearchPage = () => {
-  // --- STATE QUẢN LÝ BỘ LỌC ---
+  // STATE LỌC
   const [selectedAirlines, setSelectedAirlines] = useState<string[]>([]);
-  const [maxPrice, setMaxPrice] = useState<number>(5000000); // Mặc định 5 triệu
+  const [priceRange, setPriceRange] = useState<number[]>([0, 10000000]);
+  const [stops, setStops] = useState<number[]>([]);
+  const [maxDuration, setMaxDuration] = useState<number>(48);
+  
+  // MỚI: State lưu danh sách ID của các khối giờ được chọn (VD: ["0-6", "12-18"])
+  const [takeOffBlocks, setTakeOffBlocks] = useState<string[]>([]);
+  const [landingBlocks, setLandingBlocks] = useState<string[]>([]);
+  
+  // MỚI: State Sắp xếp (Mặc định: Giá thấp đến cao)
+  const [sortBy, setSortBy] = useState<string>('price_asc');
 
-  // --- LOGIC CẬP NHẬT BỘ LỌC ---
-  const handleAirlineChange = (airline: string, isChecked: boolean) => {
-    if (isChecked) {
-      setSelectedAirlines(prev => [...prev, airline]); // Thêm vào mảng
-    } else {
-      setSelectedAirlines(prev => prev.filter(a => a !== airline)); // Xóa khỏi mảng
-    }
+  // Hàm Helper
+  const timeToDecimal = (timeStr: string) => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours + (minutes / 60);
+  };
+
+  const handleBlockChange = (setter: React.Dispatch<React.SetStateAction<string[]>>) => (blockId: string, isChecked: boolean) => {
+    setter(prev => isChecked ? [...prev, blockId] : prev.filter(id => id !== blockId));
   };
 
   const handleResetFilters = () => {
-    setSelectedAirlines([]);
-    setMaxPrice(5000000);
+    setSelectedAirlines([]); setPriceRange([0, 10000000]); setStops([]);
+    setMaxDuration(48); setTakeOffBlocks([]); setLandingBlocks([]);
   };
 
-  // --- LOGIC LỌC DỮ LIỆU CHÍNH (Chạy ngay lập tức mỗi khi state đổi) ---
-  const filteredFlights = MOCK_FLIGHTS.filter(flight => {
-    // 1. Lọc Hãng bay (Nếu mảng rỗng tức là chưa chọn hãng nào -> Hiển thị tất cả)
-    const matchAirline = selectedAirlines.length === 0 || selectedAirlines.includes(flight.airline);
-    // 2. Lọc Giá tiền
-    const matchPrice = flight.price <= maxPrice;
+  // --- LOGIC KIỂM TRA MÚI GIỜ ---
+  const isTimeInBlocks = (decimalTime: number, selectedBlocks: string[]) => {
+    if (selectedBlocks.length === 0) return true; // Nếu không tick gì -> Bỏ qua lọc giờ
+    return selectedBlocks.some(blockId => {
+      const block = TIME_BLOCKS.find(b => b.id === blockId);
+      if (!block) return false;
+      // Dấu < max để tránh 12:00 lọt vào cả 2 mốc "Sáng" và "Chiều"
+      return decimalTime >= block.min && decimalTime < (block.max === 24 ? 24.1 : block.max);
+    });
+  };
 
-    return matchAirline && matchPrice;
+  // --- BƯỚC 1: LỌC DỮ LIỆU ---
+  const filteredFlights = MOCK_FLIGHTS.filter(flight => {
+    const depTime = timeToDecimal(flight.departureTime);
+    const arrTime = timeToDecimal(flight.arrivalTime);
+
+    const matchAirline = selectedAirlines.length === 0 || selectedAirlines.includes(flight.airline);
+    const matchPrice = flight.price >= priceRange[0] && flight.price <= priceRange[1];
+    const matchStops = stops.length === 0 || stops.includes(flight.stops) || (stops.includes(2) && flight.stops >= 2);
+    const matchDuration = (flight.durationMinutes / 60) <= maxDuration;
+    const matchTakeOff = isTimeInBlocks(depTime, takeOffBlocks);
+    const matchLanding = isTimeInBlocks(arrTime, landingBlocks);
+
+    return matchAirline && matchPrice && matchStops && matchDuration && matchTakeOff && matchLanding;
+  });
+
+  // --- BƯỚC 2: SẮP XẾP DỮ LIỆU SAU KHI LỌC ---
+  const sortedAndFilteredFlights = [...filteredFlights].sort((a, b) => {
+    if (sortBy === 'price_asc') return a.price - b.price;
+    if (sortBy === 'price_desc') return b.price - a.price;
+    if (sortBy === 'time_asc') return timeToDecimal(a.departureTime) - timeToDecimal(b.departureTime);
+    if (sortBy === 'time_desc') return timeToDecimal(b.departureTime) - timeToDecimal(a.departureTime);
+    if (sortBy === 'duration_asc') return a.durationMinutes - b.durationMinutes;
+    return 0;
   });
 
   return (
@@ -69,38 +91,57 @@ export const SearchPage = () => {
 
       <div className="container mx-auto px-4 mt-8 flex flex-col lg:flex-row gap-8">
         
-        {/* CỘT BỘ LỌC */}
+        {/* BỘ LỌC BÊN TRÁI */}
         <aside className="w-full lg:w-1/4">
           <FlightFilter 
-            selectedAirlines={selectedAirlines}
-            onAirlineChange={handleAirlineChange}
-            maxPrice={maxPrice}
-            onPriceChange={setMaxPrice}
+            selectedAirlines={selectedAirlines} onAirlineChange={(a, c) => setSelectedAirlines(p => c ? [...p, a] : p.filter(x => x !== a))}
+            priceRange={priceRange} onPriceChange={setPriceRange}
+            stops={stops} onStopsChange={(s, c) => setStops(p => c ? [...p, s] : p.filter(x => x !== s))}
+            maxDuration={maxDuration} onMaxDurationChange={setMaxDuration}
+            takeOffBlocks={takeOffBlocks} onTakeOffBlockChange={handleBlockChange(setTakeOffBlocks)}
+            landingBlocks={landingBlocks} onLandingBlockChange={handleBlockChange(setLandingBlocks)}
             resetFilters={handleResetFilters}
           />
         </aside>
 
-        {/* CỘT DANH SÁCH CHUYẾN BAY */}
+        {/* DANH SÁCH & SẮP XẾP BÊN PHẢI */}
         <main className="w-full lg:w-3/4">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-slate-800 text-xl">
+          
+          {/* THANH TOP BAR: Số lượng chuyến bay & Chức năng Sắp xếp */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm gap-4">
+            <h3 className="font-bold text-slate-800">
               Hà Nội (HAN) <span className="text-slate-400 mx-2">→</span> Hồ Chí Minh (SGN)
+              <span className="ml-3 text-sm font-normal text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+                Hiển thị {sortedAndFilteredFlights.length} kết quả
+              </span>
             </h3>
-            <span className="text-slate-500 font-medium bg-white px-3 py-1 rounded-full shadow-sm border border-slate-200">
-              Hiển thị {filteredFlights.length} chuyến bay
-            </span>
+
+            {/* Khung Sắp Xếp */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-600">Sắp xếp:</span>
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block px-3 py-2 cursor-pointer font-medium outline-none"
+              >
+                <option value="price_asc">Giá: Thấp đến Cao</option>
+                <option value="price_desc">Giá: Cao đến Thấp</option>
+                <option value="time_asc">Giờ cất cánh: Sớm nhất</option>
+                <option value="time_desc">Giờ cất cánh: Muộn nhất</option>
+                <option value="duration_asc">Thời gian bay: Ngắn nhất</option>
+              </select>
+            </div>
           </div>
 
+          {/* RENDER DANH SÁCH SAU KHI ĐÃ SẮP XẾP VÀ LỌC */}
           <div className="space-y-4">
-            {/* Cảnh báo nếu lọc quá tay không còn chuyến nào */}
-            {filteredFlights.length === 0 ? (
+            {sortedAndFilteredFlights.length === 0 ? (
                <div className="text-center py-20 bg-white rounded-xl border border-slate-200 border-dashed">
-                 <p className="text-slate-500 text-lg">Không tìm thấy chuyến bay nào phù hợp với bộ lọc.</p>
-                 <button onClick={handleResetFilters} className="mt-4 text-blue-600 font-medium hover:underline">Xóa bộ lọc ngay</button>
+                 <p className="text-slate-500 text-lg mb-4">Không tìm thấy chuyến bay nào.</p>
+                 <button onClick={handleResetFilters} className="text-blue-600 font-bold hover:underline bg-blue-50 px-6 py-2 rounded-full">Xóa bộ lọc</button>
                </div>
             ) : (
-              // In ra danh sách đã lọc
-              filteredFlights.map((flight) => (
+              sortedAndFilteredFlights.map((flight) => (
                 <FlightCard key={flight.id} flight={flight} />
               ))
             )}

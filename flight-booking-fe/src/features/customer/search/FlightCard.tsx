@@ -16,15 +16,17 @@ export interface Flight {
   id: string;
   airline: string;
   airlineLogo: string;
-  departureTime: string;
-  arrivalTime: string;
-  duration: string;
-  originCode: string; // VD: HAN
-  destinationCode: string; // VD: SGN
+  departureTime: string; // VD: "08:30"
+  arrivalTime: string;   // VD: "10:40"
+  duration: string;      // VD: "2h 10m"
+  durationMinutes: number; // MỚI: Thêm số phút để code dễ tính toán (VD: 130)
+  stops: number;         // MỚI: 0 (Bay thẳng), 1 (1 điểm dừng), v.v.
+  originCode: string;
+  destinationCode: string;
   price: number;
-  aircraft: string; // VD: Airbus A321
-  baggage: string; // VD: 20kg ký gửi, 7kg xách tay
-  flightClass: string; // VD: Phổ thông (Eco)
+  aircraft: string;
+  baggage: string;
+  flightClass: string;
 }
 
 // 2. Giao diện thẻ chuyến bay
