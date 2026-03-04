@@ -20,10 +20,10 @@ export const CustomerLayout = () => {
               Vé của tôi
             </Link>
             
-            {/* Nút đăng nhập giả lập */}
-            <button className="bg-white text-blue-600 px-5 py-2 rounded-full font-bold shadow-sm hover:bg-blue-50 transition-colors">
+            {/* Nút đăng nhập */}
+            <Link to="/login" className="bg-white text-blue-600 px-5 py-2 rounded-full font-bold shadow-sm hover:bg-blue-50 transition-colors">
               Đăng nhập
-            </button>
+            </Link>
           </nav>
         </div>
       </header>

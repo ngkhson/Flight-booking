@@ -49,3 +49,4 @@ const bookingSlice = createSlice({
 
 export const { selectFlight, savePassengers, saveAddons, prevStep, clearBooking } = bookingSlice.actions;
 export default bookingSlice.reducer;
+

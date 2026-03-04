@@ -40,6 +40,8 @@ import { HomePage } from './pages/customer/HomePage';
 import { SearchPage } from './pages/customer/SearchPage';
 import { BookingPage } from './pages/customer/BookingPage'; // <-- 1. Import trang mới
 import { MyBookingsPage } from './pages/customer/MyBookingsPage';
+import { LoginPage } from './pages/auth/LoginPage';
+import { RegisterPage } from './pages/auth/RegisterPage';
 
 function App() {
   return (
@@ -52,6 +54,8 @@ function App() {
           <Route path="search" element={<SearchPage />} />
           <Route path="booking" element={<BookingPage />} />
           <Route path="my-bookings" element={<MyBookingsPage />} />
+          <Route path="login" element={<LoginPage />} />
+          <Route path="register" element={<RegisterPage />} />
         </Route>
 
         {/* Tuyến đường dành cho Admin (FE 2 sẽ vào đây làm việc sau) */}
