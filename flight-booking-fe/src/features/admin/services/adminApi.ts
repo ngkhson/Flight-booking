@@ -11,6 +11,10 @@ export interface IDashboardStats {
     totalBookings: number;
     flightsToday: number;
     newCustomers: number;
+    todayRevenue: number;        // VND – revenue earned today
+    activeFlights: number;       // flights currently in-progress
+    pendingBookings: number;     // bookings awaiting confirmation
+    totalTicketsSold: number;    // lifetime tickets sold
 }
 
 export interface IFlight {

@@ -3,10 +3,12 @@ import {
     ResponsiveContainer, LineChart, Line, XAxis, YAxis,
     CartesianGrid, Tooltip, Legend,
 } from 'recharts';
+import { DollarSign, Ticket, Plane, AlertCircle } from 'lucide-react';
 import {
     getDashboardStats,
     type IDashboardStats,
 } from '../../features/admin/services/adminApi';
+import StatsCard from '../../components/admin/dashboard/StatsCard';
 
 // ─── Revenue chart mock data (7 ngày gần nhất) ───────────────────────────────
 
@@ -92,6 +94,7 @@ function StatSkeleton() {
 
 export default function AdminDashboard() {
     const [stats, setStats] = useState<StatCard[] | null>(null);
+    const [rawStats, setRawStats] = useState<IDashboardStats | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [apiError, setApiError] = useState<string | null>(null);
 
@@ -100,6 +103,7 @@ export default function AdminDashboard() {
         setApiError(null);
         getDashboardStats()
             .then((data) => {
+                setRawStats(data);
                 setStats(buildStatCards(data));
                 setIsLoading(false);
             })
@@ -146,7 +150,49 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-            {/* Stat cards grid */}
+            {/* ── Key Metrics (StatsCard) ─────────────────────────────── */}
+            {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="bg-white rounded-lg shadow-sm p-5 flex items-center gap-4 animate-pulse">
+                            <div className="w-12 h-12 rounded-full bg-gray-200 shrink-0" />
+                            <div className="flex-1 space-y-2">
+                                <div className="h-3 bg-gray-200 rounded w-2/3" />
+                                <div className="h-6 bg-gray-200 rounded w-1/2" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : rawStats ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <StatsCard
+                        title="Doanh thu hôm nay"
+                        value={fmtRevenue(rawStats.todayRevenue)}
+                        icon={<DollarSign size={22} />}
+                        color="green"
+                    />
+                    <StatsCard
+                        title="Tổng vé đã bán"
+                        value={fmtNumber(rawStats.totalTicketsSold)}
+                        icon={<Ticket size={22} />}
+                        color="blue"
+                    />
+                    <StatsCard
+                        title="Chuyến bay hoạt động"
+                        value={fmtNumber(rawStats.activeFlights)}
+                        icon={<Plane size={22} />}
+                        color="indigo"
+                    />
+                    <StatsCard
+                        title="Đặt vé chờ duyệt"
+                        value={fmtNumber(rawStats.pendingBookings)}
+                        icon={<AlertCircle size={22} />}
+                        color="orange"
+                    />
+                </div>
+            ) : null}
+
+            {/* Stat cards grid (legacy overview) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                 {isLoading
                     ? Array.from({ length: 6 }).map((_, i) => <StatSkeleton key={i} />)
