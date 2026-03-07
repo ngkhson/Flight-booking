@@ -6,9 +6,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, LogIn, Loader2 } from "lucide-react"; // Import thêm icon Loader2 để làm hiệu ứng xoay
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useDispatch } from "react-redux"; // THÊM DÒNG NÀY
+import { setCredentials } from "@/store/authSlice"; // THÊM DÒNG NÀY
 
 // Import API đã cấu hình (Đảm bảo bạn đã tạo file này ở các bước trước)
-import { authApi } from "@/api/authApi"; 
+import { authApi } from "@/api/authApi";
 
 // 1. Định nghĩa luật bắt lỗi (Validation)
 const loginSchema = z.object({
@@ -20,11 +22,12 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const LoginPage = () => {
   const navigate = useNavigate();
-  
+  const dispatch = useDispatch(); // Khởi tạo dispatch
+
   // State quản lý lúc đang chờ API và Lỗi từ Backend
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  
+
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   });
@@ -32,41 +35,58 @@ export const LoginPage = () => {
   // 2. Hàm xử lý Gọi API thật
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
-    setApiError(null); 
+    setApiError(null);
 
     try {
       const response: any = await authApi.login(data);
-      
-      // SỬA Ở ĐÂY: Trỏ đúng vào đường dẫn chứa token từ Backend trả về
-      // Lưu ý: Nếu authApi dùng trực tiếp axios thì phải có .data (response.data.result.token)
-      // Nếu authApi đã bóc sẵn data rồi thì chỉ cần response.result.token
-      const token = response?.data?.result?.token || response?.result?.token;
-      
+
+      // AxiosClient của bạn đã bóc tách data, nên cấu trúc sẽ là:
+      const token = response?.result?.token;
+      const user = response?.result?.user; // BE thường trả về thông tin user đi kèm token
+
       if (token) {
-        // Lưu token vào localStorage (bạn có thể đổi tên key thành 'token' hoặc 'accessToken' tùy ý)
         localStorage.setItem('accessToken', token);
-        
-        navigate("/"); // Điều hướng về trang chủ
+
+        // --- LƯU VÀO REDUX Ở ĐÂY ---
+        if (user) {
+          dispatch(setCredentials(user));
+        }
+        // ---------------------------
+
+        navigate("/");
       } else {
         setApiError("Không nhận được token từ máy chủ.");
       }
-      
+
     } catch (error: any) {
       console.error("Lỗi đăng nhập:", error);
-      // ... (giữ nguyên phần xử lý lỗi của bạn)
-      setApiError(
-        error.response?.data?.message || 
-        "Đăng nhập thất bại. Vui lòng kiểm tra lại email và mật khẩu!"
-      );
+
+      // 1. Kiểm tra xem BE có trả về message cụ thể không
+      const serverMessage = error.response?.data?.message;
+
+      // 2. Nếu là lỗi 401 (Unauthorized) - Thường là sai pass hoặc user không tồn tại
+      if (error.response?.status === 401) {
+        setApiError("Email không tồn tại hoặc mật khẩu không chính xác.");
+      }
+      // 3. Nếu là lỗi 403 (Forbidden) - Tài khoản bị khóa chẳng hạn
+      else if (error.response?.status === 403) {
+        setApiError("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin.");
+      }
+      // 4. Nếu Server sập hoặc lỗi khác
+      else if (serverMessage) {
+        setApiError(serverMessage);
+      } else {
+        setApiError("Đã có lỗi xảy ra. Vui lòng thử lại sau!");
+      }
     } finally {
-      setIsLoading(false); 
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center bg-slate-50 px-4">
       <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-100 w-full max-w-md">
-        
+
         <div className="text-center mb-8">
           <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
             <LogIn className="w-8 h-8 text-blue-600" />
@@ -88,10 +108,10 @@ export const LoginPage = () => {
             <label className="text-sm font-semibold text-slate-700 block mb-1">Email</label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-              <Input 
-                {...register("email")} 
-                type="email" 
-                placeholder="nhap@email.com" 
+              <Input
+                {...register("email")}
+                type="email"
+                placeholder="nhap@email.com"
                 disabled={isLoading}
                 className={`pl-10 h-12 ${errors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
               />
@@ -103,14 +123,16 @@ export const LoginPage = () => {
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="text-sm font-semibold text-slate-700">Mật khẩu</label>
-              <a href="#" className="text-xs text-blue-600 hover:underline font-medium">Quên mật khẩu?</a>
+              <Link to="/forgot-password" className="text-xs text-blue-600 hover:underline font-medium">
+                Quên mật khẩu?
+              </Link>
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-              <Input 
-                {...register("password")} 
-                type="password" 
-                placeholder="••••••••" 
+              <Input
+                {...register("password")}
+                type="password"
+                placeholder="••••••••"
                 disabled={isLoading}
                 className={`pl-10 h-12 ${errors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
               />
@@ -119,8 +141,8 @@ export const LoginPage = () => {
           </div>
 
           {/* Nút Submit có hiệu ứng Loading */}
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={isLoading}
             className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-md font-bold text-white shadow-md transition-all"
           >

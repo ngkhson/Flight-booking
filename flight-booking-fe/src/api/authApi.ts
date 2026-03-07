@@ -18,5 +18,11 @@ export const authApi = {
   getProfile: () => {
     const url = '/auth/me';
     return axiosClient.get(url);
-  }
+  },
+
+  logout: (token: string) => {
+        return axiosClient.post('/auth/logout', { token });
+    },
+  forgotPassword: (email: string) => 
+    axiosClient.post("/users/forgot-password", { email }),
 };

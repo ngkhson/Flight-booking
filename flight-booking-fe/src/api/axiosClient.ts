@@ -57,39 +57,34 @@ axiosClient.interceptors.request.use(
 // 3. CAN THIỆP SAU KHI NHẬN RESPONSE TỪ BE (Response Interceptor)
 
 axiosClient.interceptors.response.use(
-
   (response) => {
-
-    // BE thường trả về cục data nằm trong response.data. Bóc luôn ở đây cho lẹ.
-
     if (response && response.data) {
-
       return response.data;
-
     }
-
     return response;
-
   },
-
   (error) => {
+    const { response } = error;
+    
+    // Kiểm tra nếu lỗi 401 và KHÔNG PHẢI đang ở trang login
+    if (response && response.status === 401) {
+      // Nếu API gọi đến là api/auth/login thì KHÔNG chuyển hướng
+      // (Bạn kiểm tra URL của request lỗi)
+      const isLoginRequest = response.config.url.includes('/auth/login');
 
-    // Xử lý lỗi tập trung ở đây (Ví dụ: Token hết hạn 401 thì văng ra log in lại)
-
-    if (error.response && error.response.status === 401) {
-
-      console.error("Token hết hạn hoặc chưa đăng nhập!");
-
-      localStorage.removeItem('accessToken');
-
-      window.location.href = '/login';
-
+      if (!isLoginRequest) {
+        console.error("Token hết hạn hoặc chưa đăng nhập!");
+        localStorage.removeItem('accessToken');
+        
+        // Chỉ chuyển hướng nếu không phải đang ở trang login để tránh lặp vô tận/reload
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+      }
     }
-
+    
     return Promise.reject(error);
-
   }
-
 );
 
 
