@@ -1,52 +1,109 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-// Cấu trúc dữ liệu chúng ta sẽ lưu giữ trong suốt 3 bước
+// Định nghĩa cấu trúc thông tin chuyến bay đã chọn chi tiết
+export interface SelectedFlightInfo {
+  flightId: string;
+  selectedClassName: string;
+  finalPrice: number;
+}
+
 export interface BookingState {
-  selectedFlightId: string | null;
-  passengers: any[]; // Bài sau sẽ định nghĩa type chuẩn
+  selectedFlight: SelectedFlightInfo | null; // Lưu cả Object thay vì chỉ string ID
+  passengers: any[];
   addons: any[];
   totalAmount: number;
   currentStep: number;
+  searchConfigs: {
+    adults: number;
+    children: number;
+    infants: number;
+  };
+  contactInfo: any | null; // Lưu thông tin liên hệ
 }
 
 const initialState: BookingState = {
-  selectedFlightId: null,
+  selectedFlight: null,
   passengers: [],
   addons: [],
   totalAmount: 0,
-  currentStep: 1, // Bắt đầu ở bước 1
+  currentStep: 1,
+  searchConfigs: { adults: 1, children: 0, infants: 0 },
+  contactInfo: null,
 };
 
 const bookingSlice = createSlice({
   name: 'booking',
   initialState,
   reducers: {
-    // Hành động: Chọn chuyến bay (Từ trang Search)
-    selectFlight: (state, action: PayloadAction<string>) => {
-      state.selectedFlightId = action.payload;
+    // Action chấp nhận Object SelectedFlightInfo
+    selectFlight: (state, action: PayloadAction<SelectedFlightInfo>) => {
+      state.selectedFlight = action.payload;
+
+      // Tính tổng số lượng khách từ searchConfigs
+      const { adults, children, infants } = state.searchConfigs;
+
+      // Logic tính tiền chuẩn:
+      // Người lớn: 100% giá
+      // Trẻ em: thường 75% - 100% (ở đây mình ví dụ 100% như người lớn cho đơn giản)
+      // Em bé: thường 10% hoặc phí cố định (ở đây ví dụ 10%)
+      const basePrice = action.payload.finalPrice;
+      const totalPaxPrice = (basePrice * adults) + (basePrice * 0.75 * children) + (basePrice * 0.1 * infants);
+
+      state.totalAmount = totalPaxPrice;
     },
-    // Hành động: Lưu thông tin khách hàng (Sau bước 1)
     savePassengers: (state, action: PayloadAction<any[]>) => {
       state.passengers = action.payload;
-      state.currentStep = 2; // Tự động chuyển sang bước 2
+
+      const basePrice = state.selectedFlight?.finalPrice || 0;
+
+      // Ví dụ logic tính tiền:
+      const adultTotal = basePrice * state.searchConfigs.adults;
+      const childTotal = (basePrice * 0.75) * state.searchConfigs.children; // Trẻ em 75%
+      const infantTotal = (basePrice * 0.1) * state.searchConfigs.infants; // Em bé 10%
+
+      state.totalAmount = adultTotal + childTotal + infantTotal;
+      state.currentStep = 2;
     },
-    
-    // ---> THÊM HÀM NÀY: Lưu dịch vụ và nhảy sang Bước 3
     saveAddons: (state, action: PayloadAction<any[]>) => {
       state.addons = action.payload;
-      state.currentStep = 3; 
-    },
-    // <---
 
-    // Hành động: Quay lại bước trước
+      // Tính tổng tiền dịch vụ
+      const addonTotal = action.payload.reduce((sum, item) => sum + (item.baggage?.price || 0), 0);
+
+      // Tổng tiền = (Tiền vé các khách) + (Tiền dịch vụ)
+      const baseTicketPrice = state.selectedFlight?.finalPrice || 0;
+      const passengersTotal = (baseTicketPrice * state.searchConfigs.adults) +
+        (baseTicketPrice * state.searchConfigs.children) +
+        (baseTicketPrice * 0.1 * state.searchConfigs.infants);
+
+      state.totalAmount = passengersTotal + addonTotal;
+      state.currentStep = 3; // Chuyển sang thanh toán
+    },
+    setTotalAmount: (state, action: PayloadAction<number>) => {
+      state.totalAmount = action.payload;
+    },
     prevStep: (state) => {
       if (state.currentStep > 1) state.currentStep -= 1;
     },
-    // Hành động: Xóa sạch dữ liệu khi đặt vé xong
     clearBooking: () => initialState,
+    saveContactInfo: (state, action: PayloadAction<any>) => {
+      state.contactInfo = action.payload;
+    },
+    setSearchConfigs: (state, action: PayloadAction<{ adults: number, children: number, infants: number }>) => {
+      state.searchConfigs = action.payload;
+    },
   },
 });
 
-export const { selectFlight, savePassengers, saveAddons, prevStep, clearBooking } = bookingSlice.actions;
-export default bookingSlice.reducer;
+export const {
+  selectFlight,
+  savePassengers,
+  saveAddons,
+  prevStep,
+  clearBooking,
+  setTotalAmount,
+  saveContactInfo,
+  setSearchConfigs
+} = bookingSlice.actions;
 
+export default bookingSlice.reducer;
