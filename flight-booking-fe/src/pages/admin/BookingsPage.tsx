@@ -1,18 +1,24 @@
 import { useState, useEffect } from 'react';
-import { getBookings, type Booking } from '../../features/admin/services/adminApi';
+import { getBookings, type IBooking } from '../../features/admin/services/adminApi';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const STATUS_STYLES: Record<Booking['status'], string> = {
+const STATUS_STYLES: Record<IBooking['status'], string> = {
     CONFIRMED: 'bg-green-100 text-green-700',
     PENDING: 'bg-yellow-100 text-yellow-700',
     CANCELLED: 'bg-red-100 text-red-700',
+    PAID: 'bg-blue-100 text-blue-700',
+    AWAITING_PAYMENT: 'bg-orange-100 text-orange-700',
+    REFUNDED: 'bg-gray-100 text-gray-600',
 };
 
-const STATUS_LABELS: Record<Booking['status'], string> = {
+const STATUS_LABELS: Record<IBooking['status'], string> = {
     CONFIRMED: 'Xác nhận',
     PENDING: 'Chờ xử lý',
     CANCELLED: 'Đã huỷ',
+    PAID: 'Đã thanh toán',
+    AWAITING_PAYMENT: 'Chờ thanh toán',
+    REFUNDED: 'Hoàn tiền',
 };
 
 const fmtDate = (iso: string) =>
@@ -23,15 +29,15 @@ const fmtVND = (n: number) =>
 
 // ─── Mock data (fallback) ─────────────────────────────────────────────────────
 
-const MOCK_BOOKINGS: Booking[] = [
-    { id: '1', bookingCode: 'BK-001', passengerName: 'Nguyễn Văn A', flightNumber: 'VN-201', route: 'HAN → SGN', status: 'CONFIRMED', totalAmount: 1_250_000, createdAt: '2026-02-24T08:00:00' },
-    { id: '2', bookingCode: 'BK-002', passengerName: 'Trần Thị B', flightNumber: 'VN-305', route: 'SGN → DAD', status: 'PENDING', totalAmount: 890_000, createdAt: '2026-02-24T09:30:00' },
-    { id: '3', bookingCode: 'BK-003', passengerName: 'Lê Văn C', flightNumber: 'QH-102', route: 'HAN → PQC', status: 'CONFIRMED', totalAmount: 1_580_000, createdAt: '2026-02-23T14:20:00' },
-    { id: '4', bookingCode: 'BK-004', passengerName: 'Phạm Thị D', flightNumber: 'VJ-411', route: 'SGN → HAN', status: 'CANCELLED', totalAmount: 1_100_000, createdAt: '2026-02-23T11:00:00' },
-    { id: '5', bookingCode: 'BK-005', passengerName: 'Hoàng Văn E', flightNumber: 'VN-789', route: 'HAN → DAD', status: 'PENDING', totalAmount: 750_000, createdAt: '2026-02-22T16:45:00' },
+const MOCK_BOOKINGS: IBooking[] = [
+    { id: '1', pnrCode: 'BK-001', contactName: 'Nguyễn Văn A', contactPhone: '0901234567', contactEmail: 'a@mail.com', flightNumber: 'VN-201', origin: 'HAN', destination: 'SGN', departureTime: '2026-02-25T06:00:00', status: 'CONFIRMED', totalAmount: 1_250_000, createdAt: '2026-02-24T08:00:00' },
+    { id: '2', pnrCode: 'BK-002', contactName: 'Trần Thị B', contactPhone: '0901234568', contactEmail: 'b@mail.com', flightNumber: 'VN-305', origin: 'SGN', destination: 'DAD', departureTime: '2026-02-25T10:30:00', status: 'PENDING', totalAmount: 890_000, createdAt: '2026-02-24T09:30:00' },
+    { id: '3', pnrCode: 'BK-003', contactName: 'Lê Văn C', contactPhone: '0901234569', contactEmail: 'c@mail.com', flightNumber: 'QH-102', origin: 'HAN', destination: 'PQC', departureTime: '2026-02-25T14:00:00', status: 'CONFIRMED', totalAmount: 1_580_000, createdAt: '2026-02-23T14:20:00' },
+    { id: '4', pnrCode: 'BK-004', contactName: 'Phạm Thị D', contactPhone: '0901234570', contactEmail: 'd@mail.com', flightNumber: 'VJ-411', origin: 'SGN', destination: 'HAN', departureTime: '2026-02-24T18:00:00', status: 'CANCELLED', totalAmount: 1_100_000, createdAt: '2026-02-23T11:00:00' },
+    { id: '5', pnrCode: 'BK-005', contactName: 'Hoàng Văn E', contactPhone: '0901234571', contactEmail: 'e@mail.com', flightNumber: 'VN-789', origin: 'HAN', destination: 'DAD', departureTime: '2026-02-25T20:00:00', status: 'PENDING', totalAmount: 750_000, createdAt: '2026-02-22T16:45:00' },
 ];
 
-type FilterStatus = 'ALL' | Booking['status'];
+type FilterStatus = 'ALL' | IBooking['status'];
 
 // ─── Skeleton row ─────────────────────────────────────────────────────────────
 
@@ -50,7 +56,7 @@ function SkeletonRow() {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function BookingsPage() {
-    const [bookings, setBookings] = useState<Booking[]>([]);
+    const [bookings, setBookings] = useState<IBooking[]>([]);
     const [loading, setLoading] = useState(true);
     const [apiError, setApiError] = useState(false);
     const [filter, setFilter] = useState<FilterStatus>('ALL');
@@ -58,7 +64,7 @@ export default function BookingsPage() {
     useEffect(() => {
         let cancelled = false;
 
-        getBookings({ page: 0, size: 50 })
+        getBookings({ page: 1, size: 50 })
             .then((res) => {
                 if (!cancelled) {
                     setBookings(res.content);
@@ -152,10 +158,10 @@ export default function BookingsPage() {
                                 )
                                 : filtered.map((b) => (
                                     <tr key={b.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-4 py-3 font-mono font-semibold text-gray-800">{b.bookingCode}</td>
-                                        <td className="px-4 py-3 text-gray-700">{b.passengerName}</td>
+                                        <td className="px-4 py-3 font-mono font-semibold text-gray-800">{b.pnrCode}</td>
+                                        <td className="px-4 py-3 text-gray-700">{b.contactName}</td>
                                         <td className="px-4 py-3 font-medium text-gray-700">{b.flightNumber}</td>
-                                        <td className="px-4 py-3 text-gray-600">{b.route}</td>
+                                        <td className="px-4 py-3 text-gray-600">{b.origin} → {b.destination}</td>
                                         <td className="px-4 py-3 text-gray-600">{fmtDate(b.createdAt)}</td>
                                         <td className="px-4 py-3 text-gray-700 font-medium">{fmtVND(b.totalAmount)}</td>
                                         <td className="px-4 py-3">

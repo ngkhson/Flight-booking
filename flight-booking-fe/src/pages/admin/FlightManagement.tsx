@@ -10,22 +10,29 @@ import {
     createFlight,
     updateFlight,
     deleteFlight,
-    type Flight,
+    type IFlight,
+    type IFlightClass,
     type FlightPayload,
 } from '../../features/admin/services/adminApi';
 
+// ─── Local extended type ──────────────────────────────────────────────────────
+// The BE FlightSearchResponseDTO has no `id`. For admin CRUD (which is still
+// placeholder / mock-only), we extend IFlight with an `id` field locally.
+
+type Flight = IFlight & { id: string };
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STATUS_OPTIONS: Flight['status'][] = ['SCHEDULED', 'DELAYED', 'CANCELLED', 'COMPLETED'];
+const STATUS_OPTIONS: string[] = ['SCHEDULED', 'DELAYED', 'CANCELLED', 'COMPLETED'];
 
-const STATUS_STYLES: Record<Flight['status'], string> = {
+const STATUS_STYLES: Record<string, string> = {
     SCHEDULED: 'bg-blue-100 text-blue-700',
     DELAYED: 'bg-yellow-100 text-yellow-700',
     CANCELLED: 'bg-red-100 text-red-700',
     COMPLETED: 'bg-green-100 text-green-700',
 };
 
-const STATUS_LABELS: Record<Flight['status'], string> = {
+const STATUS_LABELS: Record<string, string> = {
     SCHEDULED: 'Đã lên lịch',
     DELAYED: 'Trễ chuyến',
     CANCELLED: 'Đã huỷ',
@@ -46,6 +53,16 @@ const toDatetimeLocal = (iso: string): string => {
     const d = new Date(iso);
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+/** Get total available seats across all classes */
+const getTotalSeats = (classes: IFlightClass[]): number =>
+    classes.reduce((sum, c) => sum + c.availableSeats, 0);
+
+/** Get the lowest base price across all classes */
+const getMinPrice = (classes: IFlightClass[]): number => {
+    if (!classes.length) return 0;
+    return Math.min(...classes.map((c) => c.basePrice));
 };
 
 // ─── Validation ───────────────────────────────────────────────────────────────
@@ -97,15 +114,7 @@ function validatePayload(p: FlightPayload): FieldErrors {
     return err;
 }
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const MOCK_FLIGHTS: Flight[] = [
-    { id: '1', flightNumber: 'VN-201', airline: 'Vietnam Airlines', origin: 'HAN', destination: 'SGN', departureTime: '2026-02-25T06:00:00', arrivalTime: '2026-02-25T08:10:00', status: 'SCHEDULED', availableSeats: 120, price: 1_250_000 },
-    { id: '2', flightNumber: 'VN-305', airline: 'Vietnam Airlines', origin: 'SGN', destination: 'DAD', departureTime: '2026-02-25T10:30:00', arrivalTime: '2026-02-25T11:45:00', status: 'DELAYED', availableSeats: 45, price: 890_000 },
-    { id: '3', flightNumber: 'QH-102', airline: 'Bamboo Airways', origin: 'HAN', destination: 'PQC', departureTime: '2026-02-25T14:00:00', arrivalTime: '2026-02-25T16:05:00', status: 'SCHEDULED', availableSeats: 78, price: 1_580_000 },
-    { id: '4', flightNumber: 'VJ-411', airline: 'VietJet Air', origin: 'SGN', destination: 'HAN', departureTime: '2026-02-24T18:00:00', arrivalTime: '2026-02-24T20:15:00', status: 'COMPLETED', availableSeats: 0, price: 1_100_000 },
-    { id: '5', flightNumber: 'VN-789', airline: 'Vietnam Airlines', origin: 'HAN', destination: 'DAD', departureTime: '2026-02-25T20:00:00', arrivalTime: '2026-02-25T21:30:00', status: 'CANCELLED', availableSeats: 0, price: 750_000 },
-];
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const EMPTY_PAYLOAD: FlightPayload = {
     flightNumber: '',
@@ -161,12 +170,11 @@ const inputCls = (hasError?: string) =>
 interface FlightModalProps {
     open: boolean;
     editTarget: Flight | null;
-    isMock: boolean;
     onClose: () => void;
     onSaved: (flight: Flight) => void;
 }
 
-function FlightModal({ open, editTarget, isMock, onClose, onSaved }: FlightModalProps) {
+function FlightModal({ open, editTarget, onClose, onSaved }: FlightModalProps) {
     const [form, setForm] = useState<FlightPayload>(EMPTY_PAYLOAD);
     const [errors, setErrors] = useState<FieldErrors>({});
     const [submitting, setSubmitting] = useState(false);
@@ -183,8 +191,8 @@ function FlightModal({ open, editTarget, isMock, onClose, onSaved }: FlightModal
                 destination: editTarget.destination,
                 departureTime: toDatetimeLocal(editTarget.departureTime),
                 arrivalTime: toDatetimeLocal(editTarget.arrivalTime),
-                availableSeats: editTarget.availableSeats,
-                price: editTarget.price,
+                availableSeats: getTotalSeats(editTarget.classes),
+                price: getMinPrice(editTarget.classes),
                 status: editTarget.status,
             });
         } else {
@@ -212,18 +220,31 @@ function FlightModal({ open, editTarget, isMock, onClose, onSaved }: FlightModal
         setApiErr(null);
         try {
             let saved: Flight;
-            if (isMock) {
-                await new Promise((r) => setTimeout(r, 400));
-                saved = { ...normalized, airline: '', id: editTarget?.id ?? String(Date.now()) };
-            } else if (editTarget) {
-                saved = await updateFlight(editTarget.id, normalized);
+            if (editTarget) {
+                // updateFlight returns IFlightUpdateResponse — map back to Flight
+                const res = await updateFlight(editTarget.id, {
+                    departureTime: normalized.departureTime,
+                    arrivalTime: normalized.arrivalTime,
+                    status: normalized.status,
+                });
+                saved = {
+                    ...editTarget,
+                    departureTime: res.departureTime,
+                    arrivalTime: res.arrivalTime,
+                    status: res.status,
+                };
             } else {
-                saved = await createFlight(normalized);
+                const created = await createFlight(normalized);
+                saved = {
+                    ...created,
+                    id: (created as Flight).id ?? String(Date.now()),
+                    classes: (created as Flight).classes ?? [],
+                };
             }
             onSaved(saved);
             onClose();
-        } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : 'Lỗi không xác định.';
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Lỗi không xác định.';
             setApiErr(`Không thể lưu: ${msg}`);
         } finally {
             setSubmitting(false);
@@ -288,7 +309,7 @@ function FlightModal({ open, editTarget, isMock, onClose, onSaved }: FlightModal
                                 id="fm-status"
                                 value={form.status}
                                 onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                                    patch('status', e.target.value as Flight['status'])
+                                    patch('status', e.target.value)
                                 }
                                 className={inputCls()}
                             >
@@ -481,7 +502,6 @@ function DeleteModal({ target, onClose, onConfirm }: DeleteModalProps) {
 export default function FlightManagement() {
     const [flights, setFlights] = useState<Flight[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isMock, setIsMock] = useState(false);
     const [search, setSearch] = useState('');
 
     const [modalOpen, setModalOpen] = useState(false);
@@ -500,13 +520,35 @@ export default function FlightManagement() {
     // Load flights on mount
     useEffect(() => {
         let cancelled = false;
-        setLoading(true);
-        getFlights({ page: 0, size: 100 })
-            .then((res) => {
-                if (!cancelled) { setFlights(res.content); setLoading(false); }
+
+        // Gửi payload mặc định để tránh lỗi 400 Bad Request
+        // API yêu cầu bắt buộc phải có ngày khởi hành, điểm xuất phát và điểm đến
+        const today = new Date().toISOString().split('T')[0];
+        const defaultPayload = {
+            page: 1,
+            size: 100,
+            departureDate: today,
+            origin: "HAN",
+            destination: "SGN"
+        };
+        getFlights(defaultPayload)
+            .then((list) => {
+                if (!cancelled) {
+                    // getFlights returns IFlight[] (no id) — assign synthetic ids for admin CRUD
+                    const withIds: Flight[] = list.map((f, i) => ({
+                        ...f,
+                        id: (f as Flight).id ?? String(i + 1),
+                    }));
+                    setFlights(withIds);
+                    setLoading(false);
+                }
             })
-            .catch(() => {
-                if (!cancelled) { setFlights(MOCK_FLIGHTS); setIsMock(true); setLoading(false); }
+            .catch((err) => {
+                if (!cancelled) {
+                    console.error('Lỗi tải dữ liệu chuyến bay:', err);
+                    setFlights([]);
+                    setLoading(false);
+                }
             });
         return () => { cancelled = true; };
     }, []);
@@ -524,24 +566,25 @@ export default function FlightManagement() {
     const openEdit = (f: Flight) => { setEditTarget(f); setModalOpen(true); };
 
     const handleSaved = useCallback((saved: Flight) => {
+        let isEdit = false;
         setFlights((prev) => {
             const idx = prev.findIndex((f) => f.id === saved.id);
-            if (idx >= 0) {
+            isEdit = idx >= 0;
+            if (isEdit) {
                 const next = [...prev];
                 next[idx] = saved;
                 return next;
             }
             return [saved, ...prev];
         });
-        setToast({ msg: editTarget ? 'Đã cập nhật chuyến bay.' : 'Đã thêm chuyến bay mới.', type: 'success' });
-    }, [editTarget]);
+        setToast({ msg: isEdit ? 'Đã cập nhật chuyến bay.' : 'Đã thêm chuyến bay mới.', type: 'success' });
+    }, []);
 
     const handleDelete = useCallback(async (id: string) => {
-        if (!isMock) await deleteFlight(id);
-        else await new Promise((r) => setTimeout(r, 300));
+        await deleteFlight(id);
         setFlights((prev) => prev.filter((f) => f.id !== id));
         setToast({ msg: 'Đã xoá chuyến bay.', type: 'success' });
-    }, [isMock]);
+    }, []);
 
     return (
         <div className="space-y-5">
@@ -574,13 +617,7 @@ export default function FlightManagement() {
                 </button>
             </div>
 
-            {/* Mock-data warning */}
-            {isMock && (
-                <div className="px-4 py-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm flex items-center gap-2">
-                    <span>⚠️</span>
-                    <span>Không thể kết nối API — đang dùng dữ liệu mẫu. Thêm/Sửa/Xoá cập nhật cục bộ.</span>
-                </div>
-            )}
+            {/* ── Removed Mock-data warning ── */}
 
             {/* Search */}
             <div className="relative max-w-sm">
@@ -618,49 +655,46 @@ export default function FlightManagement() {
                             : filtered.length === 0
                                 ? (
                                     <tr>
-                                        <td colSpan={10} className="px-4 py-12 text-center text-gray-400 text-sm">
-                                            Không tìm thấy chuyến bay phù hợp.
+                                        <td colSpan={10} className="px-4 py-12 text-center text-gray-500 text-sm bg-white">
+                                            Không có dữ liệu chuyến bay.
                                         </td>
                                     </tr>
                                 )
-                                : filtered.map((f) => {
-                                    const airline = f.flightNumber.split('-')[0] ?? '—';
-                                    return (
-                                        <tr key={f.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-4 py-3 font-mono font-semibold text-gray-800">{f.flightNumber}</td>
-                                            <td className="px-4 py-3 text-gray-600">{airline}</td>
-                                            <td className="px-4 py-3 font-medium text-gray-700">{f.origin}</td>
-                                            <td className="px-4 py-3 font-medium text-gray-700">{f.destination}</td>
-                                            <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtDateTime(f.departureTime)}</td>
-                                            <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtDateTime(f.arrivalTime)}</td>
-                                            <td className="px-4 py-3 text-gray-600">{f.availableSeats}</td>
-                                            <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtVND(f.price)}</td>
-                                            <td className="px-4 py-3">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[f.status]}`}>
-                                                    {STATUS_LABELS[f.status]}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <button
-                                                        onClick={() => openEdit(f)}
-                                                        className="px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition"
-                                                        aria-label={`Sửa chuyến ${f.flightNumber}`}
-                                                    >
-                                                        ✏️ Sửa
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setDeleteTarget(f)}
-                                                        className="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"
-                                                        aria-label={`Xoá chuyến ${f.flightNumber}`}
-                                                    >
-                                                        🗑️ Xoá
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })
+                                : filtered.map((f) => (
+                                    <tr key={f.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-4 py-3 font-mono font-semibold text-gray-800">{f.flightNumber}</td>
+                                        <td className="px-4 py-3 text-gray-600">{f.airlineName}</td>
+                                        <td className="px-4 py-3 font-medium text-gray-700">{f.origin}</td>
+                                        <td className="px-4 py-3 font-medium text-gray-700">{f.destination}</td>
+                                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtDateTime(f.departureTime)}</td>
+                                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtDateTime(f.arrivalTime)}</td>
+                                        <td className="px-4 py-3 text-gray-600">{getTotalSeats(f.classes)}</td>
+                                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtVND(getMinPrice(f.classes))}</td>
+                                        <td className="px-4 py-3">
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[f.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                                                {STATUS_LABELS[f.status] ?? f.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button
+                                                    onClick={() => openEdit(f)}
+                                                    className="px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition"
+                                                    aria-label={`Sửa chuyến ${f.flightNumber}`}
+                                                >
+                                                    ✏️ Sửa
+                                                </button>
+                                                <button
+                                                    onClick={() => setDeleteTarget(f)}
+                                                    className="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"
+                                                    aria-label={`Xoá chuyến ${f.flightNumber}`}
+                                                >
+                                                    🗑️ Xoá
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
                         }
                     </tbody>
                 </table>
@@ -669,7 +703,6 @@ export default function FlightManagement() {
                 {!loading && (
                     <div className="px-4 py-3 border-t border-gray-100 text-xs text-gray-400 flex items-center justify-between">
                         <span>Hiển thị {filtered.length} / {flights.length} chuyến bay</span>
-                        {isMock && <span className="text-yellow-600 font-medium">● Dữ liệu mẫu</span>}
                     </div>
                 )}
             </div>
@@ -678,7 +711,6 @@ export default function FlightManagement() {
             <FlightModal
                 open={modalOpen}
                 editTarget={editTarget}
-                isMock={isMock}
                 onClose={() => setModalOpen(false)}
                 onSaved={handleSaved}
             />

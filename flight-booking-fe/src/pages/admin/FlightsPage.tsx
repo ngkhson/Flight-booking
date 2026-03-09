@@ -1,7 +1,17 @@
 import { useState, useEffect, type ChangeEvent } from 'react';
-import { getFlights, type Flight } from '../../features/admin/services/adminApi';
+import { getFlights, type IFlight, type IFlightClass } from '../../features/admin/services/adminApi';
+
+type Flight = IFlight & { id: string };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const getTotalSeats = (classes: IFlightClass[]): number =>
+    classes.reduce((sum, c) => sum + c.availableSeats, 0);
+
+const getMinPrice = (classes: IFlightClass[]): number => {
+    if (!classes.length) return 0;
+    return Math.min(...classes.map((c) => c.basePrice));
+};
 
 const STATUS_STYLES: Record<Flight['status'], string> = {
     SCHEDULED: 'bg-blue-100 text-blue-700',
@@ -29,11 +39,11 @@ const fmtVND = (n: number) =>
 // ─── Mock data (fallback khi API chưa sẵn sàng) ───────────────────────────────
 
 const MOCK_FLIGHTS: Flight[] = [
-    { id: '1', flightNumber: 'VN-201', origin: 'HAN', destination: 'SGN', departureTime: '2026-02-25T06:00:00', arrivalTime: '2026-02-25T08:10:00', status: 'SCHEDULED', availableSeats: 120, price: 1_250_000 },
-    { id: '2', flightNumber: 'VN-305', origin: 'SGN', destination: 'DAD', departureTime: '2026-02-25T10:30:00', arrivalTime: '2026-02-25T11:45:00', status: 'DELAYED', availableSeats: 45, price: 890_000 },
-    { id: '3', flightNumber: 'QH-102', origin: 'HAN', destination: 'PQC', departureTime: '2026-02-25T14:00:00', arrivalTime: '2026-02-25T16:05:00', status: 'SCHEDULED', availableSeats: 78, price: 1_580_000 },
-    { id: '4', flightNumber: 'VJ-411', origin: 'SGN', destination: 'HAN', departureTime: '2026-02-24T18:00:00', arrivalTime: '2026-02-24T20:15:00', status: 'COMPLETED', availableSeats: 0, price: 1_100_000 },
-    { id: '5', flightNumber: 'VN-789', origin: 'HAN', destination: 'DAD', departureTime: '2026-02-25T20:00:00', arrivalTime: '2026-02-25T21:30:00', status: 'CANCELLED', availableSeats: 0, price: 750_000 },
+    { id: '1', flightNumber: 'VN-201', airlineName: 'Vietnam Airlines', origin: 'HAN', destination: 'SGN', departureTime: '2026-02-25T06:00:00', arrivalTime: '2026-02-25T08:10:00', status: 'SCHEDULED', classes: [{ id: 'c1', className: 'Economy', basePrice: 1_250_000, availableSeats: 120 }] },
+    { id: '2', flightNumber: 'VN-305', airlineName: 'Vietnam Airlines', origin: 'SGN', destination: 'DAD', departureTime: '2026-02-25T10:30:00', arrivalTime: '2026-02-25T11:45:00', status: 'DELAYED', classes: [{ id: 'c2', className: 'Economy', basePrice: 890_000, availableSeats: 45 }] },
+    { id: '3', flightNumber: 'QH-102', airlineName: 'Bamboo Airways', origin: 'HAN', destination: 'PQC', departureTime: '2026-02-25T14:00:00', arrivalTime: '2026-02-25T16:05:00', status: 'SCHEDULED', classes: [{ id: 'c3', className: 'Economy', basePrice: 1_580_000, availableSeats: 78 }] },
+    { id: '4', flightNumber: 'VJ-411', airlineName: 'VietJet Air', origin: 'SGN', destination: 'HAN', departureTime: '2026-02-24T18:00:00', arrivalTime: '2026-02-24T20:15:00', status: 'COMPLETED', classes: [{ id: 'c4', className: 'Economy', basePrice: 1_100_000, availableSeats: 0 }] },
+    { id: '5', flightNumber: 'VN-789', airlineName: 'Vietnam Airlines', origin: 'HAN', destination: 'DAD', departureTime: '2026-02-25T20:00:00', arrivalTime: '2026-02-25T21:30:00', status: 'CANCELLED', classes: [{ id: 'c5', className: 'Economy', basePrice: 750_000, availableSeats: 0 }] },
 ];
 
 // ─── Skeleton row ─────────────────────────────────────────────────────────────
@@ -61,10 +71,14 @@ export default function FlightsPage() {
     useEffect(() => {
         let cancelled = false;
 
-        getFlights({ page: 0, size: 50 })
-            .then((res) => {
+        getFlights()
+            .then((list) => {
                 if (!cancelled) {
-                    setFlights(res.content);
+                    const withIds: Flight[] = list.map((f, i) => ({
+                        ...f,
+                        id: (f as Flight).id ?? String(i + 1),
+                    }));
+                    setFlights(withIds);
                     setLoading(false);
                 }
             })
@@ -158,8 +172,8 @@ export default function FlightsPage() {
                                         <td className="px-4 py-3 font-medium text-gray-700">{f.destination}</td>
                                         <td className="px-4 py-3 text-gray-600">{fmtDateTime(f.departureTime)}</td>
                                         <td className="px-4 py-3 text-gray-600">{fmtDateTime(f.arrivalTime)}</td>
-                                        <td className="px-4 py-3 text-gray-600">{f.availableSeats}</td>
-                                        <td className="px-4 py-3 text-gray-600">{fmtVND(f.price)}</td>
+                                        <td className="px-4 py-3 text-gray-600">{getTotalSeats(f.classes)}</td>
+                                        <td className="px-4 py-3 text-gray-600">{fmtVND(getMinPrice(f.classes))}</td>
                                         <td className="px-4 py-3">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[f.status]}`}>
                                                 {STATUS_LABELS[f.status]}

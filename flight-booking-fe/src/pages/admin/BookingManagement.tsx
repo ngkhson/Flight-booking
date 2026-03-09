@@ -10,25 +10,36 @@ type Booking = IBooking;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const BOOKING_STATUSES: Booking['status'][] = ['PENDING', 'CONFIRMED', 'CANCELLED'];
+const BOOKING_STATUSES: Booking['status'][] = [
+    'PENDING', 'AWAITING_PAYMENT', 'PAID', 'CONFIRMED', 'CANCELLED', 'REFUNDED',
+];
 
 const STATUS_BADGE: Record<Booking['status'], string> = {
-    CONFIRMED: 'bg-green-100 text-green-700',
     PENDING: 'bg-yellow-100 text-yellow-700',
+    AWAITING_PAYMENT: 'bg-orange-100 text-orange-700',
+    PAID: 'bg-blue-100 text-blue-700',
+    CONFIRMED: 'bg-green-100 text-green-700',
     CANCELLED: 'bg-red-100 text-red-700',
+    REFUNDED: 'bg-gray-100 text-gray-600',
 };
 
 const STATUS_LABELS: Record<Booking['status'], string> = {
-    CONFIRMED: 'Xác nhận',
     PENDING: 'Chờ xử lý',
+    AWAITING_PAYMENT: 'Chờ thanh toán',
+    PAID: 'Đã thanh toán',
+    CONFIRMED: 'Xác nhận',
     CANCELLED: 'Đã huỷ',
+    REFUNDED: 'Hoàn tiền',
 };
 
 // Dropdown ring colour matches current status so it feels intentional
 const STATUS_SELECT_RING: Record<Booking['status'], string> = {
-    CONFIRMED: 'ring-green-300 bg-green-50 text-green-700',
     PENDING: 'ring-yellow-300 bg-yellow-50 text-yellow-700',
+    AWAITING_PAYMENT: 'ring-orange-300 bg-orange-50 text-orange-700',
+    PAID: 'ring-blue-300 bg-blue-50 text-blue-700',
+    CONFIRMED: 'ring-green-300 bg-green-50 text-green-700',
     CANCELLED: 'ring-red-300 bg-red-50 text-red-700',
+    REFUNDED: 'ring-gray-300 bg-gray-50 text-gray-600',
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -42,11 +53,11 @@ const fmtVND = (n: number) =>
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
 const MOCK_BOOKINGS: IBooking[] = [
-    { id: '1', pnr: 'BK-001', customerName: 'Nguyễn Văn A', flightId: 'f1', flightNumber: 'VN-201', route: 'HAN → SGN', status: 'CONFIRMED', totalAmount: 1_250_000, createdAt: '2026-02-24T08:00:00' },
-    { id: '2', pnr: 'BK-002', customerName: 'Trần Thị B', flightId: 'f2', flightNumber: 'VN-305', route: 'SGN → DAD', status: 'PENDING', totalAmount: 890_000, createdAt: '2026-02-24T09:30:00' },
-    { id: '3', pnr: 'BK-003', customerName: 'Lê Văn C', flightId: 'f3', flightNumber: 'QH-102', route: 'HAN → PQC', status: 'CONFIRMED', totalAmount: 1_580_000, createdAt: '2026-02-23T14:20:00' },
-    { id: '4', pnr: 'BK-004', customerName: 'Phạm Thị D', flightId: 'f4', flightNumber: 'VJ-411', route: 'SGN → HAN', status: 'CANCELLED', totalAmount: 1_100_000, createdAt: '2026-02-23T11:00:00' },
-    { id: '5', pnr: 'BK-005', customerName: 'Hoàng Văn E', flightId: 'f5', flightNumber: 'VN-789', route: 'HAN → DAD', status: 'PENDING', totalAmount: 750_000, createdAt: '2026-02-22T16:45:00' },
+    { id: '1', pnrCode: 'BK-001', contactName: 'Nguyễn Văn A', contactPhone: '0901234567', contactEmail: 'a@mail.com', flightNumber: 'VN-201', origin: 'HAN', destination: 'SGN', departureTime: '2026-02-25T06:00:00', status: 'CONFIRMED', totalAmount: 1_250_000, createdAt: '2026-02-24T08:00:00' },
+    { id: '2', pnrCode: 'BK-002', contactName: 'Trần Thị B', contactPhone: '0901234568', contactEmail: 'b@mail.com', flightNumber: 'VN-305', origin: 'SGN', destination: 'DAD', departureTime: '2026-02-25T10:30:00', status: 'PENDING', totalAmount: 890_000, createdAt: '2026-02-24T09:30:00' },
+    { id: '3', pnrCode: 'BK-003', contactName: 'Lê Văn C', contactPhone: '0901234569', contactEmail: 'c@mail.com', flightNumber: 'QH-102', origin: 'HAN', destination: 'PQC', departureTime: '2026-02-25T14:00:00', status: 'CONFIRMED', totalAmount: 1_580_000, createdAt: '2026-02-23T14:20:00' },
+    { id: '4', pnrCode: 'BK-004', contactName: 'Phạm Thị D', contactPhone: '0901234570', contactEmail: 'd@mail.com', flightNumber: 'VJ-411', origin: 'SGN', destination: 'HAN', departureTime: '2026-02-24T18:00:00', status: 'CANCELLED', totalAmount: 1_100_000, createdAt: '2026-02-23T11:00:00' },
+    { id: '5', pnrCode: 'BK-005', contactName: 'Hoàng Văn E', contactPhone: '0901234571', contactEmail: 'e@mail.com', flightNumber: 'VN-789', origin: 'HAN', destination: 'DAD', departureTime: '2026-02-25T20:00:00', status: 'PENDING', totalAmount: 750_000, createdAt: '2026-02-22T16:45:00' },
 ];
 
 type FilterStatus = 'ALL' | Booking['status'];
@@ -151,8 +162,7 @@ export default function BookingManagement() {
     // Load bookings
     useEffect(() => {
         let cancelled = false;
-        setLoading(true);
-        getBookings({ page: 0, size: 100 })
+        getBookings({ page: 1, size: 100 })
             .then((res) => {
                 if (!cancelled) { setBookings(res.content); setLoading(false); }
             })
@@ -163,9 +173,9 @@ export default function BookingManagement() {
     }, []);
 
     // Counts per status for filter badges
-    const counts = bookings.reduce<Record<Booking['status'], number>>(
-        (acc, b) => { acc[b.status]++; return acc; },
-        { CONFIRMED: 0, PENDING: 0, CANCELLED: 0 },
+    const counts = bookings.reduce<Partial<Record<Booking['status'], number>>>(
+        (acc, b) => { acc[b.status] = (acc[b.status] ?? 0) + 1; return acc; },
+        {},
     );
 
     // Filtered + searched list
@@ -174,10 +184,10 @@ export default function BookingManagement() {
         const q = search.toLowerCase();
         return (
             !q ||
-            b.pnr.toLowerCase().includes(q) ||
-            b.customerName.toLowerCase().includes(q) ||
+            b.pnrCode.toLowerCase().includes(q) ||
+            b.contactName.toLowerCase().includes(q) ||
             b.flightNumber.toLowerCase().includes(q) ||
-            b.route.toLowerCase().includes(q)
+            `${b.origin} → ${b.destination}`.toLowerCase().includes(q)
         );
     });
 
@@ -255,7 +265,7 @@ export default function BookingManagement() {
                             {opt.label}
                             {!loading && opt.value !== 'ALL' && (
                                 <span className="ml-1.5 text-xs opacity-70">
-                                    ({counts[opt.value as Booking['status']]})
+                                    ({counts[opt.value as Booking['status']] ?? 0})
                                 </span>
                             )}
                         </button>
@@ -304,10 +314,10 @@ export default function BookingManagement() {
                                 )
                                 : visible.map((b) => (
                                     <tr key={b.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-4 py-3 font-mono font-semibold text-gray-800">{b.pnr}</td>
-                                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{b.customerName}</td>
+                                        <td className="px-4 py-3 font-mono font-semibold text-gray-800">{b.pnrCode}</td>
+                                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{b.contactName}</td>
                                         <td className="px-4 py-3 font-medium text-gray-700">{b.flightNumber}</td>
-                                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{b.route}</td>
+                                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{b.origin} → {b.destination}</td>
                                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtDate(b.createdAt)}</td>
                                         <td className="px-4 py-3 text-gray-700 font-medium whitespace-nowrap">{fmtVND(b.totalAmount)}</td>
 

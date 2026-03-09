@@ -1,44 +1,44 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     getUsers,
-    updateUserStatus,
+    updateUser,
     type IUser,
+    type IRole,
 } from '../../features/admin/services/adminApi';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ALL_ROLES: IUser['role'][] = ['ADMIN', 'ACCOUNTANT', 'AGENT', 'CUSTOMER'];
+// The BE returns roles as IRole[] — we use the role name string for display
+type RoleName = string;
 
-const ROLE_BADGE: Record<IUser['role'], string> = {
+const ALL_ROLES: RoleName[] = ['ADMIN', 'ACCOUNTANT', 'AGENT', 'CUSTOMER'];
+
+const ROLE_BADGE: Record<string, string> = {
     ADMIN: 'bg-purple-100 text-purple-700',
     ACCOUNTANT: 'bg-blue-100 text-blue-700',
     AGENT: 'bg-indigo-100 text-indigo-700',
     CUSTOMER: 'bg-gray-100 text-gray-600',
 };
 
-const ROLE_LABELS: Record<IUser['role'], string> = {
+const ROLE_LABELS: Record<string, string> = {
     ADMIN: 'Admin',
     ACCOUNTANT: 'Kế toán',
     AGENT: 'Đại lý',
     CUSTOMER: 'Khách hàng',
 };
 
-const STATUS_BADGE: Record<IUser['status'], string> = {
-    ACTIVE: 'bg-green-100 text-green-700',
-    LOCKED: 'bg-red-100 text-red-700',
-};
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const STATUS_LABELS: Record<IUser['status'], string> = {
-    ACTIVE: 'Hoạt động',
-    LOCKED: 'Bị khoá',
-};
+/** Get the primary role name from the roles array, fallback to 'CUSTOMER' */
+const getPrimaryRole = (roles: IRole[]): string =>
+    roles[0]?.name ?? 'CUSTOMER';
 
 // ─── Skeleton row ─────────────────────────────────────────────────────────────
 
 function SkeletonRow() {
     return (
         <tr className="animate-pulse">
-            {Array.from({ length: 7 }).map((_, i) => (
+            {Array.from({ length: 6 }).map((_, i) => (
                 <td key={i} className="px-4 py-3">
                     <div className="h-4 bg-gray-100 rounded w-3/4" />
                 </td>
@@ -51,8 +51,8 @@ function SkeletonRow() {
 
 interface RoleDropdownProps {
     userId: string;
-    current: IUser['role'];
-    onChangeRole: (id: string, role: IUser['role']) => void;
+    current: string;
+    onChangeRole: (id: string, role: string) => void;
 }
 
 function RoleDropdown({ userId, current, onChangeRole }: RoleDropdownProps) {
@@ -83,8 +83,8 @@ function RoleDropdown({ userId, current, onChangeRole }: RoleDropdownProps) {
                                     role === current ? 'text-indigo-600 bg-indigo-50 font-semibold' : 'text-gray-700',
                                 ].join(' ')}
                             >
-                                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold mr-1.5 ${ROLE_BADGE[role]}`}>
-                                    {ROLE_LABELS[role]}
+                                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold mr-1.5 ${ROLE_BADGE[role] ?? 'bg-gray-100 text-gray-600'}`}>
+                                    {ROLE_LABELS[role] ?? role}
                                 </span>
                                 {role === current && '✓'}
                             </button>
@@ -103,13 +103,22 @@ export default function UserManagement() {
     const [isLoading, setIsLoading] = useState(true);
     const [apiError, setApiError] = useState<string | null>(null);
     const [search, setSearch] = useState('');
-    const [lockingId, setLockingId] = useState<string | null>(null); // row being updated
 
     const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'info' } | null>(null);
 
+    const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     const showToast = useCallback((msg: string, type: 'success' | 'error' | 'info' = 'success') => {
         setToast({ msg, type });
-        setTimeout(() => setToast(null), 3000);
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = setTimeout(() => setToast(null), 3000);
+    }, []);
+
+    // Cleanup toast timer on unmount
+    useEffect(() => {
+        return () => {
+            if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        };
     }, []);
 
     // ── Load users from API ───────────────────────────────────────────────────
@@ -117,8 +126,8 @@ export default function UserManagement() {
         setIsLoading(true);
         setApiError(null);
         try {
-            const page = await getUsers({ page: 0, size: 100 });
-            setUsers(page.content);
+            const list = await getUsers();
+            setUsers(list);
         } catch (err: unknown) {
             console.error('[UserManagement] getUsers failed:', err);
             setApiError('Không thể tải danh sách người dùng.');
@@ -129,41 +138,28 @@ export default function UserManagement() {
 
     useEffect(() => { loadUsers(); }, [loadUsers]);
 
-    // ── Role change (local only — no updateUserRole API yet) ──────────────────
-    const handleChangeRole = useCallback((id: string, role: IUser['role']) => {
-        setUsers((prev) => prev.map((u) => u.id === id ? { ...u, role } : u));
-        showToast(`Đã đổi role → ${ROLE_LABELS[role]}.`);
-    }, [showToast]);
-
-    // ── Status toggle → API → refresh ────────────────────────────────────────
-    const handleToggleStatus = useCallback(async (user: IUser) => {
-        const nextStatus: IUser['status'] = user.status === 'ACTIVE' ? 'LOCKED' : 'ACTIVE';
-        setLockingId(user.id);
+    // ── Role change (local update + API) ──────────────────────────────────────
+    const handleChangeRole = useCallback(async (id: string, roleName: string) => {
+        // Optimistic local update
+        setUsers((prev) => prev.map((u) =>
+            u.id === id ? { ...u, roles: [{ id: 0, name: roleName, description: '' }] } : u,
+        ));
         try {
-            await updateUserStatus(user.id, nextStatus);
-            // Refresh list from server after successful update
+            await updateUser(id, { roles: [roleName] });
+            showToast(`Đã đổi role → ${ROLE_LABELS[roleName] ?? roleName}.`);
+        } catch {
+            // Rollback on error — reload from server
             await loadUsers();
-            showToast(
-                nextStatus === 'LOCKED'
-                    ? `Đã khoá tài khoản ${user.name}.`
-                    : `Đã mở khoá ${user.name}.`,
-                nextStatus === 'LOCKED' ? 'info' : 'success',
-            );
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Lỗi không xác định.';
-            showToast(`Không thể cập nhật: ${msg}`, 'error');
-        } finally {
-            setLockingId(null);
+            showToast('Không thể đổi role.', 'error');
         }
-    }, [loadUsers, showToast]);
+    }, [showToast, loadUsers]);
 
     // ── Derived ───────────────────────────────────────────────────────────────
     const visible = users.filter((u) => {
         const q = search.toLowerCase();
-        return !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.role.toLowerCase().includes(q);
+        const primaryRole = getPrimaryRole(u.roles);
+        return !q || u.fullName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || primaryRole.toLowerCase().includes(q);
     });
-    const totalActive = users.filter((u) => u.status === 'ACTIVE').length;
-    const totalLocked = users.filter((u) => u.status === 'LOCKED').length;
 
     // Toast colour helper
     const toastCls = (type: string) =>
@@ -186,15 +182,12 @@ export default function UserManagement() {
             <div className="flex items-start justify-between flex-wrap gap-3">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">👥 Quản lý người dùng</h1>
-                    <p className="mt-0.5 text-sm text-gray-500">Phân quyền và quản lý trạng thái tài khoản</p>
+                    <p className="mt-0.5 text-sm text-gray-500">Phân quyền và quản lý tài khoản</p>
                 </div>
                 {!isLoading && (
                     <div className="flex gap-2 text-xs font-medium">
-                        <span className="px-3 py-1.5 rounded-full bg-green-50 border border-green-200 text-green-700">
-                            ✅ {totalActive} hoạt động
-                        </span>
-                        <span className="px-3 py-1.5 rounded-full bg-red-50 border border-red-200 text-red-600">
-                            🔒 {totalLocked} bị khoá
+                        <span className="px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700">
+                            👥 {users.length} người dùng
                         </span>
                     </div>
                 )}
@@ -237,9 +230,8 @@ export default function UserManagement() {
                             <th className="px-4 py-3">ID</th>
                             <th className="px-4 py-3">Họ tên</th>
                             <th className="px-4 py-3">Email</th>
+                            <th className="px-4 py-3">Điện thoại</th>
                             <th className="px-4 py-3">Role</th>
-                            <th className="px-4 py-3">Ngày tạo</th>
-                            <th className="px-4 py-3">Trạng thái</th>
                             <th className="px-4 py-3 text-right">Hành động</th>
                         </tr>
                     </thead>
@@ -249,55 +241,36 @@ export default function UserManagement() {
                             : visible.length === 0
                                 ? (
                                     <tr>
-                                        <td colSpan={7} className="px-4 py-12 text-center text-gray-400 text-sm">
+                                        <td colSpan={6} className="px-4 py-12 text-center text-gray-400 text-sm">
                                             {users.length === 0 ? 'Không có dữ liệu người dùng.' : 'Không tìm thấy người dùng nào.'}
                                         </td>
                                     </tr>
                                 )
-                                : visible.map((u) => (
-                                    <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-4 py-3 font-mono text-xs text-gray-400">{u.id}</td>
-                                        <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{u.name}</td>
-                                        <td className="px-4 py-3 text-gray-600">{u.email}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${ROLE_BADGE[u.role]}`}>
-                                                {ROLE_LABELS[u.role]}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{u.createdAt}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_BADGE[u.status]}`}>
-                                                {u.status === 'ACTIVE' ? '● ' : '🔒 '}{STATUS_LABELS[u.status]}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <RoleDropdown
-                                                    userId={u.id}
-                                                    current={u.role}
-                                                    onChangeRole={handleChangeRole}
-                                                />
-                                                <button
-                                                    onClick={() => handleToggleStatus(u)}
-                                                    disabled={lockingId === u.id}
-                                                    className={[
-                                                        'px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center gap-1.5',
-                                                        u.status === 'ACTIVE'
-                                                            ? 'text-red-600 bg-red-50 hover:bg-red-100'
-                                                            : 'text-green-600 bg-green-50 hover:bg-green-100',
-                                                        lockingId === u.id ? 'opacity-60 cursor-not-allowed' : '',
-                                                    ].join(' ')}
-                                                    aria-label={u.status === 'ACTIVE' ? `Khoá ${u.name}` : `Mở khoá ${u.name}`}
-                                                >
-                                                    {lockingId === u.id && (
-                                                        <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                                    )}
-                                                    {u.status === 'ACTIVE' ? '🔒 Khoá' : '🔓 Mở khoá'}
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
+                                : visible.map((u) => {
+                                    const primaryRole = getPrimaryRole(u.roles);
+                                    return (
+                                        <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-4 py-3 font-mono text-xs text-gray-400">{u.id}</td>
+                                            <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{u.fullName}</td>
+                                            <td className="px-4 py-3 text-gray-600">{u.email}</td>
+                                            <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{u.phone ?? '—'}</td>
+                                            <td className="px-4 py-3">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${ROLE_BADGE[primaryRole] ?? 'bg-gray-100 text-gray-600'}`}>
+                                                    {ROLE_LABELS[primaryRole] ?? primaryRole}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <RoleDropdown
+                                                        userId={u.id}
+                                                        current={primaryRole}
+                                                        onChangeRole={handleChangeRole}
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                         }
                     </tbody>
                 </table>

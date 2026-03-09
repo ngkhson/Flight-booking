@@ -13,7 +13,7 @@ function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError('');
 
@@ -24,14 +24,33 @@ function LoginPage() {
 
         setLoading(true);
 
-        // --- Mock authentication ---
-        // TODO: Replace with real API call:
-        //   const res = await fetch('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
-        //   const { token } = await res.json();
-        setTimeout(() => {
-            localStorage.setItem('token', 'mock-jwt-token');
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Sai thông tin đăng nhập');
+            }
+
+            // Extract the token dynamically based on standard Response Wrapper
+            const extractedTokenString = data.result?.token || data.data?.token || data.token;
+
+            if (!extractedTokenString) {
+                throw new Error('Đăng nhập thành công nhưng không tìm thấy Token');
+            }
+
+            localStorage.setItem('token', extractedTokenString);
             navigate('/admin/dashboard', { replace: true });
-        }, 600);
+        } catch (err: any) {
+            setError(err.message || 'Đã có lỗi xảy ra');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

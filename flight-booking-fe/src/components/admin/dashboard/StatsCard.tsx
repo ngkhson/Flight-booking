@@ -8,15 +8,16 @@ interface StatsCardProps {
     color?: string;
 }
 
-const colorMap: Record<string, string> = {
-    blue: "bg-blue-100 text-blue-600",
-    green: "bg-green-100 text-green-600",
-    orange: "bg-orange-100 text-orange-600",
-    red: "bg-red-100 text-red-600",
-    purple: "bg-purple-100 text-purple-600",
-    indigo: "bg-indigo-100 text-indigo-600",
-    yellow: "bg-yellow-100 text-yellow-600",
-    pink: "bg-pink-100 text-pink-600",
+const colorMap: Record<string, { iconBg: string; iconText: string }> = {
+    gold: { iconBg: "bg-yellow-100", iconText: "text-yellow-600" },
+    blue: { iconBg: "bg-blue-100", iconText: "text-blue-600" },
+    green: { iconBg: "bg-green-100", iconText: "text-green-600" },
+    orange: { iconBg: "bg-orange-100", iconText: "text-orange-600" },
+    red: { iconBg: "bg-red-100", iconText: "text-red-600" },
+    purple: { iconBg: "bg-purple-100", iconText: "text-purple-600" },
+    indigo: { iconBg: "bg-indigo-100", iconText: "text-indigo-600" },
+    yellow: { iconBg: "bg-yellow-100", iconText: "text-yellow-600" },
+    pink: { iconBg: "bg-pink-100", iconText: "text-pink-600" },
 };
 
 const StatsCard: React.FC<StatsCardProps> = ({
@@ -24,36 +25,34 @@ const StatsCard: React.FC<StatsCardProps> = ({
     value,
     icon,
     trend,
-    color = "blue",
+    color = "gold",
 }) => {
     const isPositiveTrend = trend?.startsWith("+");
-    const iconColorClasses = colorMap[color] || colorMap.blue;
+    const palette = colorMap[color] || colorMap.gold;
 
     return (
-        <div className="bg-white rounded-lg shadow-sm p-5 flex items-center gap-4">
-            {/* Icon */}
-            <div
-                className={`flex items-center justify-center w-12 h-12 rounded-full shrink-0 ${iconColorClasses}`}
-            >
-                {icon}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex items-center justify-between gap-4 hover:shadow-md transition-shadow">
+            {/* Left: Value + Label */}
+            <div className="flex flex-col min-w-0">
+                <span className="text-2xl font-bold text-gray-900 leading-tight">
+                    {value}
+                </span>
+                <span className="text-sm text-gray-500 mt-1.5 truncate">{title}</span>
+                {trend && (
+                    <span
+                        className={`text-xs font-semibold mt-2 ${isPositiveTrend ? "text-green-500" : "text-red-500"
+                            }`}
+                    >
+                        {trend} so với hôm qua
+                    </span>
+                )}
             </div>
 
-            {/* Text Info */}
-            <div className="flex flex-col min-w-0">
-                <span className="text-sm font-medium text-gray-500 truncate">
-                    {title}
-                </span>
-                <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold text-gray-900">{value}</span>
-                    {trend && (
-                        <span
-                            className={`text-xs font-semibold ${isPositiveTrend ? "text-green-500" : "text-red-500"
-                                }`}
-                        >
-                            {trend}
-                        </span>
-                    )}
-                </div>
+            {/* Right: Icon */}
+            <div
+                className={`flex items-center justify-center w-14 h-14 rounded-full shrink-0 ${palette.iconBg} ${palette.iconText}`}
+            >
+                {icon}
             </div>
         </div>
     );
