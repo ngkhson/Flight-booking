@@ -67,16 +67,18 @@ const bookingSlice = createSlice({
     saveAddons: (state, action: PayloadAction<any[]>) => {
       state.addons = action.payload;
 
-      // Tính tổng tiền dịch vụ
-      const addonTotal = action.payload.reduce((sum, item) => sum + (item.baggage?.price || 0), 0);
+      // 1. Tính tiền vé gốc
+      const basePrice = state.selectedFlight?.finalPrice || 0;
+      const ticketTotal = (basePrice * state.searchConfigs.adults) +
+        (basePrice * state.searchConfigs.children) +
+        (basePrice * 0.1 * state.searchConfigs.infants);
 
-      // Tổng tiền = (Tiền vé các khách) + (Tiền dịch vụ)
-      const baseTicketPrice = state.selectedFlight?.finalPrice || 0;
-      const passengersTotal = (baseTicketPrice * state.searchConfigs.adults) +
-        (baseTicketPrice * state.searchConfigs.children) +
-        (baseTicketPrice * 0.1 * state.searchConfigs.infants);
+      // 2. Tính tiền hành lý từ payload
+      const baggageTotal = action.payload.reduce((sum, item) => sum + (item.baggage?.price || 0), 0);
 
-      state.totalAmount = passengersTotal + addonTotal;
+      // 3. Cập nhật tổng tiền cuối cùng
+      state.totalAmount = ticketTotal + baggageTotal;
+
       state.currentStep = 3; // Chuyển sang thanh toán
     },
     setTotalAmount: (state, action: PayloadAction<number>) => {

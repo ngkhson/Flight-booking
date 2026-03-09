@@ -8,11 +8,15 @@ import { BAGGAGE_OPTIONS } from '@/constants/baggage';
 
 export const BaggageSelection = () => {
   const dispatch = useDispatch();
-  const { passengers, selectedFlight } = useSelector((state: RootState) => state.booking);
-  
-  // Lưu lựa chọn hành lý: { indexHanhKhach: idGoiHanhLy }
+  const { passengers, searchConfigs } = useSelector((state: RootState) => state.booking);
+
+  // Số lượng khách được phép mua hành lý (Người lớn + Trẻ em)
+  const eligiblePaxCount = searchConfigs.adults + searchConfigs.children;
+  // Lấy danh sách khách không bao gồm em bé
+  const eligiblePassengers = passengers.slice(0, eligiblePaxCount);
+
   const [selections, setSelections] = useState<Record<number, string>>(
-    passengers.reduce((acc, _, i) => ({ ...acc, [i]: 'bg-0' }), {})
+    eligiblePassengers.reduce((acc, _, i) => ({ ...acc, [i]: 'bg-0' }), {})
   );
 
   const handleSelect = (passengerIndex: number, baggageId: string) => {
@@ -45,7 +49,7 @@ export const BaggageSelection = () => {
       </div>
 
       <div className="space-y-6">
-        {passengers.map((p, idx) => (
+        {eligiblePassengers.map((p, idx) => (
           <div key={idx} className="border rounded-xl p-5 bg-white shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600">
@@ -84,6 +88,15 @@ export const BaggageSelection = () => {
             </div>
           </div>
         ))}
+
+        {/* Thông báo cho phần em bé (Tùy chọn) */}
+        {searchConfigs.infants > 0 && (
+          <div className="p-4 bg-slate-50 rounded-lg border border-dashed border-slate-300">
+            <p className="text-xs text-slate-500 italic">
+              * Em bé (dưới 2 tuổi) không áp dụng mua thêm hành lý ký gửi.
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="sticky bottom-0 bg-white p-4 border-t flex items-center justify-between mt-10">

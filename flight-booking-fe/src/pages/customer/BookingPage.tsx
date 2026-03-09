@@ -16,7 +16,8 @@ export const BookingPage = () => {
     selectedFlight,
     currentStep,
     totalAmount,
-    searchConfigs
+    searchConfigs,
+    addons
   } = useSelector((state: RootState) => state.booking);
 
   const totalPax = searchConfigs.adults + searchConfigs.children + searchConfigs.infants;
@@ -123,6 +124,16 @@ export const BookingPage = () => {
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-600">Em bé (x{searchConfigs.infants})</span>
                     <span className="font-semibold">{(selectedFlight.finalPrice * 0.1 * searchConfigs.infants).toLocaleString('vi-VN')} đ</span>
+                  </div>
+                )}
+
+                {/* Hiển thị tiền hành lý nếu có */}
+                {addons.length > 0 && (
+                  <div className="flex justify-between text-sm text-blue-600 font-medium bg-blue-50 p-2 rounded">
+                    <span>Hành lý ký gửi thêm</span>
+                    <span>
+                      {addons.reduce((sum, a) => sum + (a.baggage?.price || 0), 0).toLocaleString('vi-VN')} đ
+                    </span>
                   </div>
                 )}
 
