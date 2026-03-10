@@ -1,6 +1,7 @@
 import { AdvancedSearchWidget } from '../../features/customer/search/AdvancedSearchWidget';
 import { PromoFlightCard, type PromoFlight } from '../../features/customer/landing/PromoFlightCard';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 // DỮ LIỆU ẢO (Mock Data) - Sẽ thay bằng API của BE sau này
 const MOCK_PROMO_FLIGHTS: PromoFlight[] = [
@@ -37,6 +38,16 @@ const MOCK_PROMO_FLIGHTS: PromoFlight[] = [
 ];
 
 export const HomePage = () => {
+
+  const navigate = useNavigate(); // <--- 2. KHỞI TẠO NAVIGATE
+
+  // 3. TẠO HÀM XỬ LÝ KHI BẤM TÌM KIẾM
+  const handleSearch = (searchParams: any) => {
+    // Chuyển hướng người dùng sang trang /search 
+    // (Tùy chọn: bạn có thể truyền kèm state để trang Search tự động lấy dữ liệu)
+    navigate('/search', { state: searchParams }); 
+  };
+
   return (
     <div>
       {/* Hero Banner Section */}
@@ -49,7 +60,9 @@ export const HomePage = () => {
           <p className="text-lg md:text-xl mb-12 opacity-90 drop-shadow-md">Đặt vé máy bay giá rẻ, trải nghiệm chuyến bay tuyệt vời nhất.</p>
           
           {/* Widget Tìm kiếm đã hoàn thiện */}
-          <AdvancedSearchWidget />
+          <div className="text-slate-900">
+            <AdvancedSearchWidget onSearch={handleSearch} />
+          </div>
         </div>
       </section>
 

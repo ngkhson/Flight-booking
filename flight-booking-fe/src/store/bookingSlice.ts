@@ -3,8 +3,10 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 // Định nghĩa cấu trúc thông tin chuyến bay đã chọn chi tiết
 export interface SelectedFlightInfo {
   flightId: string;
+  flightCode?: string;
   selectedClassName: string;
   finalPrice: number;
+  classId: string;
 }
 
 export interface BookingState {
@@ -17,8 +19,14 @@ export interface BookingState {
     adults: number;
     children: number;
     infants: number;
+    date?: string;
   };
   contactInfo: any | null; // Lưu thông tin liên hệ
+  bookingResult: {
+    bookingId: string;
+    pnrCode: string;
+    totalAmount: number;
+  } | null;
 }
 
 const initialState: BookingState = {
@@ -29,6 +37,7 @@ const initialState: BookingState = {
   currentStep: 1,
   searchConfigs: { adults: 1, children: 0, infants: 0 },
   contactInfo: null,
+  bookingResult: null,
 };
 
 const bookingSlice = createSlice({
@@ -49,7 +58,12 @@ const bookingSlice = createSlice({
       const basePrice = action.payload.finalPrice;
       const totalPaxPrice = (basePrice * adults) + (basePrice * 0.75 * children) + (basePrice * 0.1 * infants);
 
-      state.totalAmount = totalPaxPrice;
+      state.totalAmount = totalPaxPrice * 1.1; 
+      
+      // Chuyển sang bước 1 (Nhập thông tin)
+      state.currentStep = 1;
+      // Reset lại dịch vụ nếu có
+      state.addons = [];
     },
     savePassengers: (state, action: PayloadAction<any[]>) => {
       state.passengers = action.payload;
@@ -61,25 +75,22 @@ const bookingSlice = createSlice({
       const childTotal = (basePrice * 0.75) * state.searchConfigs.children; // Trẻ em 75%
       const infantTotal = (basePrice * 0.1) * state.searchConfigs.infants; // Em bé 10%
 
-      state.totalAmount = adultTotal + childTotal + infantTotal;
+      state.totalAmount = (adultTotal + childTotal + infantTotal) * 1.1;
       state.currentStep = 2;
     },
     saveAddons: (state, action: PayloadAction<any[]>) => {
       state.addons = action.payload;
 
-      // 1. Tính tiền vé gốc
+      // Tính tổng tiền từ tất cả các loại dịch vụ (Baggage + Meal)
+      const addonsTotal = action.payload.reduce((sum, item) => sum + (item.service?.price || 0), 0);
+
       const basePrice = state.selectedFlight?.finalPrice || 0;
       const ticketTotal = (basePrice * state.searchConfigs.adults) +
-        (basePrice * state.searchConfigs.children) +
+        (basePrice * 0.75 * state.searchConfigs.children) +
         (basePrice * 0.1 * state.searchConfigs.infants);
 
-      // 2. Tính tiền hành lý từ payload
-      const baggageTotal = action.payload.reduce((sum, item) => sum + (item.baggage?.price || 0), 0);
-
-      // 3. Cập nhật tổng tiền cuối cùng
-      state.totalAmount = ticketTotal + baggageTotal;
-
-      state.currentStep = 3; // Chuyển sang thanh toán
+      state.totalAmount = ticketTotal * 1.1 + addonsTotal;
+      // state.currentStep = 3;
     },
     setTotalAmount: (state, action: PayloadAction<number>) => {
       state.totalAmount = action.payload;
@@ -91,8 +102,14 @@ const bookingSlice = createSlice({
     saveContactInfo: (state, action: PayloadAction<any>) => {
       state.contactInfo = action.payload;
     },
-    setSearchConfigs: (state, action: PayloadAction<{ adults: number, children: number, infants: number }>) => {
+    setSearchConfigs: (state, action: PayloadAction<{ adults: number, children: number, infants: number, date?: string }>) => {
       state.searchConfigs = action.payload;
+    },
+    setBookingResult: (state, action: PayloadAction<{bookingId: string,pnrCode: string, totalAmount: number}>) => {
+      state.bookingResult = action.payload;
+    },
+    nextStep: (state) => {
+      state.currentStep += 1;
     },
   },
 });
@@ -105,7 +122,9 @@ export const {
   clearBooking,
   setTotalAmount,
   saveContactInfo,
-  setSearchConfigs
+  setSearchConfigs,
+  setBookingResult, 
+  nextStep
 } = bookingSlice.actions;
 
 export default bookingSlice.reducer;

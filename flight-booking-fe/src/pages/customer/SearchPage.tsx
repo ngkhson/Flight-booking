@@ -5,8 +5,11 @@ import { FlightFilter, TIME_BLOCKS } from '../../features/customer/search/Flight
 import { flightApi } from '@/api/flightApi';
 import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns'; // Đảm bảo đã cài date-fns
+import { useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 
 export const SearchPage = () => {
+  const location = useLocation();
   const [apiFlights, setApiFlights] = useState<Flight[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -19,6 +22,17 @@ export const SearchPage = () => {
   const [takeOffBlocks, setTakeOffBlocks] = useState<string[]>([]);
   const [landingBlocks, setLandingBlocks] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>('price_asc');
+
+  // 2. THÊM USEEFFECT NÀY VÀO ĐỂ TỰ ĐỘNG GỌI API KHI TỪ TRANG CHỦ SANG
+  useEffect(() => {
+    if (location.state) {
+      // Nếu có dữ liệu từ HomePage ném sang, tự động gọi hàm tìm kiếm
+      handleFetchFlights(location.state);
+      
+      // (Tùy chọn) Xóa state trong history để f5 không bị gọi lại data cũ
+      window.history.replaceState({}, document.title);
+    }
+  }, []);
 
   // --- HÀM GỌI API ---
   const handleFetchFlights = async (searchParams: any) => {
@@ -39,8 +53,8 @@ export const SearchPage = () => {
           const arrDate = new Date(item.arrivalTime);
 
           return {
-            id: item.flightNumber,
-            flightNumber: item.flightNumber,
+            id: item.id,
+            flightCode: item.flightNumber,
             airline: item.airlineName,
             airlineLogo: item.airlineName.toLowerCase().includes("vietnam") ? "VN" : "VJ",
             departureTime: format(depDate, "HH:mm"),
@@ -56,6 +70,7 @@ export const SearchPage = () => {
         });
         setApiFlights(mappedFlights);
       }
+      console.log("API trả về:", res);
     } catch (error: any) {
       console.error("Lỗi search:", error);
       // Nếu lỗi 404 hoặc bất kỳ lỗi nào, reset mảng về rỗng để UI hiện "Không tìm thấy"

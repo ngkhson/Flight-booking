@@ -7,13 +7,15 @@ import { useNavigate } from 'react-router-dom';
 import { selectFlight, type SelectedFlightInfo } from '@/store/bookingSlice';
 
 export interface FlightClass {
+  id: string;
   className: string;
   basePrice: number;
   availableSeats: number;
 }
 
 export interface Flight {
-  id: string;
+  id: string;          
+  flightCode: string;
   airline: string;
   airlineLogo: string;
   departureTime: string;
@@ -35,17 +37,17 @@ export const FlightCard = ({ flight }: { flight: Flight }) => {
 
   // Hàm xử lý khi nhấn chọn một hạng ghế cụ thể
   const handleSelectClass = (selectedClass: FlightClass) => {
-    // Tạo object đúng kiểu SelectedFlightInfo
-    const bookingData: SelectedFlightInfo = {
-      flightId: flight.id,
-      selectedClassName: selectedClass.className,
-      finalPrice: selectedClass.basePrice
-    };
-
-    // Dispatch action với object
-    dispatch(selectFlight(bookingData)); 
-    navigate('/booking'); 
+  const bookingData: SelectedFlightInfo = {
+    flightId: flight.id,           // Gửi UUID của chuyến bay
+    flightCode: flight.flightCode,
+    classId: selectedClass.id,     // Gửi UUID của hạng vé
+    selectedClassName: selectedClass.className,
+    finalPrice: selectedClass.basePrice
   };
+
+  dispatch(selectFlight(bookingData)); 
+  navigate('/booking'); 
+};
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all mb-4 overflow-hidden">
@@ -58,7 +60,7 @@ export const FlightCard = ({ flight }: { flight: Flight }) => {
           </div>
           <div className="flex flex-col">
             <span className="font-bold text-slate-800">{flight.airline}</span>
-            <span className="text-xs text-slate-500">{flight.id} • {flight.aircraft}</span>
+            <span className="text-xs text-slate-500">{flight.flightCode} • {flight.aircraft}</span>
           </div>
         </div>
 

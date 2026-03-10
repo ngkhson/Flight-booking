@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { prevStep } from '@/store/bookingSlice';
 import { PassengerForm } from "@/features/customer/booking/PassengerForm";
-import { BaggageSelection } from "@/features/customer/booking/BaggageSelection";
+import { ServiceSelection } from "@/features/customer/booking/ServiceSelection";
+import { PaymentStep } from '@/features/customer/booking/PaymentStep';
 
 export const BookingPage = () => {
   const navigate = useNavigate();
@@ -21,6 +22,14 @@ export const BookingPage = () => {
   } = useSelector((state: RootState) => state.booking);
 
   const totalPax = searchConfigs.adults + searchConfigs.children + searchConfigs.infants;
+
+  // 👇 THÊM 3 DÒNG NÀY ĐỂ TÍNH THUẾ PHÍ
+  const ticketTotal = selectedFlight ? (selectedFlight.finalPrice * searchConfigs.adults) + (selectedFlight.finalPrice * searchConfigs.children) + (selectedFlight.finalPrice * 0.1 * searchConfigs.infants) : 0;
+  const addonsTotal = addons.reduce((sum, a) => sum + a.service.price, 0);
+  const taxAndFee = ticketTotal * 0.1; // Thuế 10% của (Vé + Dịch vụ)
+
+  // THÊM ĐÚNG 1 DÒNG NÀY VÀO:
+  console.log("👉 BƯỚC HIỆN TẠI ĐANG LÀ SỐ:", currentStep);
 
   if (!selectedFlight) {
     return (
@@ -74,8 +83,12 @@ export const BookingPage = () => {
 
           {currentStep === 2 && (
             <section className="bg-white p-6 rounded-xl border shadow-sm">
-              <BaggageSelection />
+              <ServiceSelection />
             </section>
+          )}
+
+          {currentStep === 3 && (
+            <PaymentStep />
           )}
         </main>
 
@@ -91,14 +104,20 @@ export const BookingPage = () => {
             <div className="p-5 space-y-4">
               <div className="flex justify-between items-start pb-4 border-b">
                 <div>
-                  <p className="font-black text-lg text-slate-800 uppercase">{selectedFlight.flightId}</p>
+                  <p className="font-black text-lg text-slate-800 uppercase">{selectedFlight.flightCode}</p>
                   <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded font-bold uppercase">
                     {selectedFlight.selectedClassName.replace('_', ' ')}
                   </span>
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-slate-400 uppercase font-bold">Ngày khởi hành</p>
-                  <p className="font-bold text-slate-700">07/04/2026</p>
+                  {/* 👇 SỬA LẠI THÀNH BIẾN ĐỘNG 👇 */}
+                  <p className="font-bold text-slate-700">
+                    {/* Ví dụ format ngày nếu bạn có searchConfigs.date */}
+                    {searchConfigs.date
+                      ? new Date(searchConfigs.date).toLocaleDateString('vi-VN')
+                      : "Đang cập nhật"}
+                  </p>
                 </div>
               </div>
 
@@ -127,19 +146,38 @@ export const BookingPage = () => {
                   </div>
                 )}
 
-                {/* Hiển thị tiền hành lý nếu có */}
+                {/* BookingPage.tsx */}
                 {addons.length > 0 && (
-                  <div className="flex justify-between text-sm text-blue-600 font-medium bg-blue-50 p-2 rounded">
-                    <span>Hành lý ký gửi thêm</span>
-                    <span>
-                      {addons.reduce((sum, a) => sum + (a.baggage?.price || 0), 0).toLocaleString('vi-VN')} đ
-                    </span>
+                  <div className="space-y-2 border-t pt-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Dịch vụ bổ sung</p>
+
+                    {/* Lọc lấy Baggage */}
+                    {addons.some(a => a.type === 'BAGGAGE') && (
+                      <div className="flex justify-between text-sm text-slate-600">
+                        <span>Hành lý ký gửi</span>
+                        <span className="font-semibold">
+                          {addons.filter(a => a.type === 'BAGGAGE').reduce((s, a) => s + a.service.price, 0).toLocaleString()} đ
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Lọc lấy Meal */}
+                    {addons.some(a => a.type === 'MEAL') && (
+                      <div className="flex justify-between text-sm text-slate-600">
+                        <span>Suất ăn trên mây</span>
+                        <span className="font-semibold">
+                          {addons.filter(a => a.type === 'MEAL').reduce((s, a) => s + a.service.price, 0).toLocaleString()} đ
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                <div className="flex justify-between text-sm text-green-600">
+                <div className="flex justify-between text-sm text-slate-600 border-t pt-2 mt-2">
                   <span>Thuế & phí sân bay</span>
-                  <span className="italic">Đã bao gồm</span>
+                  <span className="font-semibold text-slate-800">
+                    {taxAndFee.toLocaleString('vi-VN')} đ
+                  </span>
                 </div>
               </div>
 
