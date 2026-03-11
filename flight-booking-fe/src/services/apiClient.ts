@@ -1,40 +1,64 @@
-import axios from 'axios';
-
-// 1. Tạo instance (bản sao) của axios với cấu hình mặc định
+// Tách biệt rõ ràng Value (axios) và Type (AxiosError, ...)
+import axios, { type AxiosError, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
+// Khởi tạo instance với Base URL từ biến môi trường
+// Nếu chưa có file .env, nó sẽ fallback về localhost:8080 của BE
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api', // Đường dẫn API của Backend (Spring Boot)
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // Đợi 10 giây, nếu mạng lag quá thì báo lỗi
+  timeout: 10000, // Timeout 10s, không để request treo vô thời hạn
 });
 
-// 2. Cấu hình Interceptor (Bộ chặn) - Tự động gắn Token
+// 1. REQUEST INTERCEPTOR: Đính kèm Token
 apiClient.interceptors.request.use(
-  (config) => {
-    // Lấy token từ localStorage (nếu có)
+  (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`; // Gắn token vào Header
+    
+    // Nếu có token, tự động đính vào header
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
+  (error: AxiosError) => {
     return Promise.reject(error);
   }
 );
 
-// 3. Cấu hình Response - Tự động xử lý lỗi
+// 2. RESPONSE INTERCEPTOR: Xử lý lỗi toàn cục
 apiClient.interceptors.response.use(
-  (response) => {
-    return response.data; // Chỉ lấy phần data, bỏ qua mấy cái header rườm rà
+  (response: AxiosResponse) => {
+    // Bóc tách data ngay tại đây để các Service (như flight.service.ts của FE1) code ngắn gọn hơn
+    return response.data;
   },
-  (error) => {
-    // Ví dụ: Nếu lỗi 401 (Hết hạn token) -> Đá về trang login
-    if (error.response?.status === 401) {
-      console.log('Hết phiên đăng nhập, vui lòng login lại!');
-      // window.location.href = '/login';
+  (error: AxiosError) => {
+    if (error.response) {
+      const status = error.response.status;
+      
+      // Xử lý 401 Unauthorized (Token hết hạn hoặc không hợp lệ)
+      if (status === 401) {
+        console.warn('[Axios] 401 Unauthorized - Token expired. Redirecting to login...');
+        
+        // Clear toàn bộ thông tin auth cũ
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('userRole');
+        
+        // Force redirect về trang login của Admin (hoặc Customer tùy logic sau này)
+        // Dùng window.location để tránh phụ thuộc React Router ở tầng Service
+        window.location.href = '/admin/login'; 
+      }
+      
+      // Xử lý 403 Forbidden (Không có quyền truy cập resource)
+      if (status === 403) {
+        console.error('[Axios] 403 Forbidden - Access Denied.');
+        // Tương lai có thể dispatch event để hiện Toast notification ở đây
+      }
+    } else if (error.request) {
+      // Lỗi không nhận được phản hồi từ server (Server down hoặc sai URL)
+      console.error('[Axios] Network Error - No response received from server.');
     }
+    
     return Promise.reject(error);
   }
 );
