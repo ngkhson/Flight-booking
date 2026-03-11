@@ -146,7 +146,7 @@ export const getFlights = async (
     params: { origin?: string; destination?: string; departureDate?: string; page?: number; size?: number } = { page: 1, size: 100 },
 ): Promise<IFlight[]> => {
     console.log("Sending payload:", params);
-    const res: IApiResponse<IFlight[]> = await apiClient.post('/flights/search', params);
+    const res: IApiResponse<IFlight[]> = await apiClient.post('../flights/search', params);
     return res.result;
 };
 

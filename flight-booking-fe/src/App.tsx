@@ -10,17 +10,28 @@ import ProtectedRoute from './features/auth/ProtectedRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
 
 function App() {
+  // kiểm tra token trong localStorage
+  const token = localStorage.getItem('token');
+
   return (
     <BrowserRouter>
       <Routes>
-        {/* Redirect root to admin dashboard */}
-        <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
+
+        {/* Root route */}
+        <Route
+          path="/"
+          element={
+            token
+              ? <Navigate to="/admin/dashboard" replace />
+              : <Navigate to="/login" replace />
+          }
+        />
 
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/403" element={<ForbiddenPage />} />
 
-        {/* Admin routes — protected + error-safe */}
+        {/* Protected admin routes */}
         <Route
           path="/admin"
           element={
@@ -31,10 +42,16 @@ function App() {
             </ProtectedRoute>
           }
         >
+          {/* /admin -> /admin/dashboard */}
           <Route index element={<Navigate to="dashboard" replace />} />
+
           <Route path="dashboard" element={<AdminDashboard />} />
+
           <Route path="flights" element={<FlightManagement />} />
+
           <Route path="bookings" element={<BookingManagement />} />
+
+          {/* Only ADMIN can access */}
           <Route
             path="users"
             element={
@@ -44,6 +61,10 @@ function App() {
             }
           />
         </Route>
+
+        {/* fallback route */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+
       </Routes>
     </BrowserRouter>
   );
