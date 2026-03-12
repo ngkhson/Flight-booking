@@ -1,35 +1,34 @@
-import { type ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { type RootState } from '@/store/store';
 
 interface ProtectedRouteProps {
-    children: ReactNode;
-    /** Danh sách role được phép truy cập. Nếu không truyền → chỉ kiểm tra token. */
     allowedRoles?: string[];
+    children: React.ReactNode;
 }
 
-/**
- * ProtectedRoute — HOC bảo vệ route theo xác thực + phân quyền (RBAC).
- *
- * 1. Nếu không có token  → redirect /login
- * 2. Nếu có allowedRoles nhưng userRole không khớp → redirect /403
- * 3. Còn lại → render children
- *
- * userRole được đọc từ localStorage key 'userRole'.
- * Trong môi trường dev, giá trị mặc định là 'ADMIN' nếu chưa set.
- */
-function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('userRole') ?? 'ADMIN'; // dev default
+export default function ProtectedRoute({ allowedRoles, children }: ProtectedRouteProps) {
+    const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+    const location = useLocation();
 
-    if (!token) {
-        return <Navigate to="/login" replace />;
+    // 1. Chưa đăng nhập -> Đá ra trang login Admin (kèm theo link cũ để sau khi login xong quay lại)
+    if (!isAuthenticated || !user) {
+        return <Navigate to="/admin/login" state={{ from: location }} replace />;
     }
 
-    if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
-        return <Navigate to="/403" replace />;
+    // 2. Đã đăng nhập nhưng kiểm tra xem có đúng Quyền (Role) không
+    if (allowedRoles && allowedRoles.length > 0) {
+        // Lấy tên Role đầu tiên của user (hoặc map qua mảng roles)
+        const userRoles = user.roles?.map((r: any) => r.name) || [];
+        
+        const hasRequiredRole = allowedRoles.some(role => userRoles.includes(role));
+
+        // Nếu không có quyền -> Đá sang trang 403 (Cấm truy cập)
+        if (!hasRequiredRole) {
+            return <Navigate to="/403" replace />;
+        }
     }
 
+    // 3. Hợp lệ -> Cho phép đi tiếp vào giao diện Admin
     return <>{children}</>;
 }
-
-export default ProtectedRoute;

@@ -2,6 +2,8 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Plane, Ticket, Users, LogOut,
 } from 'lucide-react';
+import { useDispatch } from 'react-redux';
+import { logoutUser } from '@/store/authSlice'; // Đảm bảo đường dẫn này đúng với project của bạn
 
 const navItems = [
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -13,9 +15,13 @@ const navItems = [
 export default function AdminLayout() {
     const navigate = useNavigate();
 
+    const dispatch = useDispatch(); // 👇 2. Khai báo dispatch
+
     const handleLogout = () => {
-        // TODO: clear auth tokens
-        navigate('/');
+        // 👇 3. Gọi action xóa token và user
+        dispatch(logoutUser());
+        // 👇 4. Đá về trang đăng nhập của Admin
+        navigate('/admin/login');
     };
 
     return (
