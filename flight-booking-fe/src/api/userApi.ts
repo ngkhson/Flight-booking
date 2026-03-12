@@ -10,7 +10,7 @@ export const userApi = {
     return axiosClient.get("/users/my-infor"); // Thay bằng endpoint thật của bạn
   },
   updateProfile: (data: { fullName: string; phone: string }) => 
-    axiosClient.put("/users/update-profile", data), // Kiểm tra lại endpoint của BE nhé
+    axiosClient.put("/users/my-infor", data), // Kiểm tra lại endpoint của BE nhé
     
   changePassword: (data: any) => 
     axiosClient.patch("/users/change-password", data),

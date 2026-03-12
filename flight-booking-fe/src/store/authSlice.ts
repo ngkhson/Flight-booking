@@ -30,6 +30,14 @@ const authSlice = createSlice({
       state.user = action.payload;
       state.isAuthenticated = true;
     },
+
+    // 👇 HÀM MỚI: Chỉ cập nhật những thông tin thay đổi (Merge data)
+    updateUser: (state, action: PayloadAction<Partial<UserInfo>>) => {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+      }
+    },
+
     // Gọi hàm này khi Logout
     logoutUser: (state) => {
       state.user = null;
@@ -43,5 +51,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, logoutUser, setLoading } = authSlice.actions;
+export const { setCredentials, updateUser, logoutUser, setLoading } = authSlice.actions;
 export default authSlice.reducer;
