@@ -13,7 +13,7 @@ import { HomePage } from './pages/customer/HomePage';
 import { SearchPage } from './pages/customer/SearchPage';
 import { BookingPage } from './pages/customer/BookingPage'; // <-- 1. Import trang mới
 import { MyBookingsPage } from './pages/customer/MyBookingsPage';
-// import { LoginPage } from './pages/auth/LoginPage';
+import { LoginClient } from './pages/auth/LoginClient';
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ProfilePage } from "@/features/customer/profile/ProfilePage";
@@ -61,7 +61,7 @@ function App() {
           <Route path="search" element={<SearchPage />} />
           <Route path="booking" element={<BookingPage />} />
           <Route path="my-bookings" element={<MyBookingsPage />} />
-          <Route path="login" element={<LoginPage />} />
+          <Route path="login" element={<LoginClient />} />
           <Route path="register" element={<RegisterPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
