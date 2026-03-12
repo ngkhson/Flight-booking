@@ -20,7 +20,7 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export const LoginPage = () => {
+export const LoginClient = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch(); // Khởi tạo dispatch
 

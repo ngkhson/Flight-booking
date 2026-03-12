@@ -28,6 +28,7 @@ function App() {
 
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
+        {/* <Route path="/login" element={<LoginClient />} /> */}
         <Route path="/403" element={<ForbiddenPage />} />
 
         {/* Admin routes — protected + error-safe */}
