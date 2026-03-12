@@ -11,8 +11,11 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
     const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
     const location = useLocation();
 
+    console.log("🕵️ TRẠNG THÁI AUTH:", { isAuthenticated, user, allowedRoles });
+
     // 1. Chưa đăng nhập -> Đá ra trang login Admin (kèm theo link cũ để sau khi login xong quay lại)
     if (!isAuthenticated || !user) {
+        console.log("❌ Bị chặn vì chưa đăng nhập hoặc mất user!");
         return <Navigate to="/admin/login" state={{ from: location }} replace />;
     }
 
@@ -20,6 +23,8 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
     if (allowedRoles && allowedRoles.length > 0) {
         // Lấy tên Role đầu tiên của user (hoặc map qua mảng roles)
         const userRoles = user.roles?.map((r: any) => r.name) || [];
+
+        console.log("🕵️ ROLES CỦA USER:", userRoles);
         
         const hasRequiredRole = allowedRoles.some(role => userRoles.includes(role));
 

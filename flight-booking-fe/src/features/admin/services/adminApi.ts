@@ -1,4 +1,5 @@
 import apiClient from '../../../services/apiClient';
+import axiosClient from '@/api/axiosClient';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ─── Common: Backend ApiResponse<T> Wrapper ──────────────────────────────────
@@ -127,8 +128,26 @@ export interface IPage<T> {
  *     Kept as placeholder. The BE team needs to create this endpoint.
  */
 export const getDashboardStats = async (): Promise<IDashboardStats> => {
-    const res: IApiResponse<IDashboardStats> = await apiClient.get('/admin/dashboard/stats');
-    return res.result;
+    // const res: IApiResponse<IDashboardStats> = await apiClient.get('/admin/dashboard/stats');
+    // return res.result;
+
+    // ✅ TRẢ VỀ MOCK DATA LUÔN ĐỂ VẼ BIỂU ĐỒ
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve({
+                totalFlights: 156,
+                totalRevenue: 2450000000,
+                totalUsers: 1250,
+                totalBookings: 845,
+                flightsToday: 24,
+                newCustomers: 15,
+                todayRevenue: 125000000,
+                activeFlights: 12,
+                pendingBookings: 45,
+                totalTicketsSold: 3200
+            });
+        }, 500); // Giả lập load 0.5s cho đẹp
+    });
 };
 
 /**

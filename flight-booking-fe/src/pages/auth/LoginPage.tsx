@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { setCredentials } from '@/store/authSlice';
 import { authApi } from '@/api/authApi';
+import axiosClient from '@/api/axiosClient'; // Tùy chỉnh đường dẫn cho đúng
 
 /**
  * LoginPage — Trang đăng nhập dành cho Admin.
@@ -28,44 +29,54 @@ function LoginPage() {
         setLoading(true);
 
         try {
-            // Gọi API thực tế giống như bên LoginClient
+            // 1. Gọi API Đăng nhập
+            // Do axiosClient của bạn đã có Interceptor bóc sẵn response.data
+            // Nên kết quả trả về sẽ là { code: 1000, result: { token: "..." } }
             const response: any = await authApi.login({ email, password });
+            const token = response?.result?.token || response?.result;
 
-            // Bóc tách token và user từ response
-            const token = response?.result?.token || response?.data?.token;
-            const user = response?.result?.user || response?.data?.user;
-
-            if (token) {
-                // Lưu ý: Đổi tên key thành 'accessToken' để đồng bộ với bên Client
+            if (token && typeof token === 'string') {
+                // 2. Lưu token vào LocalStorage để axiosClient tự động lấy nhét vào Header cho API sau
                 localStorage.setItem('accessToken', token);
 
-                if (user) {
-                    // TÙY CHỌN: Bạn có thể thêm lệnh check Role ở đây để chặn user thường đăng nhập vào Admin
-                    // if (user.role !== 'ADMIN') {
-                    //     throw new Error('Bạn không có quyền truy cập trang quản trị!');
-                    // }
-                    dispatch(setCredentials(user));
+                try {
+                    // 3. Gọi API lấy thông tin User. 
+                    // Tùy theo Backend của bạn, nếu dùng /auth/me thì dùng authApi.getProfile()
+                    // Nếu Backend dùng /users/my-infor thì gọi thẳng bằng axiosClient như dưới đây:
+                    const userRes: any = await axiosClient.get('/users/my-infor');
+                    
+                    const user = userRes?.result;
+
+                    if (user) {
+                        // 4. Nhét thông tin user vào Redux
+                        dispatch(setCredentials(user));
+
+                        // 5. Mở cổng cho vào Dashboard!
+                        navigate('/admin/dashboard', { replace: true });
+                    } else {
+                        setError('Không thể lấy thông tin tài khoản!');
+                        localStorage.removeItem('accessToken');
+                    }
+                } catch (profileErr) {
+                    console.error("Lỗi khi lấy thông tin user:", profileErr);
+                    setError('Phiên đăng nhập không hợp lệ hoặc đã hết hạn.');
+                    localStorage.removeItem('accessToken');
                 }
 
-                // Đăng nhập thành công, chuyển hướng vào dashboard
-                navigate('/admin/dashboard', { replace: true });
             } else {
                 setError('Đăng nhập thành công nhưng không tìm thấy Token từ máy chủ.');
             }
         } catch (err: any) {
             console.error("Lỗi đăng nhập Admin:", err);
             
-            // Xử lý hiển thị lỗi chi tiết từ Backend
-            const serverMessage = err.response?.data?.message;
-
+            // Xử lý hiển thị lỗi
+            const serverMessage = err.response?.data?.message || err.message;
             if (err.response?.status === 401) {
                 setError("Email hoặc mật khẩu không chính xác.");
             } else if (err.response?.status === 403) {
                 setError("Tài khoản của bạn không có quyền truy cập trang này.");
-            } else if (serverMessage) {
-                setError(serverMessage);
             } else {
-                setError('Không thể kết nối đến máy chủ. Vui lòng thử lại sau!');
+                setError(serverMessage || 'Không thể kết nối đến máy chủ.');
             }
         } finally {
             setLoading(false);

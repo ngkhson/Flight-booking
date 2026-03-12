@@ -77,8 +77,16 @@ axiosClient.interceptors.response.use(
         localStorage.removeItem('accessToken');
         
         // Chỉ chuyển hướng nếu không phải đang ở trang login để tránh lặp vô tận/reload
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
+        if (!window.location.pathname.includes('/login')) {
+          console.error("Token hết hạn hoặc chưa đăng nhập!");
+          localStorage.removeItem('accessToken');
+          
+          // Phân luồng: Admin bị đá về /admin/login, Khách bị đá về /login
+          if (window.location.pathname.startsWith('/admin')) {
+              window.location.href = '/admin/login';
+          } else {
+              window.location.href = '/login';
+          }
         }
       }
     }
