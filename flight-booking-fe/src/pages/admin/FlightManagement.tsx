@@ -2,7 +2,6 @@ import {
     useState,
     useEffect,
     useCallback,
-    type ChangeEvent,
     type FormEvent,
 } from 'react';
 import {
@@ -12,17 +11,12 @@ import {
     deleteFlight,
     type IFlight,
     type IFlightClass,
-    type FlightPayload,
 } from '../../features/admin/services/adminApi';
 
 // ─── Local extended type ──────────────────────────────────────────────────────
-// The BE FlightSearchResponseDTO has no `id`. For admin CRUD (which is still
-// placeholder / mock-only), we extend IFlight with an `id` field locally.
-
 type Flight = IFlight & { id: string };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
 const STATUS_OPTIONS: string[] = ['SCHEDULED', 'DELAYED', 'CANCELLED', 'COMPLETED'];
 
 const STATUS_STYLES: Record<string, string> = {
@@ -40,14 +34,12 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
 const fmtDateTime = (iso: string) =>
-    new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
+    iso ? new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '—';
 
 const fmtVND = (n: number) =>
     n.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
 
-/** ISO → YYYY-MM-DDTHH:mm (for datetime-local inputs) */
 const toDatetimeLocal = (iso: string): string => {
     if (!iso) return '';
     const d = new Date(iso);
@@ -55,69 +47,54 @@ const toDatetimeLocal = (iso: string): string => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-/** Get total available seats across all classes */
 const getTotalSeats = (classes: IFlightClass[]): number =>
-    classes.reduce((sum, c) => sum + c.availableSeats, 0);
+    (classes || []).reduce((sum, c) => sum + (c.availableSeats || 0), 0);
 
-/** Get the lowest base price across all classes */
 const getMinPrice = (classes: IFlightClass[]): number => {
-    if (!classes.length) return 0;
-    return Math.min(...classes.map((c) => c.basePrice));
+    if (!classes || !classes.length) return 0;
+    return Math.min(...classes.map((c) => c.basePrice || 0));
 };
 
-// ─── Validation ───────────────────────────────────────────────────────────────
+// ─── Validation & Interface ───────────────────────────────────────────────────
+export interface FlightPayload {
+    flightNumber: string;
+    airlineCode: string;   // BE yêu cầu
+    aircraftCode: string;  // BE yêu cầu
+    origin: string;
+    destination: string;
+    departureTime: string;
+    arrivalTime: string;
+    availableSeats: number;
+    price: number;
+    status: string;
+}
 
 interface FieldErrors {
     flightNumber?: string;
+    airlineCode?: string;
+    aircraftCode?: string;
     origin?: string;
     destination?: string;
     departureTime?: string;
     arrivalTime?: string;
-    availableSeats?: string;
-    price?: string;
 }
 
 function validatePayload(p: FlightPayload): FieldErrors {
     const err: FieldErrors = {};
-
-    if (!p.flightNumber.trim())
-        err.flightNumber = 'Số hiệu không được để trống.';
-    else if (!/^[A-Z0-9]{2,3}-\d{2,4}$/i.test(p.flightNumber.trim()))
-        err.flightNumber = 'Định dạng không hợp lệ — VD: VN-201, QH-102.';
-
-    if (!p.origin.trim())
-        err.origin = 'Sân bay xuất phát không được để trống.';
-    else if (!/^[A-Z]{3}$/i.test(p.origin.trim()))
-        err.origin = 'Mã IATA gồm đúng 3 chữ cái (VD: HAN).';
-
-    if (!p.destination.trim())
-        err.destination = 'Sân bay đến không được để trống.';
-    else if (!/^[A-Z]{3}$/i.test(p.destination.trim()))
-        err.destination = 'Mã IATA gồm đúng 3 chữ cái (VD: SGN).';
-
-    if (!p.departureTime)
-        err.departureTime = 'Vui lòng chọn giờ khởi hành.';
-
-    if (!p.arrivalTime)
-        err.arrivalTime = 'Vui lòng chọn giờ hạ cánh.';
-    else if (p.departureTime && p.arrivalTime <= p.departureTime)
-        err.arrivalTime = 'Giờ hạ cánh phải sau giờ khởi hành.';
-
-    if (!Number.isFinite(p.availableSeats) || p.availableSeats < 0)
-        err.availableSeats = 'Số ghế phải ≥ 0.';
-    else if (!Number.isInteger(p.availableSeats))
-        err.availableSeats = 'Số ghế phải là số nguyên.';
-
-    if (!Number.isFinite(p.price) || p.price <= 0)
-        err.price = 'Giá vé phải > 0 VND.';
-
+    if (!p.flightNumber.trim()) err.flightNumber = 'Số hiệu không được để trống.';
+    if (!p.airlineCode.trim()) err.airlineCode = 'Mã hãng bay không được để trống (VD: SQ, AA).';
+    if (!p.aircraftCode.trim()) err.aircraftCode = 'Mã máy bay không được để trống (VD: A321).';
+    if (!p.origin.trim()) err.origin = 'Mã IATA đi không được để trống (VD: HAN).';
+    if (!p.destination.trim()) err.destination = 'Mã IATA đến không được để trống (VD: SGN).';
+    if (!p.departureTime) err.departureTime = 'Chọn giờ đi.';
+    if (!p.arrivalTime) err.arrivalTime = 'Chọn giờ đến.';
     return err;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const EMPTY_PAYLOAD: FlightPayload = {
     flightNumber: '',
+    airlineCode: '',
+    aircraftCode: '',
     origin: '',
     destination: '',
     departureTime: '',
@@ -127,43 +104,30 @@ const EMPTY_PAYLOAD: FlightPayload = {
     status: 'SCHEDULED',
 };
 
-// ─── Small reusable components ────────────────────────────────────────────────
+// ─── Reusable components ────────────────────────────────────────────────
 
 function SkeletonRow() {
     return (
         <tr className="animate-pulse">
             {Array.from({ length: 10 }).map((_, i) => (
-                <td key={i} className="px-4 py-3">
-                    <div className="h-4 bg-gray-100 rounded w-3/4" />
-                </td>
+                <td key={i} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded w-3/4" /></td>
             ))}
         </tr>
     );
 }
 
-interface FieldProps {
-    label: string;
-    error?: string;
-    children: React.ReactNode;
-}
-function Field({ label, error, children }: FieldProps) {
+function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                {label}
-            </label>
+            <label className="text-xs font-semibold text-gray-600 uppercase">{label}</label>
             {children}
-            {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
+            {error && <p className="text-xs text-red-500">{error}</p>}
         </div>
     );
 }
 
 const inputCls = (hasError?: string) =>
-    [
-        'w-full px-3 py-2 text-sm border rounded-lg transition',
-        'focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent',
-        hasError ? 'border-red-400 bg-red-50' : 'border-gray-300',
-    ].join(' ');
+    `w-full px-3 py-2 text-sm border rounded-lg transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'}`;
 
 // ─── Flight Modal (Add / Edit) ────────────────────────────────────────────────
 
@@ -187,6 +151,8 @@ function FlightModal({ open, editTarget, onClose, onSaved }: FlightModalProps) {
         if (editTarget) {
             setForm({
                 flightNumber: editTarget.flightNumber,
+                airlineCode: editTarget.airlineName || '',
+                aircraftCode: '',
                 origin: editTarget.origin,
                 destination: editTarget.destination,
                 departureTime: toDatetimeLocal(editTarget.departureTime),
@@ -200,52 +166,60 @@ function FlightModal({ open, editTarget, onClose, onSaved }: FlightModalProps) {
         }
     }, [open, editTarget]);
 
-    const patch = (key: keyof FlightPayload, value: unknown) =>
+    const patch = (key: keyof FlightPayload, value: any) =>
         setForm((prev) => ({ ...prev, [key]: value }));
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        const normalized: FlightPayload = {
-            ...form,
-            flightNumber: form.flightNumber.trim().toUpperCase(),
-            origin: form.origin.trim().toUpperCase(),
-            destination: form.destination.trim().toUpperCase(),
-        };
-
-        const errs = validatePayload(normalized);
+        const errs = validatePayload(form);
         setErrors(errs);
         if (Object.keys(errs).length > 0) return;
 
         setSubmitting(true);
         setApiErr(null);
+
         try {
-            let saved: Flight;
             if (editTarget) {
-                // updateFlight returns IFlightUpdateResponse — map back to Flight
                 const res = await updateFlight(editTarget.id, {
-                    departureTime: normalized.departureTime,
-                    arrivalTime: normalized.arrivalTime,
-                    status: normalized.status,
+                    departureTime: form.departureTime,
+                    arrivalTime: form.arrivalTime,
+                    status: form.status,
                 });
-                saved = {
-                    ...editTarget,
-                    departureTime: res.departureTime,
-                    arrivalTime: res.arrivalTime,
-                    status: res.status,
-                };
+                onSaved({ ...editTarget, ...res });
             } else {
-                const created = await createFlight(normalized);
-                saved = {
-                    ...created,
-                    id: (created as Flight).id ?? String(Date.now()),
-                    classes: (created as Flight).classes ?? [],
+                // 🚀 ĐÓNG GÓI PAYLOAD CHUẨN FlightManualRequestDTO.java
+                const finalPayload = {
+                    flightNumber: form.flightNumber.toUpperCase(),
+                    airlineCode: form.airlineCode.toUpperCase(),
+                    aircraftCode: form.aircraftCode.toUpperCase(),
+                    originCode: form.origin.toUpperCase(),
+                    destinationCode: form.destination.toUpperCase(),
+                    departureTime: `${form.departureTime}:00`,
+                    arrivalTime: `${form.arrivalTime}:00`
                 };
+
+                const response: any = await createFlight(finalPayload as any);
+
+                // BE chỉ trả về UUID, tạo object tạm để hiện lên UI
+                const newFlight: Flight = {
+                    id: response.result || String(Date.now()),
+                    flightNumber: finalPayload.flightNumber,
+                    airlineName: finalPayload.airlineCode,
+                    origin: finalPayload.originCode,
+                    destination: finalPayload.destinationCode,
+                    departureTime: finalPayload.departureTime,
+                    arrivalTime: finalPayload.arrivalTime,
+                    status: 'SCHEDULED',
+                    classes: []
+                };
+                onSaved(newFlight);
+                // Vì BE cần set giá riêng, khuyên dùng reload để lấy data chuẩn
+                setTimeout(() => window.location.reload(), 1000);
             }
-            onSaved(saved);
             onClose();
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Lỗi không xác định.';
-            setApiErr(`Không thể lưu: ${msg}`);
+        } catch (err: any) {
+            const msg = err.response?.data?.message || 'Lỗi hệ thống (Kiểm tra Airline/Airport code)';
+            setApiErr(msg);
         } finally {
             setSubmitting(false);
         }
@@ -254,173 +228,51 @@ function FlightModal({ open, editTarget, onClose, onSaved }: FlightModalProps) {
     if (!open) return null;
 
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-            role="dialog"
-            aria-modal="true"
-            aria-label={editTarget ? 'Sửa chuyến bay' : 'Thêm chuyến bay mới'}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
-                    <h2 className="text-lg font-bold text-gray-800">
-                        {editTarget ? '✏️ Sửa chuyến bay' : '✈️ Thêm chuyến bay mới'}
-                    </h2>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition"
-                        aria-label="Đóng modal"
-                    >
-                        ✕
-                    </button>
+                <div className="px-6 py-4 border-b flex justify-between items-center">
+                    <h2 className="font-bold text-gray-800">{editTarget ? 'Sửa chuyến bay' : 'Thêm chuyến bay mới'}</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
                 </div>
 
-                {/* Body */}
-                <form
-                    id="flight-form"
-                    onSubmit={handleSubmit}
-                    noValidate
-                    className="overflow-y-auto flex-1 px-6 py-5 space-y-4"
-                >
-                    {apiErr && (
-                        <div className="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex gap-2">
-                            <span>⚠️</span><span>{apiErr}</span>
-                        </div>
-                    )}
+                <form id="flight-form" onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-4">
+                    {apiErr && <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">⚠️ {apiErr}</div>}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Field label="Số hiệu chuyến bay *" error={errors.flightNumber}>
-                            <input
-                                id="fm-flightNumber"
-                                type="text"
-                                placeholder="VD: VN-201"
-                                value={form.flightNumber}
-                                onChange={(e: ChangeEvent<HTMLInputElement>) => patch('flightNumber', e.target.value)}
-                                className={inputCls(errors.flightNumber)}
-                                required
-                            />
+                        <Field label="Số hiệu (VD: SQ-182)" error={errors.flightNumber}>
+                            <input type="text" value={form.flightNumber} onChange={e => patch('flightNumber', e.target.value)} className={inputCls(errors.flightNumber)} />
                         </Field>
-
-                        <Field label="Trạng thái *">
-                            <select
-                                id="fm-status"
-                                value={form.status}
-                                onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                                    patch('status', e.target.value)
-                                }
-                                className={inputCls()}
-                            >
-                                {STATUS_OPTIONS.map((s) => (
-                                    <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                                ))}
+                        <Field label="Mã Hãng (VD: SQ, AA)" error={errors.airlineCode}>
+                            <input type="text" value={form.airlineCode} onChange={e => patch('airlineCode', e.target.value)} className={inputCls(errors.airlineCode)} />
+                        </Field>
+                        <Field label="Mã máy bay (VD: A321)" error={errors.aircraftCode}>
+                            <input type="text" value={form.aircraftCode} onChange={e => patch('aircraftCode', e.target.value)} className={inputCls(errors.aircraftCode)} />
+                        </Field>
+                        <Field label="Trạng thái">
+                            <select value={form.status} onChange={e => patch('status', e.target.value)} className={inputCls()}>
+                                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                             </select>
                         </Field>
-
-                        <Field label="Sân bay khởi hành (IATA) *" error={errors.origin}>
-                            <input
-                                id="fm-origin"
-                                type="text"
-                                placeholder="VD: HAN"
-                                maxLength={3}
-                                value={form.origin}
-                                onChange={(e: ChangeEvent<HTMLInputElement>) => patch('origin', e.target.value)}
-                                className={inputCls(errors.origin)}
-                                required
-                            />
+                        <Field label="Sân bay đi (IATA)" error={errors.origin}>
+                            <input type="text" maxLength={3} value={form.origin} onChange={e => patch('origin', e.target.value)} className={inputCls(errors.origin)} />
                         </Field>
-
-                        <Field label="Sân bay đến (IATA) *" error={errors.destination}>
-                            <input
-                                id="fm-destination"
-                                type="text"
-                                placeholder="VD: SGN"
-                                maxLength={3}
-                                value={form.destination}
-                                onChange={(e: ChangeEvent<HTMLInputElement>) => patch('destination', e.target.value)}
-                                className={inputCls(errors.destination)}
-                                required
-                            />
+                        <Field label="Sân bay đến (IATA)" error={errors.destination}>
+                            <input type="text" maxLength={3} value={form.destination} onChange={e => patch('destination', e.target.value)} className={inputCls(errors.destination)} />
                         </Field>
-
-                        <Field label="Giờ khởi hành *" error={errors.departureTime}>
-                            <input
-                                id="fm-departureTime"
-                                type="datetime-local"
-                                value={form.departureTime}
-                                onChange={(e: ChangeEvent<HTMLInputElement>) => patch('departureTime', e.target.value)}
-                                className={inputCls(errors.departureTime)}
-                                required
-                            />
+                        <Field label="Giờ khởi hành" error={errors.departureTime}>
+                            <input type="datetime-local" value={form.departureTime} onChange={e => patch('departureTime', e.target.value)} className={inputCls(errors.departureTime)} />
                         </Field>
-
-                        <Field label="Giờ hạ cánh *" error={errors.arrivalTime}>
-                            <input
-                                id="fm-arrivalTime"
-                                type="datetime-local"
-                                value={form.arrivalTime}
-                                min={form.departureTime || undefined}
-                                onChange={(e: ChangeEvent<HTMLInputElement>) => patch('arrivalTime', e.target.value)}
-                                className={inputCls(errors.arrivalTime)}
-                                required
-                            />
-                        </Field>
-
-                        <Field label="Số ghế trống *" error={errors.availableSeats}>
-                            <input
-                                id="fm-availableSeats"
-                                type="number"
-                                min={0}
-                                step={1}
-                                placeholder="0"
-                                value={form.availableSeats}
-                                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                                    patch('availableSeats', parseInt(e.target.value, 10) || 0)
-                                }
-                                className={inputCls(errors.availableSeats)}
-                                required
-                            />
-                        </Field>
-
-                        <Field label="Giá vé (VND) *" error={errors.price}>
-                            <input
-                                id="fm-price"
-                                type="number"
-                                min={1}
-                                step={1000}
-                                placeholder="1000000"
-                                value={form.price}
-                                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                                    patch('price', parseFloat(e.target.value) || 0)
-                                }
-                                className={inputCls(errors.price)}
-                                required
-                            />
+                        <Field label="Giờ hạ cánh" error={errors.arrivalTime}>
+                            <input type="datetime-local" value={form.arrivalTime} onChange={e => patch('arrivalTime', e.target.value)} className={inputCls(errors.arrivalTime)} />
                         </Field>
                     </div>
                 </form>
 
-                {/* Footer */}
-                <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
-                    >
-                        Hủy
-                    </button>
-                    <button
-                        type="submit"
-                        form="flight-form"
-                        disabled={submitting}
-                        className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 rounded-lg shadow transition flex items-center gap-2"
-                    >
-                        {submitting && (
-                            <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                        )}
-                        {editTarget ? 'Lưu thay đổi' : 'Thêm chuyến bay'}
+                <div className="p-6 border-t flex justify-end gap-3">
+                    <button onClick={onClose} className="px-4 py-2 bg-gray-100 rounded-lg text-sm">Hủy</button>
+                    <button type="submit" form="flight-form" disabled={submitting} className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold disabled:bg-indigo-300 flex items-center gap-2">
+                        {submitting && <span className="w-4 h-4 border-2 border-white/30 border-t-white animate-spin rounded-full" />}
+                        {editTarget ? 'Cập nhật' : 'Tạo chuyến bay'}
                     </button>
                 </div>
             </div>
@@ -428,68 +280,23 @@ function FlightModal({ open, editTarget, onClose, onSaved }: FlightModalProps) {
     );
 }
 
-// ─── Delete Confirmation Modal ────────────────────────────────────────────────
-
-interface DeleteModalProps {
-    target: Flight | null;
-    onClose: () => void;
-    onConfirm: (id: string) => Promise<void>;
-}
-
-function DeleteModal({ target, onClose, onConfirm }: DeleteModalProps) {
+// ─── Delete Confirmation Modal (Giữ nguyên logic cũ của bạn) ─────────────────
+function DeleteModal({ target, onClose, onConfirm }: { target: Flight | null, onClose: () => void, onConfirm: (id: string) => Promise<void> }) {
     const [working, setWorking] = useState(false);
-
     if (!target) return null;
-
     const handleConfirm = async () => {
         setWorking(true);
-        try {
-            await onConfirm(target.id);
-            onClose();
-        } finally {
-            setWorking(false);
-        }
+        try { await onConfirm(target.id); onClose(); } finally { setWorking(false); }
     };
-
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Xác nhận xoá"
-        >
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
-                <div className="flex items-start gap-3">
-                    <span className="text-2xl">🗑️</span>
-                    <div>
-                        <h2 className="text-base font-bold text-gray-800">Xác nhận xoá chuyến bay</h2>
-                        <p className="mt-1 text-sm text-gray-600">
-                            Bạn có chắc muốn xoá chuyến{' '}
-                            <span className="font-mono font-semibold text-gray-800">{target.flightNumber}</span>
-                            {' '}({target.origin} → {target.destination})?
-                            Hành động này <strong>không thể hoàn tác</strong>.
-                        </p>
-                    </div>
-                </div>
-                <div className="flex items-center justify-end gap-3 pt-2">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        disabled={working}
-                        className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
-                    >
-                        Hủy
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleConfirm}
-                        disabled={working}
-                        className="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:bg-red-400 rounded-lg shadow transition flex items-center gap-2"
-                    >
-                        {working && (
-                            <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                        )}
-                        Xoá
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4">
+                <h2 className="font-bold text-gray-800">Xác nhận xoá</h2>
+                <p className="text-sm text-gray-600">Bạn có chắc muốn xoá chuyến <span className="font-mono font-bold">{target.flightNumber}</span>?</p>
+                <div className="flex justify-end gap-3">
+                    <button onClick={onClose} className="px-4 py-2 bg-gray-100 rounded-lg text-sm">Hủy</button>
+                    <button onClick={handleConfirm} disabled={working} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">
+                        {working ? 'Đang xoá...' : 'Xoá ngay'}
                     </button>
                 </div>
             </div>
@@ -503,222 +310,118 @@ export default function FlightManagement() {
     const [flights, setFlights] = useState<Flight[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-
     const [modalOpen, setModalOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<Flight | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Flight | null>(null);
-
     const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-    // Auto-dismiss toast after 3.5 s
     useEffect(() => {
         if (!toast) return;
         const id = setTimeout(() => setToast(null), 3500);
         return () => clearTimeout(id);
     }, [toast]);
 
-    // Load flights on mount
-    useEffect(() => {
-        let cancelled = false;
-
-        // Gửi payload mặc định để tránh lỗi 400 Bad Request
-        // API yêu cầu bắt buộc phải có ngày khởi hành, điểm xuất phát và điểm đến
+    const fetchFlights = useCallback(() => {
+        setLoading(true);
+        // Payload mặc định để tránh 400
         const today = new Date().toISOString().split('T')[0];
-        const defaultPayload = {
-            page: 1,
-            size: 100,
-            departureDate: today,
-            origin: "HAN",
-            destination: "SGN"
-        };
-        getFlights(defaultPayload)
-            .then((list) => {
-                if (!cancelled) {
-                    // getFlights returns IFlight[] (no id) — assign synthetic ids for admin CRUD
-                    const withIds: Flight[] = list.map((f, i) => ({
-                        ...f,
-                        id: (f as Flight).id ?? String(i + 1),
-                    }));
-                    setFlights(withIds);
-                    setLoading(false);
+        getFlights({ page: 1, size: 100, departureDate: today, origin: "HAN", destination: "SGN" })
+            .then((res: any) => {
+                let flightArray: any[] = [];
+                if (Array.isArray(res)) flightArray = res;
+                else if (res && typeof res === 'object') {
+                    flightArray = res.data?.content || res.result?.content || res.content || res.data || res.result || [];
                 }
+                setFlights(flightArray.map((f, i) => ({ ...f, id: f.id ?? String(i + 1) })));
+                setLoading(false);
             })
-            .catch((err) => {
-                if (!cancelled) {
-                    console.error('Lỗi tải dữ liệu chuyến bay:', err);
-                    setFlights([]);
-                    setLoading(false);
-                }
-            });
-        return () => { cancelled = true; };
+            .catch(() => { setFlights([]); setLoading(false); });
     }, []);
 
-    const filtered = flights.filter((f) => {
+    useEffect(() => { fetchFlights(); }, [fetchFlights]);
+
+    const filtered = flights.filter(f => {
         const q = search.toLowerCase();
-        return (
-            f.flightNumber.toLowerCase().includes(q) ||
-            f.origin.toLowerCase().includes(q) ||
-            f.destination.toLowerCase().includes(q)
-        );
+        return f.flightNumber?.toLowerCase().includes(q) || f.origin?.toLowerCase().includes(q) || f.destination?.toLowerCase().includes(q);
     });
 
-    const openAdd = () => { setEditTarget(null); setModalOpen(true); };
-    const openEdit = (f: Flight) => { setEditTarget(f); setModalOpen(true); };
-
-    const handleSaved = useCallback((saved: Flight) => {
-        let isEdit = false;
-        setFlights((prev) => {
-            const idx = prev.findIndex((f) => f.id === saved.id);
-            isEdit = idx >= 0;
-            if (isEdit) {
-                const next = [...prev];
-                next[idx] = saved;
-                return next;
-            }
+    const handleSaved = (saved: Flight) => {
+        setFlights(prev => {
+            const idx = prev.findIndex(f => f.id === saved.id);
+            if (idx >= 0) { const next = [...prev]; next[idx] = saved; return next; }
             return [saved, ...prev];
         });
-        setToast({ msg: isEdit ? 'Đã cập nhật chuyến bay.' : 'Đã thêm chuyến bay mới.', type: 'success' });
-    }, []);
+        setToast({ msg: 'Thao tác thành công!', type: 'success' });
+    };
 
-    const handleDelete = useCallback(async (id: string) => {
+    const handleDelete = async (id: string) => {
         await deleteFlight(id);
-        setFlights((prev) => prev.filter((f) => f.id !== id));
+        setFlights(prev => prev.filter(f => f.id !== id));
         setToast({ msg: 'Đã xoá chuyến bay.', type: 'success' });
-    }, []);
+    };
 
     return (
         <div className="space-y-5">
-            {/* Toast */}
             {toast && (
-                <div
-                    className={`fixed top-5 right-5 z-[100] flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium ${toast.type === 'success'
-                        ? 'bg-green-50 border border-green-200 text-green-700'
-                        : 'bg-red-50 border border-red-200 text-red-700'
-                        }`}
-                >
-                    <span>{toast.type === 'success' ? '✅' : '❌'}</span>
-                    <span>{toast.msg}</span>
-                    <button onClick={() => setToast(null)} className="ml-2 hover:opacity-70" aria-label="Đóng thông báo">✕</button>
+                <div className={`fixed top-5 right-5 z-[100] px-4 py-3 rounded-xl shadow-lg border ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                    {toast.msg}
                 </div>
             )}
 
-            {/* Page header */}
-            <div className="flex items-center justify-between flex-wrap gap-3">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">✈️ Quản lý chuyến bay</h1>
-                    <p className="mt-0.5 text-sm text-gray-500">Thêm, sửa, xoá chuyến bay trong hệ thống</p>
-                </div>
-                <button
-                    id="btn-add-flight"
-                    onClick={openAdd}
-                    className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow transition focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                >
-                    + Thêm chuyến bay
-                </button>
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold text-gray-800">✈️ Quản lý chuyến bay</h1>
+                <button onClick={() => { setEditTarget(null); setModalOpen(true); }} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow-md hover:bg-indigo-700">+ Thêm chuyến bay</button>
             </div>
 
-            {/* ── Removed Mock-data warning ── */}
-
-            {/* Search */}
             <div className="relative max-w-sm">
-                <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">🔍</span>
-                <input
-                    id="search-flights"
-                    type="text"
-                    placeholder="Tìm theo số hiệu, sân bay..."
-                    value={search}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                />
+                <input type="text" placeholder="Tìm chuyến bay..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-4 pr-4 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500" />
             </div>
 
-            {/* Table */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+            <div className="bg-white rounded-xl border shadow-sm overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 tracking-wide">
+                    <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                         <tr>
                             <th className="px-4 py-3">Số hiệu</th>
                             <th className="px-4 py-3">Hãng</th>
                             <th className="px-4 py-3">Xuất phát</th>
                             <th className="px-4 py-3">Điểm đến</th>
                             <th className="px-4 py-3">Giờ bay</th>
-                            <th className="px-4 py-3">Hạ cánh</th>
                             <th className="px-4 py-3">Ghế trống</th>
                             <th className="px-4 py-3">Giá vé</th>
-                            <th className="px-4 py-3">Trạng thái</th>
                             <th className="px-4 py-3 text-right">Hành động</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
-                        {loading
-                            ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
-                            : filtered.length === 0
-                                ? (
-                                    <tr>
-                                        <td colSpan={10} className="px-4 py-12 text-center text-gray-500 text-sm bg-white">
-                                            Không có dữ liệu chuyến bay.
-                                        </td>
-                                    </tr>
-                                )
-                                : filtered.map((f) => (
-                                    <tr key={f.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-4 py-3 font-mono font-semibold text-gray-800">{f.flightNumber}</td>
-                                        <td className="px-4 py-3 text-gray-600">{f.airlineName}</td>
-                                        <td className="px-4 py-3 font-medium text-gray-700">{f.origin}</td>
-                                        <td className="px-4 py-3 font-medium text-gray-700">{f.destination}</td>
-                                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtDateTime(f.departureTime)}</td>
-                                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtDateTime(f.arrivalTime)}</td>
-                                        <td className="px-4 py-3 text-gray-600">{getTotalSeats(f.classes)}</td>
-                                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtVND(getMinPrice(f.classes))}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[f.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                                                {STATUS_LABELS[f.status] ?? f.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    onClick={() => openEdit(f)}
-                                                    className="px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition"
-                                                    aria-label={`Sửa chuyến ${f.flightNumber}`}
-                                                >
-                                                    ✏️ Sửa
-                                                </button>
-                                                <button
-                                                    onClick={() => setDeleteTarget(f)}
-                                                    className="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"
-                                                    aria-label={`Xoá chuyến ${f.flightNumber}`}
-                                                >
-                                                    🗑️ Xoá
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                        }
+                    <tbody className="divide-y">
+                        {loading ? <SkeletonRow /> : filtered.length === 0 ? <tr><td colSpan={8} className="p-10 text-center text-gray-400">Không có dữ liệu.</td></tr> :
+                            filtered.map(f => (
+                                <tr key={f.id} className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 font-mono font-bold text-gray-800">{f.flightNumber}</td>
+                                    <td className="px-4 py-3 text-gray-600">{f.airlineName}</td>
+                                    <td className="px-4 py-3 font-medium">{f.origin}</td>
+                                    <td className="px-4 py-3 font-medium">{f.destination}</td>
+                                    <td className="px-4 py-3 text-xs">{fmtDateTime(f.departureTime)}</td>
+                                    <td className="px-4 py-3">{getTotalSeats(f.classes)}</td>
+                                    <td className="px-4 py-3">{fmtVND(getMinPrice(f.classes))}</td>
+
+                                    {/* THÊM ĐOẠN NÀY VÀO ĐỂ DÙNG STATUS_STYLES */}
+                                    <td className="px-4 py-3">
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${STATUS_STYLES[f.status] || 'bg-gray-100 text-gray-600'}`}>
+                                            {STATUS_LABELS[f.status] || f.status}
+                                        </span>
+                                    </td>
+
+                                    <td className="px-4 py-3 text-right">
+                                        <button onClick={() => { setEditTarget(f); setModalOpen(true); }} className="px-2 py-1 text-indigo-600 hover:bg-indigo-50 rounded mr-2">✏️</button>
+                                        <button onClick={() => setDeleteTarget(f)} className="px-2 py-1 text-red-600 hover:bg-red-50 rounded">🗑️</button>
+                                    </td>
+                                </tr>
+                            ))}
                     </tbody>
                 </table>
-
-                {/* Table footer count */}
-                {!loading && (
-                    <div className="px-4 py-3 border-t border-gray-100 text-xs text-gray-400 flex items-center justify-between">
-                        <span>Hiển thị {filtered.length} / {flights.length} chuyến bay</span>
-                    </div>
-                )}
             </div>
 
-            {/* Modals */}
-            <FlightModal
-                open={modalOpen}
-                editTarget={editTarget}
-                onClose={() => setModalOpen(false)}
-                onSaved={handleSaved}
-            />
-            <DeleteModal
-                target={deleteTarget}
-                onClose={() => setDeleteTarget(null)}
-                onConfirm={handleDelete}
-            />
+            <FlightModal open={modalOpen} editTarget={editTarget} onClose={() => setModalOpen(false)} onSaved={handleSaved} />
+            <DeleteModal target={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDelete} />
         </div>
     );
 }

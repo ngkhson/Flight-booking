@@ -1,100 +1,62 @@
 import axios from 'axios';
 
-// 1. Khởi tạo một instance của Axios với cấu hình mặc định
-
+// 1. Khởi tạo instance
 const axiosClient = axios.create({
-
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
   headers: {
-
     'Content-Type': 'application/json',
-
   },
-
-  timeout: 10000, // Quá 10 giây mà BE không trả lời thì báo lỗi TimeOut
-
+  timeout: 10000,
 });
 
-
-
-// 2. CAN THIỆP TRƯỚC KHI GỬI REQUEST (Request Interceptor)
-
+// 2. Request Interceptor: Tự động gắn Token
 axiosClient.interceptors.request.use(
-
   (config) => {
-
-    // Lấy Token từ LocalStorage (sau khi đăng nhập xong sẽ lưu vào đây)
-
+    // Đảm bảo dùng đúng key 'accessToken'
     const token = localStorage.getItem('accessToken');
-
-   
-
-    // Nếu có token thì nhét nó vào Header của request
-
     if (token) {
-
       config.headers.Authorization = `Bearer ${token}`;
-
     }
-
-   
-
     return config;
-
   },
-
-  (error) => {
-
-    return Promise.reject(error);
-
-  }
-
+  (error) => Promise.reject(error)
 );
 
-
-
-// 3. CAN THIỆP SAU KHI NHẬN RESPONSE TỪ BE (Response Interceptor)
-
+// 3. Response Interceptor: Xử lý kết quả và lỗi tập trung
 axiosClient.interceptors.response.use(
   (response) => {
-    if (response && response.data) {
-      return response.data;
-    }
-    return response;
+    // Trả về data trực tiếp nếu có
+    return response.data ? response.data : response;
   },
   (error) => {
-    const { response } = error;
-    
-    // Kiểm tra nếu lỗi 401 và KHÔNG PHẢI đang ở trang login
+    const { response, config } = error;
+
+    // Xử lý lỗi 401 (Unauthorized)
     if (response && response.status === 401) {
-      // Nếu API gọi đến là api/auth/login thì KHÔNG chuyển hướng
-      // (Bạn kiểm tra URL của request lỗi)
-      const isLoginRequest = response.config.url.includes('/auth/login');
+      // Nếu là lỗi từ chính request login thì không redirect (để hiện lỗi sai pass tại chỗ)
+      const isLoginRequest = config.url?.includes('/auth/login');
 
       if (!isLoginRequest) {
-        console.error("Token hết hạn hoặc chưa đăng nhập!");
+        console.error("Phiên đăng nhập hết hạn!");
+
+        // Xóa sạch token cũ
         localStorage.removeItem('accessToken');
-        
-        // Chỉ chuyển hướng nếu không phải đang ở trang login để tránh lặp vô tận/reload
-        if (!window.location.pathname.includes('/login')) {
-          console.error("Token hết hạn hoặc chưa đăng nhập!");
-          localStorage.removeItem('accessToken');
-          
-          // Phân luồng: Admin bị đá về /admin/login, Khách bị đá về /login
-          if (window.location.pathname.startsWith('/admin')) {
-              window.location.href = '/admin/login';
+
+        // Lấy đường dẫn hiện tại để quyết định hướng đá về
+        const currentPath = window.location.pathname;
+
+        // Tránh loop: Chỉ redirect nếu không phải đang ở sẵn trang login
+        if (!currentPath.includes('/login')) {
+          if (currentPath.startsWith('/admin')) {
+            window.location.href = '/admin/login';
           } else {
-              window.location.href = '/login';
+            window.location.href = '/login';
           }
         }
       }
     }
-    
     return Promise.reject(error);
   }
 );
-
-
 
 export default axiosClient;

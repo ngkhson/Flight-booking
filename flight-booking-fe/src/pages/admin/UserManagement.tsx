@@ -2,10 +2,22 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     getUsers,
     updateUser,
-    type IUser,
-    type IRole,
 } from '../../features/admin/services/adminApi';
 
+// ─── Tự định nghĩa Interface ──────────────────────────────────────────────────
+export interface IRole {
+    id: number;
+    name: string;
+    description: string;
+}
+
+export interface IUser {
+    id: string;
+    fullName: string;
+    email: string;
+    phone?: string;
+    roles: IRole[];
+}
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 // The BE returns roles as IRole[] — we use the role name string for display
@@ -126,11 +138,30 @@ export default function UserManagement() {
         setIsLoading(true);
         setApiError(null);
         try {
-            const list = await getUsers();
-            setUsers(list);
+            const res: any = await getUsers();
+            let userArray: IUser[] = [];
+
+            // Bóc tách mảng an toàn
+            if (Array.isArray(res)) {
+                userArray = res;
+            } else if (res && typeof res === 'object') {
+                if (Array.isArray(res.data?.content)) userArray = res.data.content;
+                else if (Array.isArray(res.result?.content)) userArray = res.result.content;
+                else if (Array.isArray(res.content)) userArray = res.content;
+                else if (Array.isArray(res.data)) userArray = res.data;
+                else if (Array.isArray(res.result)) userArray = res.result;
+            }
+
+            // Chốt chặn
+            if (!Array.isArray(userArray)) {
+                userArray = [];
+            }
+
+            setUsers(userArray);
         } catch (err: unknown) {
             console.error('[UserManagement] getUsers failed:', err);
             setApiError('Không thể tải danh sách người dùng.');
+            setUsers([]); // Đảm bảo users luôn là mảng khi có lỗi
         } finally {
             setIsLoading(false);
         }
@@ -155,10 +186,17 @@ export default function UserManagement() {
     }, [showToast, loadUsers]);
 
     // ── Derived ───────────────────────────────────────────────────────────────
-    const visible = users.filter((u) => {
+    // Lọc an toàn, đề phòng user thiếu thuộc tính
+    const visible = (users || []).filter((u) => {
+        if (!u) return false;
         const q = search.toLowerCase();
-        const primaryRole = getPrimaryRole(u.roles);
-        return !q || u.fullName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || primaryRole.toLowerCase().includes(q);
+        const primaryRole = getPrimaryRole(u.roles || []);
+        return (
+            !q ||
+            (u.fullName && u.fullName.toLowerCase().includes(q)) ||
+            (u.email && u.email.toLowerCase().includes(q)) ||
+            (primaryRole && primaryRole.toLowerCase().includes(q))
+        );
     });
 
     // Toast colour helper

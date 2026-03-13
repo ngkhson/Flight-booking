@@ -2,12 +2,26 @@ import { useState, useEffect, useCallback, type ChangeEvent } from 'react';
 import {
     getBookings,
     updateBookingStatus,
-    type IBooking,
 } from '../../features/admin/services/adminApi';
+
+// Tự định nghĩa IBooking tại đây thay vì import từ adminApi bị thiếu
+export interface IBooking {
+    id: string;
+    pnrCode: string;
+    contactName: string;
+    contactPhone: string;
+    contactEmail: string;
+    flightNumber: string;
+    origin: string;
+    destination: string;
+    departureTime: string;
+    status: 'PENDING' | 'AWAITING_PAYMENT' | 'PAID' | 'CONFIRMED' | 'CANCELLED' | 'REFUNDED';
+    totalAmount: number;
+    createdAt: string;
+}
 
 // Convenience alias so the rest of the file stays concise
 type Booking = IBooking;
-
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const BOOKING_STATUSES: Booking['status'][] = [
@@ -162,32 +176,68 @@ export default function BookingManagement() {
     // Load bookings
     useEffect(() => {
         let cancelled = false;
+        setLoading(true); // Nhớ bật loading trước khi gọi
+
         getBookings({ page: 1, size: 100 })
-            .then((res) => {
-                if (!cancelled) { setBookings(res.content); setLoading(false); }
+            .then((res: any) => {
+                if (!cancelled) {
+                    console.log("🔥 Booking API Data:", res);
+                    let bookingArray: any[] = [];
+
+                    // Bóc tách mảng an toàn
+                    if (Array.isArray(res)) {
+                        bookingArray = res;
+                    } else if (res && typeof res === 'object') {
+                        if (Array.isArray(res.data?.content)) bookingArray = res.data.content;
+                        else if (Array.isArray(res.result?.content)) bookingArray = res.result.content;
+                        else if (Array.isArray(res.content)) bookingArray = res.content;
+                        else if (Array.isArray(res.data)) bookingArray = res.data;
+                        else if (Array.isArray(res.result)) bookingArray = res.result;
+                    }
+
+                    // Chốt chặn cuối cùng
+                    if (!Array.isArray(bookingArray)) {
+                        bookingArray = [];
+                    }
+
+                    setBookings(bookingArray);
+                    setLoading(false);
+                }
             })
-            .catch(() => {
-                if (!cancelled) { setBookings(MOCK_BOOKINGS); setIsMock(true); setLoading(false); }
+            .catch((err) => {
+                if (!cancelled) {
+                    console.error("Lỗi lấy API Booking:", err);
+                    // Rớt mạng hoặc lỗi thì dùng Mock Data (Giữ nguyên logic cũ của bạn)
+                    setBookings(MOCK_BOOKINGS);
+                    setIsMock(true);
+                    setLoading(false);
+                }
             });
         return () => { cancelled = true; };
     }, []);
 
-    // Counts per status for filter badges
-    const counts = bookings.reduce<Partial<Record<Booking['status'], number>>>(
-        (acc, b) => { acc[b.status] = (acc[b.status] ?? 0) + 1; return acc; },
+    // Counts per status for filter badges (Đã thêm bọc thép bằng: bookings || [])
+    const counts = (bookings || []).reduce<Partial<Record<Booking['status'], number>>>(
+        (acc, b) => {
+            if (b && b.status) {
+                acc[b.status] = (acc[b.status] ?? 0) + 1;
+            }
+            return acc;
+        },
         {},
     );
 
-    // Filtered + searched list
-    const visible = bookings.filter((b) => {
+    // Filtered + searched list (Đã thêm bọc thép)
+    const visible = (bookings || []).filter((b) => {
+        if (!b) return false;
         if (filter !== 'ALL' && b.status !== filter) return false;
         const q = search.toLowerCase();
         return (
             !q ||
-            b.pnrCode.toLowerCase().includes(q) ||
-            b.contactName.toLowerCase().includes(q) ||
-            b.flightNumber.toLowerCase().includes(q) ||
-            `${b.origin} → ${b.destination}`.toLowerCase().includes(q)
+            (b.pnrCode && b.pnrCode.toLowerCase().includes(q)) ||
+            (b.contactName && b.contactName.toLowerCase().includes(q)) ||
+            (b.flightNumber && b.flightNumber.toLowerCase().includes(q)) ||
+            (b.origin && b.destination && `${b.origin} → ${b.destination}`.toLowerCase().includes(q))
         );
     });
 

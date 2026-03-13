@@ -1,9 +1,26 @@
 import { useState, useEffect } from 'react';
-import { getBookings, type IBooking } from '../../features/admin/services/adminApi';
+import { getBookings } from '../../features/admin/services/adminApi';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Tự định nghĩa Interface (Sửa lỗi TS2305) ──────────────────────────────────
+export interface IBooking {
+    id: string;
+    pnrCode: string;
+    contactName: string;
+    contactPhone?: string;
+    contactEmail?: string;
+    flightNumber: string;
+    origin: string;
+    destination: string;
+    departureTime: string;
+    // Định nghĩa cụ thể các status để Record không bị lỗi
+    status: 'CONFIRMED' | 'PENDING' | 'CANCELLED' | 'PAID' | 'AWAITING_PAYMENT' | 'REFUNDED' | string;
+    totalAmount: number;
+    createdAt: string;
+}
 
-const STATUS_STYLES: Record<IBooking['status'], string> = {
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const STATUS_STYLES: Record<string, string> = {
     CONFIRMED: 'bg-green-100 text-green-700',
     PENDING: 'bg-yellow-100 text-yellow-700',
     CANCELLED: 'bg-red-100 text-red-700',
@@ -12,7 +29,7 @@ const STATUS_STYLES: Record<IBooking['status'], string> = {
     REFUNDED: 'bg-gray-100 text-gray-600',
 };
 
-const STATUS_LABELS: Record<IBooking['status'], string> = {
+const STATUS_LABELS: Record<string, string> = {
     CONFIRMED: 'Xác nhận',
     PENDING: 'Chờ xử lý',
     CANCELLED: 'Đã huỷ',
@@ -21,20 +38,19 @@ const STATUS_LABELS: Record<IBooking['status'], string> = {
     REFUNDED: 'Hoàn tiền',
 };
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 const fmtDate = (iso: string) =>
-    new Date(iso).toLocaleDateString('vi-VN', { dateStyle: 'short' });
+    iso ? new Date(iso).toLocaleDateString('vi-VN', { dateStyle: 'short' }) : '—';
 
 const fmtVND = (n: number) =>
-    n.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+    (n || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
 
 // ─── Mock data (fallback) ─────────────────────────────────────────────────────
 
 const MOCK_BOOKINGS: IBooking[] = [
-    { id: '1', pnrCode: 'BK-001', contactName: 'Nguyễn Văn A', contactPhone: '0901234567', contactEmail: 'a@mail.com', flightNumber: 'VN-201', origin: 'HAN', destination: 'SGN', departureTime: '2026-02-25T06:00:00', status: 'CONFIRMED', totalAmount: 1_250_000, createdAt: '2026-02-24T08:00:00' },
-    { id: '2', pnrCode: 'BK-002', contactName: 'Trần Thị B', contactPhone: '0901234568', contactEmail: 'b@mail.com', flightNumber: 'VN-305', origin: 'SGN', destination: 'DAD', departureTime: '2026-02-25T10:30:00', status: 'PENDING', totalAmount: 890_000, createdAt: '2026-02-24T09:30:00' },
-    { id: '3', pnrCode: 'BK-003', contactName: 'Lê Văn C', contactPhone: '0901234569', contactEmail: 'c@mail.com', flightNumber: 'QH-102', origin: 'HAN', destination: 'PQC', departureTime: '2026-02-25T14:00:00', status: 'CONFIRMED', totalAmount: 1_580_000, createdAt: '2026-02-23T14:20:00' },
-    { id: '4', pnrCode: 'BK-004', contactName: 'Phạm Thị D', contactPhone: '0901234570', contactEmail: 'd@mail.com', flightNumber: 'VJ-411', origin: 'SGN', destination: 'HAN', departureTime: '2026-02-24T18:00:00', status: 'CANCELLED', totalAmount: 1_100_000, createdAt: '2026-02-23T11:00:00' },
-    { id: '5', pnrCode: 'BK-005', contactName: 'Hoàng Văn E', contactPhone: '0901234571', contactEmail: 'e@mail.com', flightNumber: 'VN-789', origin: 'HAN', destination: 'DAD', departureTime: '2026-02-25T20:00:00', status: 'PENDING', totalAmount: 750_000, createdAt: '2026-02-22T16:45:00' },
+    { id: '1', pnrCode: 'BK-001', contactName: 'Nguyễn Văn A', flightNumber: 'VN-201', origin: 'HAN', destination: 'SGN', status: 'CONFIRMED', totalAmount: 1250000, createdAt: '2026-02-24T08:00:00', departureTime: '2026-02-25T06:00:00' },
+    { id: '2', pnrCode: 'BK-002', contactName: 'Trần Thị B', flightNumber: 'VN-305', origin: 'SGN', destination: 'DAD', status: 'PENDING', totalAmount: 890000, createdAt: '2026-02-24T09:30:00', departureTime: '2026-02-25T10:30:00' },
 ];
 
 type FilterStatus = 'ALL' | IBooking['status'];
@@ -64,10 +80,19 @@ export default function BookingsPage() {
     useEffect(() => {
         let cancelled = false;
 
+        // Ép kiểu res: any để tránh lỗi TS2339 (Sửa lỗi TS2339)
         getBookings({ page: 1, size: 50 })
-            .then((res) => {
+            .then((res: any) => {
                 if (!cancelled) {
-                    setBookings(res.content);
+                    // Logic bóc tách dữ liệu "bọc thép"
+                    let list: IBooking[] = [];
+                    if (Array.isArray(res)) {
+                        list = res;
+                    } else if (res && typeof res === 'object') {
+                        list = res.data?.content || res.result?.content || res.content || res.data || res.result || [];
+                    }
+
+                    setBookings(Array.isArray(list) ? list : []);
                     setLoading(false);
                 }
             })
@@ -82,8 +107,9 @@ export default function BookingsPage() {
         return () => { cancelled = true; };
     }, []);
 
-    const filtered =
-        filter === 'ALL' ? bookings : bookings.filter((b) => b.status === filter);
+    const filtered = (bookings || []).filter((b) =>
+        filter === 'ALL' ? true : b.status === filter
+    );
 
     const FILTER_OPTIONS: { label: string; value: FilterStatus }[] = [
         { label: 'Tất cả', value: 'ALL' },
@@ -94,13 +120,11 @@ export default function BookingsPage() {
 
     return (
         <div className="space-y-5">
-            {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold text-gray-800">🎟️ Quản lý đặt vé</h1>
-                <p className="mt-0.5 text-sm text-gray-500">Danh sách toàn bộ đơn đặt vé trong hệ thống</p>
+                <p className="mt-0.5 text-sm text-gray-500">Danh sách toàn bộ đơn đặt vé (Trang phụ)</p>
             </div>
 
-            {/* API warning */}
             {apiError && (
                 <div className="px-4 py-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm flex items-center gap-2">
                     <span>⚠️</span>
@@ -108,7 +132,6 @@ export default function BookingsPage() {
                 </div>
             )}
 
-            {/* Filter tabs */}
             <div className="flex gap-2 flex-wrap">
                 {FILTER_OPTIONS.map((opt) => (
                     <button
@@ -131,7 +154,6 @@ export default function BookingsPage() {
                 ))}
             </div>
 
-            {/* Table */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
                 <table className="w-full text-sm text-left">
                     <thead className="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 tracking-wide">
@@ -165,8 +187,8 @@ export default function BookingsPage() {
                                         <td className="px-4 py-3 text-gray-600">{fmtDate(b.createdAt)}</td>
                                         <td className="px-4 py-3 text-gray-700 font-medium">{fmtVND(b.totalAmount)}</td>
                                         <td className="px-4 py-3">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[b.status]}`}>
-                                                {STATUS_LABELS[b.status]}
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${STATUS_STYLES[b.status] || 'bg-gray-100 text-gray-600'}`}>
+                                                {STATUS_LABELS[b.status] || b.status}
                                             </span>
                                         </td>
                                     </tr>
@@ -175,7 +197,6 @@ export default function BookingsPage() {
                     </tbody>
                 </table>
 
-                {/* Footer count */}
                 {!loading && (
                     <div className="px-4 py-3 border-t border-gray-100 text-xs text-gray-400">
                         Hiển thị {filtered.length} / {bookings.length} đơn đặt vé

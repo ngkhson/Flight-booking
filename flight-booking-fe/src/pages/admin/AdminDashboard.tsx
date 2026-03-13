@@ -14,8 +14,14 @@ import StatsCard from '../../components/admin/dashboard/StatsCard';
 
 import { useEffect, useState } from 'react';
 import { getDashboardStats } from '../../features/admin/services/adminApi';
-import type { IDashboardStats } from '../../features/admin/services/adminApi';
 
+// Tự định nghĩa Interface tại đây thay vì import từ adminApi
+export interface IDashboardStats {
+    totalFlights: number;
+    activeFlights: number;
+    pendingBookings: number;
+    totalRevenue: number;
+}
 const TICKET_SALES = [
     { name: 'T1', economy: 120, business: 45 },
     { name: 'T2', economy: 98, business: 52 },
@@ -61,7 +67,10 @@ const DESTINATIONS = [
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
-const fmtNumber = (n: number) => n.toLocaleString('vi-VN');
+// Sửa hàm fmtNumber để nếu giá trị là undefined/null thì tự động gán bằng 0
+const fmtNumber = (n?: number) => {
+    return (n || 0).toLocaleString('vi-VN');
+};
 const fmtRevenue = (vnd: number): string => {
     if (vnd >= 1_000_000_000) return `${(vnd / 1_000_000_000).toFixed(1)} tỷ ₫`;
     if (vnd >= 1_000_000) return `${(vnd / 1_000_000).toFixed(0)} tr ₫`;
@@ -125,15 +134,28 @@ export default function AdminDashboard() {
     const [isError, setIsError] = useState(false);
 
     useEffect(() => {
+        // Bật trạng thái loading trước khi gọi API
         setIsLoading(true);
         setIsError(false);
+
         getDashboardStats()
-            .then(data => setStats(data))
+            .then((res: any) => {
+                // Spring Boot thường bọc data trong res.result hoặc res.data
+                const actualData = res?.result || res?.data || res;
+
+                if (actualData) {
+                    setStats(actualData);
+                }
+            })
             .catch(err => {
-                console.error("Failed to fetch dashboard stats", err);
+                console.error(err);
+                // Nếu lỗi thì bật cờ Error lên
                 setIsError(true);
             })
-            .finally(() => setIsLoading(false));
+            .finally(() => {
+                // Dù thành công hay thất bại cũng phải tắt loading
+                setIsLoading(false);
+            });
     }, []);
 
     return (
