@@ -25,7 +25,7 @@ export const BookingPage = () => {
 
   // 👇 THÊM 3 DÒNG NÀY ĐỂ TÍNH THUẾ PHÍ
   const ticketTotal = selectedFlight ? (selectedFlight.finalPrice * searchConfigs.adults) + (selectedFlight.finalPrice * searchConfigs.children) + (selectedFlight.finalPrice * 0.1 * searchConfigs.infants) : 0;
-  const addonsTotal = addons.reduce((sum, a) => sum + a.service.price, 0);
+  // const addonsTotal = addons.reduce((sum, a) => sum + a.service.price, 0);
   const taxAndFee = ticketTotal * 0.1; // Thuế 10% của (Vé + Dịch vụ)
 
   // THÊM ĐÚNG 1 DÒNG NÀY VÀO:

@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { type RootState } from '@/store/store';
-import { Briefcase, Utensils, CheckCircle2, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Briefcase, Utensils, Loader2 } from 'lucide-react'; import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import axiosClient from '@/api/axiosClient';
 import { saveAddons, setBookingResult, nextStep } from '@/store/bookingSlice';
@@ -17,11 +16,11 @@ interface AncillaryService {
 
 export const ServiceSelection = () => {
   const dispatch = useDispatch();
-  const { 
-    passengers, 
-    searchConfigs, 
-    selectedFlight, 
-    contactInfo 
+  const {
+    passengers,
+    searchConfigs,
+    selectedFlight,
+    contactInfo
   } = useSelector((state: RootState) => state.booking);
 
   const [services, setServices] = useState<{ baggages: AncillaryService[], meals: AncillaryService[] }>({
@@ -105,12 +104,12 @@ export const ServiceSelection = () => {
         contactEmail: contactInfo?.contactEmail || "email@example.com",
         contactPhone: contactInfo?.contactPhone || "0999999999",
         currency: "VND",
-        promotionCode: "", 
+        promotionCode: "",
         flights: [
           {
             // Sửa lỗi ở đây: Đảm bảo lấy ID từ selectedFlight (nếu null thì dùng string rỗng để tránh văng app)
-            flightId: selectedFlight?.flightId || "", 
-            flightClassId: selectedFlight?.classId || "" 
+            flightId: selectedFlight?.flightId || "",
+            flightClassId: selectedFlight?.classId || ""
           }
         ],
         passengers: passengers.map((p: any) => ({
@@ -120,12 +119,12 @@ export const ServiceSelection = () => {
           gender: p.gender === "Nam" ? "MALE" : "FEMALE",
           type: "ADULT" // Tạm fix cứng, bạn có thể map từ logic độ tuổi nếu cần
         })),
-        
+
         // 3. SỬA CHỮ `addons.map` THÀNH `finalAddons.map`
         bookingAncillaries: finalAddons.map((a: any) => ({
           catalogId: a.service.id,
           passengerIndex: a.passengerIndex,
-          segmentNo: 1 
+          segmentNo: 1
         }))
       };
 
@@ -140,7 +139,7 @@ export const ServiceSelection = () => {
           pnrCode: response.result.pnrCode,
           totalAmount: response.result.totalAmount
         }));
-        
+
         // Chuyển sang Step 3
         dispatch(nextStep());
       }
