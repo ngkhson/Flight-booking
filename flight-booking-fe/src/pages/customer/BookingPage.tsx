@@ -1,8 +1,8 @@
 import { useSelector, useDispatch } from 'react-redux';
 import { type RootState } from '@/store/store';
-import { ChevronLeft, Plane, User, CreditCard, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, Plane, User, CreditCard, ShieldCheck, ArrowDownUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { prevStep } from '@/store/bookingSlice';
 import { PassengerForm } from "@/features/customer/booking/PassengerForm";
 import { ServiceSelection } from "@/features/customer/booking/ServiceSelection";
@@ -11,10 +11,14 @@ import { PaymentStep } from '@/features/customer/booking/PaymentStep';
 export const BookingPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const location = useLocation();
 
-  // Lấy dữ liệu tập trung từ Redux
+  // 1. Nhận thông tin Khứ Hồi từ SearchPage truyền sang
+  const { outboundFlight, returnFlight, isRoundTrip } = location.state || {};
+
+  // 2. Lấy dữ liệu tập trung từ Redux
   const {
-    selectedFlight,
+    selectedFlight, // Nếu chọn 1 chiều thì nó nằm ở đây
     currentStep,
     totalAmount,
     searchConfigs,
@@ -23,19 +27,34 @@ export const BookingPage = () => {
 
   const totalPax = searchConfigs.adults + searchConfigs.children + searchConfigs.infants;
 
-  // 👇 THÊM 3 DÒNG NÀY ĐỂ TÍNH THUẾ PHÍ
-  const ticketTotal = selectedFlight ? (selectedFlight.finalPrice * searchConfigs.adults) + (selectedFlight.finalPrice * searchConfigs.children) + (selectedFlight.finalPrice * 0.1 * searchConfigs.infants) : 0;
-  const addonsTotal = addons.reduce((sum, a) => sum + a.service.price, 0);
-  const taxAndFee = ticketTotal * 0.1; // Thuế 10% của (Vé + Dịch vụ)
+  // 3. XÁC ĐỊNH VÉ ĐANG THANH TOÁN
+  // Ưu tiên lấy từ location.state (vì nó chứa đủ cả 2 chiều), nếu không có thì fallback về Redux
+  const primaryFlight = outboundFlight || selectedFlight;
 
-  // THÊM ĐÚNG 1 DÒNG NÀY VÀO:
-  console.log("👉 BƯỚC HIỆN TẠI ĐANG LÀ SỐ:", currentStep);
+  // 4. TÍNH TIỀN (BAO GỒM CẢ KHỨ HỒI NẾU CÓ)
+  const calcFlightPrice = (flight: any) => {
+    if (!flight) return 0;
+    // Chú ý: Dữ liệu từ FlightCard đẩy vào có thể nằm ở `finalPrice` hoặc `price` hoặc `selectedClassInfo.basePrice`
+    const basePrice = flight.selectedClassInfo?.basePrice || flight.finalPrice || flight.price || 0;
+    return (basePrice * searchConfigs.adults) + (basePrice * searchConfigs.children) + (basePrice * 0.1 * searchConfigs.infants);
+  };
 
-  if (!selectedFlight) {
+  const ticketTotal = calcFlightPrice(primaryFlight) + calcFlightPrice(returnFlight);
+  
+  // Lưu ý: Nếu là khứ hồi, addons (hành lý) có thể bị nhân đôi tiền nếu mua cho cả 2 chiều
+  // Tạm thời tính gộp theo addons hiện tại trong Redux
+  const addonsTotal = addons.reduce((sum, a) => sum + a.service.price, 0); 
+  
+  const taxAndFee = ticketTotal * 0.1; // Thuế 10% của tổng vé
+  
+  // Tính tổng tiền thật sự (Nếu bạn không dùng state.totalAmount của Redux để gánh Khứ hồi thì dùng biến này)
+  const grandTotal = ticketTotal + addonsTotal + taxAndFee;
+
+  if (!primaryFlight) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
         <p className="text-slate-500 mb-4">Bạn chưa chọn chuyến bay nào.</p>
-        <Button onClick={() => navigate('/search')}>Quay lại tìm kiếm</Button>
+        <Button onClick={() => navigate('/')}>Quay lại tìm kiếm</Button>
       </div>
     );
   }
@@ -62,7 +81,7 @@ export const BookingPage = () => {
 
           <div className="hidden lg:block text-right">
             <span className="text-[10px] text-slate-400 uppercase font-bold block">Tổng thanh toán</span>
-            <span className="text-xl font-black text-orange-500">{totalAmount.toLocaleString('vi-VN')} đ</span>
+            <span className="text-xl font-black text-orange-500">{grandTotal.toLocaleString('vi-VN')} đ</span>
           </div>
         </div>
       </div>
@@ -74,7 +93,7 @@ export const BookingPage = () => {
             <div className="space-y-6">
               <section className="bg-white p-6 rounded-xl border shadow-sm">
                 <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                  <User className="text-blue-600" /> Thông tin đặt chỗ
+                  <User className="text-blue-600" /> Thông tin hành khách
                 </h2>
                 <PassengerForm key={totalPax} />
               </section>
@@ -88,7 +107,13 @@ export const BookingPage = () => {
           )}
 
           {currentStep === 3 && (
-            <PaymentStep />
+            // Truyền thông tin 2 vé và tổng tiền xuống PaymentStep để nó gọi API
+            <PaymentStep 
+              outboundFlight={primaryFlight} 
+              returnFlight={returnFlight} 
+              isRoundTrip={isRoundTrip}
+              finalAmount={grandTotal}
+            />
           )}
         </main>
 
@@ -96,62 +121,66 @@ export const BookingPage = () => {
         <aside className="w-full lg:w-1/3">
           <div className="bg-white rounded-xl border shadow-sm sticky top-24 overflow-hidden">
             <div className="bg-slate-800 p-4 text-white">
-              <h3 className="font-bold flex items-center gap-2">
-                <Plane size={18} className="text-blue-400" /> Chi tiết chuyến bay
+              <h3 className="font-bold flex items-center justify-between">
+                <span className="flex items-center gap-2"><Plane size={18} className="text-blue-400" /> Chi tiết chuyến bay</span>
+                {isRoundTrip && <span className="bg-orange-500 text-[10px] px-2 py-0.5 rounded font-bold uppercase">Khứ hồi</span>}
               </h3>
             </div>
 
             <div className="p-5 space-y-4">
-              <div className="flex justify-between items-start pb-4 border-b">
+              
+              {/* VÉ LƯỢT ĐI */}
+              <div className="flex justify-between items-start pb-4 border-b border-dashed">
                 <div>
-                  <p className="font-black text-lg text-slate-800 uppercase">{selectedFlight.flightCode}</p>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold flex items-center gap-1 mb-1">
+                    <Plane className="w-3 h-3" /> CHUYẾN ĐI
+                  </span>
+                  <p className="font-black text-lg text-slate-800 uppercase">{primaryFlight.flightCode || primaryFlight.flightNumber}</p>
                   <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded font-bold uppercase">
-                    {selectedFlight.selectedClassName.replace('_', ' ')}
+                    {(primaryFlight.selectedClassName || primaryFlight.selectedClassInfo?.className || 'ECONOMY').replace('_', ' ')}
                   </span>
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-slate-400 uppercase font-bold">Ngày khởi hành</p>
-                  {/* 👇 SỬA LẠI THÀNH BIẾN ĐỘNG 👇 */}
                   <p className="font-bold text-slate-700">
-                    {/* Ví dụ format ngày nếu bạn có searchConfigs.date */}
-                    {searchConfigs.date
-                      ? new Date(searchConfigs.date).toLocaleDateString('vi-VN')
-                      : "Đang cập nhật"}
+                    {searchConfigs.date ? new Date(searchConfigs.date).toLocaleDateString('vi-VN') : "---"}
                   </p>
                 </div>
               </div>
 
+              {/* VÉ LƯỢT VỀ (NẾU CÓ) */}
+              {isRoundTrip && returnFlight && (
+                <div className="flex justify-between items-start pb-4 border-b border-dashed">
+                  <div>
+                    <span className="text-[10px] text-orange-500 uppercase font-bold flex items-center gap-1 mb-1">
+                      <ArrowDownUp className="w-3 h-3" /> CHUYẾN VỀ
+                    </span>
+                    <p className="font-black text-lg text-slate-800 uppercase">{returnFlight.flightCode || returnFlight.flightNumber}</p>
+                    <span className="text-[10px] bg-orange-500 text-white px-2 py-0.5 rounded font-bold uppercase">
+                      {(returnFlight.selectedClassName || returnFlight.selectedClassInfo?.className || 'ECONOMY').replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400 uppercase font-bold">Ngày về</p>
+                    <p className="font-bold text-slate-700">
+                      {location.state?.returnDate ? new Date(location.state.returnDate).toLocaleDateString('vi-VN') : "---"}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* TÓM TẮT GIÁ THEO ĐOÀN KHÁCH */}
-              <div className="space-y-3">
+              <div className="space-y-3 pt-2">
                 <p className="text-xs font-bold text-slate-400 uppercase">Chi tiết giá vé</p>
 
-                {searchConfigs.adults > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">Người lớn (x{searchConfigs.adults})</span>
-                    <span className="font-semibold">{(selectedFlight.finalPrice * searchConfigs.adults).toLocaleString('vi-VN')} đ</span>
-                  </div>
-                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">Tiền vé (x{totalPax}) {isRoundTrip && " - Khứ hồi"}</span>
+                  <span className="font-semibold">{ticketTotal.toLocaleString('vi-VN')} đ</span>
+                </div>
 
-                {searchConfigs.children > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">Trẻ em (x{searchConfigs.children})</span>
-                    <span className="font-semibold">{(selectedFlight.finalPrice * searchConfigs.children).toLocaleString('vi-VN')} đ</span>
-                  </div>
-                )}
-
-                {searchConfigs.infants > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">Em bé (x{searchConfigs.infants})</span>
-                    <span className="font-semibold">{(selectedFlight.finalPrice * 0.1 * searchConfigs.infants).toLocaleString('vi-VN')} đ</span>
-                  </div>
-                )}
-
-                {/* BookingPage.tsx */}
                 {addons.length > 0 && (
-                  <div className="space-y-2 border-t pt-2">
+                  <div className="space-y-2 border-t pt-2 mt-2">
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Dịch vụ bổ sung</p>
-
-                    {/* Lọc lấy Baggage */}
                     {addons.some(a => a.type === 'BAGGAGE') && (
                       <div className="flex justify-between text-sm text-slate-600">
                         <span>Hành lý ký gửi</span>
@@ -160,8 +189,6 @@ export const BookingPage = () => {
                         </span>
                       </div>
                     )}
-
-                    {/* Lọc lấy Meal */}
                     {addons.some(a => a.type === 'MEAL') && (
                       <div className="flex justify-between text-sm text-slate-600">
                         <span>Suất ăn trên mây</span>
@@ -186,7 +213,7 @@ export const BookingPage = () => {
                   <span className="font-bold text-slate-800 uppercase">Tổng cộng</span>
                   <div className="text-right">
                     <p className="font-black text-2xl text-orange-500">
-                      {totalAmount.toLocaleString('vi-VN')} đ
+                      {grandTotal.toLocaleString('vi-VN')} đ
                     </p>
                     <p className="text-[10px] text-slate-400 italic">Giá đã bao gồm VAT</p>
                   </div>

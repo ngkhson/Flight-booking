@@ -17,9 +17,10 @@ import { BookingPage } from './pages/customer/BookingPage';
 import { MyBookingsPage } from './pages/customer/MyBookingsPage';
 import { ProfilePage } from "@/features/customer/profile/ProfilePage";
 import { PaymentResultPage } from './pages/customer/PaymentResultPage';
+import { VerifyPaymentPage } from './pages/customer/VerifyPaymentPage';
 
 // Auth Pages
-import LoginPage from './pages/auth/LoginPage'; // Admin Login
+// import LoginPage from './pages/auth/LoginPage'; // Admin Login
 import { LoginClient } from './pages/auth/LoginClient'; // Customer Login
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
@@ -52,6 +53,7 @@ function App() {
           <Route path="payment-success" element={<PaymentResultPage />} />
           <Route path="payment-failed" element={<PaymentResultPage />} />
           <Route path="payment-error" element={<PaymentResultPage />} />
+          <Route path="verify-payment" element={<VerifyPaymentPage />} />
         </Route>
 
 
@@ -59,8 +61,8 @@ function App() {
             2. PHÂN HỆ ADMIN (AUTH & PROTECTED)
             ========================================== */}
         {/* Đổi đường dẫn Login của Admin thành /admin/login để không trùng với Khách */}
-        <Route path="/admin/login" element={<LoginPage />} />
-        <Route path="/403" element={<ForbiddenPage />} />
+        {/* <Route path="/admin/login" element={<LoginPage />} /> */}
+        {/* <Route path="/403" element={<ForbiddenPage />} /> */}
 
         <Route
           path="/admin"

@@ -68,25 +68,14 @@ axiosClient.interceptors.response.use(
     
     // Kiểm tra nếu lỗi 401 và KHÔNG PHẢI đang ở trang login
     if (response && response.status === 401) {
-      // Nếu API gọi đến là api/auth/login thì KHÔNG chuyển hướng
-      // (Bạn kiểm tra URL của request lỗi)
       const isLoginRequest = response.config.url.includes('/auth/login');
 
       if (!isLoginRequest) {
-        console.error("Token hết hạn hoặc chưa đăng nhập!");
         localStorage.removeItem('accessToken');
         
-        // Chỉ chuyển hướng nếu không phải đang ở trang login để tránh lặp vô tận/reload
+        // Nếu không phải đang ở trang login thì đá hết về /login
         if (!window.location.pathname.includes('/login')) {
-          console.error("Token hết hạn hoặc chưa đăng nhập!");
-          localStorage.removeItem('accessToken');
-          
-          // Phân luồng: Admin bị đá về /admin/login, Khách bị đá về /login
-          if (window.location.pathname.startsWith('/admin')) {
-              window.location.href = '/admin/login';
-          } else {
-              window.location.href = '/login';
-          }
+            window.location.href = '/login';
         }
       }
     }
