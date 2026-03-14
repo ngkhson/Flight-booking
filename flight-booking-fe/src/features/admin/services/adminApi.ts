@@ -118,3 +118,37 @@ export const deleteUser = async (userId: string) => {
 export const getRoles = async () => {
     return await axiosClient.get('/roles');
 };
+// =====================================================================
+// API CHO ADMIN DASHBOARD (Thống kê & Biểu đồ)
+// =====================================================================
+
+export interface IDashboardSummary {
+    totalRevenue: number;
+    totalBookings: number;
+    totalTicketsIssued: number;
+    totalCancelledBookings: number;
+}
+
+export interface ITopRoute {
+    route: string;
+    ticketCount: number;
+    percentage: number;
+}
+
+export interface IRevenueChart {
+    reportDate: string;
+    bookingCount: number;
+    revenue: number;
+}
+
+export const getDashboardSummary = async (startDate?: string, endDate?: string) => {
+    return await axiosClient.get('/v1/admin/dashboard/summary', { params: { startDate, endDate } });
+};
+
+export const getTopRoutes = async (startDate?: string, endDate?: string) => {
+    return await axiosClient.get('/v1/admin/dashboard/charts/top-routes', { params: { startDate, endDate } });
+};
+
+export const getRevenueChart = async (startDate?: string, endDate?: string) => {
+    return await axiosClient.get('/v1/admin/dashboard/charts/revenue', { params: { startDate, endDate } });
+};
