@@ -3,7 +3,7 @@ import {
     ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip
 } from 'recharts';
 import {
-    Search, Bell, Plane, PlaneTakeoff, PlaneLanding,
+    Bell, Plane, PlaneTakeoff, PlaneLanding,
     Ban, DollarSign, Calendar, X
 } from 'lucide-react';
 import StatsCard from '../../components/admin/dashboard/StatsCard';
@@ -201,8 +201,8 @@ export default function AdminDashboard() {
                 {/* 🚀 Giao diện Nút Tùy chỉnh ngày MỚI (Có chứa nút X) */}
                 <div className="relative">
                     <div className={`flex items-center rounded-xl border transition-all ${dateFilter === 'custom' || showDatePicker
-                            ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
-                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                        ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
                         }`}
                     >
                         <button
