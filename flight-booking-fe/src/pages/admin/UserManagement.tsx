@@ -18,9 +18,8 @@ export interface IUser {
     phone?: string;
     roles: IRole[];
 }
-// ─── Constants ────────────────────────────────────────────────────────────────
 
-// The BE returns roles as IRole[] — we use the role name string for display
+// ─── Constants ────────────────────────────────────────────────────────────────
 type RoleName = string;
 
 const ALL_ROLES: RoleName[] = ['ADMIN', 'ACCOUNTANT', 'AGENT', 'CUSTOMER'];
@@ -40,13 +39,10 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Get the primary role name from the roles array, fallback to 'CUSTOMER' */
 const getPrimaryRole = (roles: IRole[]): string =>
     roles[0]?.name ?? 'CUSTOMER';
 
 // ─── Skeleton row ─────────────────────────────────────────────────────────────
-
 function SkeletonRow() {
     return (
         <tr className="animate-pulse">
@@ -60,7 +56,6 @@ function SkeletonRow() {
 }
 
 // ─── Role Dropdown ────────────────────────────────────────────────────────────
-
 interface RoleDropdownProps {
     userId: string;
     current: string;
@@ -109,7 +104,6 @@ function RoleDropdown({ userId, current, onChangeRole }: RoleDropdownProps) {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-
 export default function UserManagement() {
     const [users, setUsers] = useState<IUser[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -117,8 +111,16 @@ export default function UserManagement() {
     const [search, setSearch] = useState('');
 
     const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'info' } | null>(null);
-
     const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // 🚀 THÊM STATE PHÂN TRANG (Tối đa 8 user/trang)
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 8;
+
+    // Reset về trang 1 nếu người dùng gõ tìm kiếm
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search]);
 
     const showToast = useCallback((msg: string, type: 'success' | 'error' | 'info' = 'success') => {
         setToast({ msg, type });
@@ -126,7 +128,6 @@ export default function UserManagement() {
         toastTimerRef.current = setTimeout(() => setToast(null), 3000);
     }, []);
 
-    // Cleanup toast timer on unmount
     useEffect(() => {
         return () => {
             if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -138,10 +139,10 @@ export default function UserManagement() {
         setIsLoading(true);
         setApiError(null);
         try {
-            const res: any = await getUsers();
+            // Lấy nhiều dữ liệu để FE tự phân trang
+            const res: any = await getUsers({ page: 0, size: 500 });
             let userArray: IUser[] = [];
 
-            // Bóc tách mảng an toàn
             if (Array.isArray(res)) {
                 userArray = res;
             } else if (res && typeof res === 'object') {
@@ -152,7 +153,6 @@ export default function UserManagement() {
                 else if (Array.isArray(res.result)) userArray = res.result;
             }
 
-            // Chốt chặn
             if (!Array.isArray(userArray)) {
                 userArray = [];
             }
@@ -161,7 +161,7 @@ export default function UserManagement() {
         } catch (err: unknown) {
             console.error('[UserManagement] getUsers failed:', err);
             setApiError('Không thể tải danh sách người dùng.');
-            setUsers([]); // Đảm bảo users luôn là mảng khi có lỗi
+            setUsers([]);
         } finally {
             setIsLoading(false);
         }
@@ -169,9 +169,8 @@ export default function UserManagement() {
 
     useEffect(() => { loadUsers(); }, [loadUsers]);
 
-    // ── Role change (local update + API) ──────────────────────────────────────
+    // ── Role change ───────────────────────────────────────────────────────────
     const handleChangeRole = useCallback(async (id: string, roleName: string) => {
-        // Optimistic local update
         setUsers((prev) => prev.map((u) =>
             u.id === id ? { ...u, roles: [{ id: 0, name: roleName, description: '' }] } : u,
         ));
@@ -179,14 +178,12 @@ export default function UserManagement() {
             await updateUser(id, { roles: [roleName] });
             showToast(`Đã đổi role → ${ROLE_LABELS[roleName] ?? roleName}.`);
         } catch {
-            // Rollback on error — reload from server
             await loadUsers();
-            showToast('Không thể đổi role.', 'error');
+            showToast('Không thể đổi role. Kiểm tra lại kết nối.', 'error');
         }
     }, [showToast, loadUsers]);
 
-    // ── Derived ───────────────────────────────────────────────────────────────
-    // Lọc an toàn, đề phòng user thiếu thuộc tính
+    // ── Lọc Dữ Liệu ───────────────────────────────────────────────────────────
     const visible = (users || []).filter((u) => {
         if (!u) return false;
         const q = search.toLowerCase();
@@ -195,28 +192,33 @@ export default function UserManagement() {
             !q ||
             (u.fullName && u.fullName.toLowerCase().includes(q)) ||
             (u.email && u.email.toLowerCase().includes(q)) ||
+            (u.phone && u.phone.includes(q)) ||
             (primaryRole && primaryRole.toLowerCase().includes(q))
         );
     });
 
-    // Toast colour helper
+    // 🚀 TÍNH TOÁN CẮT MẢNG CHO TRANG HIỆN TẠI
+    const totalPages = Math.ceil(visible.length / itemsPerPage) || 1;
+    const paginatedUsers = visible.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
     const toastCls = (type: string) =>
         type === 'success' ? 'bg-green-50 border-green-200 text-green-700'
             : type === 'error' ? 'bg-red-50 border-red-200 text-red-700'
                 : 'bg-blue-50 border-blue-200 text-blue-700';
 
     return (
-        <div className="space-y-5">
-            {/* Toast */}
+        <div className="space-y-5 pb-10">
             {toast && (
-                <div className={`fixed top-5 right-5 z-[100] flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium border ${toastCls(toast.type)}`}>
+                <div className={`fixed top-5 right-5 z-[100] flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium border animate-in slide-in-from-right-2 ${toastCls(toast.type)}`}>
                     <span>{toast.type === 'success' ? '✅' : toast.type === 'error' ? '❌' : 'ℹ️'}</span>
                     <span>{toast.msg}</span>
                     <button onClick={() => setToast(null)} className="ml-2 hover:opacity-70" aria-label="Đóng">✕</button>
                 </div>
             )}
 
-            {/* Page header */}
             <div className="flex items-start justify-between flex-wrap gap-3">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">👥 Quản lý người dùng</h1>
@@ -224,99 +226,135 @@ export default function UserManagement() {
                 </div>
                 {!isLoading && (
                     <div className="flex gap-2 text-xs font-medium">
-                        <span className="px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700">
-                            👥 {users.length} người dùng
+                        <span className="px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 shadow-sm">
+                            👥 Tổng cộng {users.length} tài khoản
                         </span>
                     </div>
                 )}
             </div>
 
-            {/* Loading indicator */}
             {isLoading && (
                 <div className="flex items-center gap-2 text-sm text-indigo-600 font-medium">
                     <span className="inline-block w-4 h-4 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin" />
-                    Đang tải dữ liệu...
+                    Đang tải dữ liệu người dùng...
                 </div>
             )}
 
-            {/* API error */}
             {apiError && (
-                <div className="px-4 py-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2"><span>⚠️</span><span>{apiError}</span></span>
-                    <button onClick={loadUsers} className="text-xs underline underline-offset-2 hover:text-yellow-900 transition">Thử lại</button>
+                <div className="px-4 py-3 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm flex items-center justify-between gap-2 shadow-sm">
+                    <span className="flex items-center gap-2"><span>⚠️</span><span className="font-medium">{apiError}</span></span>
+                    <button onClick={loadUsers} className="px-3 py-1 bg-white border border-yellow-300 rounded-lg text-xs font-bold hover:bg-yellow-100 transition">Thử lại</button>
                 </div>
             )}
 
-            {/* Search */}
             <div className="relative max-w-sm">
                 <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">🔍</span>
                 <input
                     id="search-users"
                     type="text"
-                    placeholder="Tìm theo tên, email, role..."
+                    placeholder="Tìm theo tên, email, sđt, role..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                    className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
                 />
             </div>
 
-            {/* Table */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 tracking-wide">
-                        <tr>
-                            <th className="px-4 py-3">ID</th>
-                            <th className="px-4 py-3">Họ tên</th>
-                            <th className="px-4 py-3">Email</th>
-                            <th className="px-4 py-3">Điện thoại</th>
-                            <th className="px-4 py-3">Role</th>
-                            <th className="px-4 py-3 text-right">Hành động</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                        {isLoading
-                            ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
-                            : visible.length === 0
-                                ? (
-                                    <tr>
-                                        <td colSpan={6} className="px-4 py-12 text-center text-gray-400 text-sm">
-                                            {users.length === 0 ? 'Không có dữ liệu người dùng.' : 'Không tìm thấy người dùng nào.'}
-                                        </td>
-                                    </tr>
-                                )
-                                : visible.map((u) => {
-                                    const primaryRole = getPrimaryRole(u.roles);
-                                    return (
-                                        <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-4 py-3 font-mono text-xs text-gray-400">{u.id}</td>
-                                            <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{u.fullName}</td>
-                                            <td className="px-4 py-3 text-gray-600">{u.email}</td>
-                                            <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{u.phone ?? '—'}</td>
-                                            <td className="px-4 py-3">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${ROLE_BADGE[primaryRole] ?? 'bg-gray-100 text-gray-600'}`}>
-                                                    {ROLE_LABELS[primaryRole] ?? primaryRole}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <RoleDropdown
-                                                        userId={u.id}
-                                                        current={primaryRole}
-                                                        onChangeRole={handleChangeRole}
-                                                    />
-                                                </div>
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-gray-50 border-b border-gray-100 text-xs uppercase text-gray-500 tracking-wide font-bold">
+                            <tr>
+                                <th className="px-5 py-4">ID</th>
+                                <th className="px-5 py-4">Họ tên</th>
+                                <th className="px-5 py-4">Email</th>
+                                <th className="px-5 py-4">Điện thoại</th>
+                                <th className="px-5 py-4">Phân quyền (Role)</th>
+                                <th className="px-5 py-4 text-right">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {isLoading
+                                ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+                                : paginatedUsers.length === 0
+                                    ? (
+                                        <tr>
+                                            <td colSpan={6} className="px-5 py-12 text-center text-gray-400 text-sm">
+                                                {users.length === 0 ? 'Chưa có dữ liệu người dùng trong hệ thống.' : 'Không tìm thấy người dùng nào khớp với tìm kiếm.'}
                                             </td>
                                         </tr>
-                                    );
-                                })
-                        }
-                    </tbody>
-                </table>
+                                    )
+                                    : paginatedUsers.map((u) => {
+                                        const primaryRole = getPrimaryRole(u.roles);
+                                        return (
+                                            <tr key={u.id} className="hover:bg-indigo-50/40 transition-colors group">
+                                                <td className="px-5 py-4 font-mono text-xs text-gray-400">{u.id.substring(0, 8)}...</td>
+                                                <td className="px-5 py-4 font-bold text-gray-800 whitespace-nowrap">{u.fullName}</td>
+                                                <td className="px-5 py-4 text-gray-600">{u.email}</td>
+                                                <td className="px-5 py-4 text-gray-500 whitespace-nowrap">{u.phone ?? '—'}</td>
+                                                <td className="px-5 py-4">
+                                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${ROLE_BADGE[primaryRole] ?? 'bg-gray-100 text-gray-600'}`}>
+                                                        {ROLE_LABELS[primaryRole] ?? primaryRole}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4 text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <RoleDropdown
+                                                            userId={u.id}
+                                                            current={primaryRole}
+                                                            onChangeRole={handleChangeRole}
+                                                        />
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                            }
+                        </tbody>
+                    </table>
+                </div>
 
-                {!isLoading && (
-                    <div className="px-4 py-3 border-t border-gray-100 text-xs text-gray-400 flex items-center justify-between">
-                        <span>Hiển thị {visible.length} / {users.length} người dùng</span>
-                        <button onClick={loadUsers} className="text-indigo-500 hover:text-indigo-700 transition text-xs">🔄 Làm mới</button>
+                {/* 🚀 BỘ PHÂN TRANG (PAGINATION) */}
+                {!isLoading && visible.length > 0 && (
+                    <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <span className="text-xs text-gray-500">
+                            Hiển thị <span className="font-bold text-gray-700">{(currentPage - 1) * itemsPerPage + 1}</span> đến <span className="font-bold text-gray-700">{Math.min(currentPage * itemsPerPage, visible.length)}</span> trong số <span className="font-bold text-gray-700">{visible.length}</span> tài khoản
+                        </span>
+
+                        <div className="flex items-center gap-4">
+                            {/* Nút Làm mới giữ nguyên */}
+                            <button onClick={loadUsers} className="text-indigo-600 hover:text-indigo-800 transition text-xs font-bold flex items-center gap-1">
+                                🔄 Làm mới
+                            </button>
+
+                            {/* Các nút bấm chuyển trang */}
+                            <div className="flex gap-1">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-1.5 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm"
+                                >
+                                    Trước
+                                </button>
+
+                                {Array.from({ length: totalPages }).map((_, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => setCurrentPage(i + 1)}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition shadow-sm ${currentPage === i + 1 ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                                    >
+                                        {i + 1}
+                                    </button>
+                                ))}
+
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3 py-1.5 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm"
+                                >
+                                    Sau
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

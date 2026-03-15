@@ -97,7 +97,9 @@ function FlightModal({ open, editTarget, onClose, onSaved }: any) {
                 const finalPayload = {
                     flightNumber: form.flightNumber.toUpperCase(), airlineCode: form.airlineCode.toUpperCase(), aircraftCode: form.aircraftCode.toUpperCase(),
                     originCode: form.origin.toUpperCase(), destinationCode: form.destination.toUpperCase(),
-                    departureTime: `${form.departureTime}:00`, arrivalTime: `${form.arrivalTime}:00`
+                    departureTime: `${form.departureTime}:00`, arrivalTime: `${form.arrivalTime}:00`,
+                    // Truyền thêm số ghế và giá vé nếu BE hỗ trợ
+                    availableSeats: Number(form.availableSeats), price: Number(form.price)
                 };
                 await createFlight(finalPayload as any);
             }
@@ -124,6 +126,31 @@ function FlightModal({ open, editTarget, onClose, onSaved }: any) {
                         <Field label="Sân bay đến (IATA)"><input required type="text" maxLength={3} value={form.destination} onChange={e => patch('destination', e.target.value)} className={inputCls()} disabled={!!editTarget} /></Field>
                         <Field label="Giờ khởi hành"><input required type="datetime-local" value={form.departureTime} onChange={e => patch('departureTime', e.target.value)} className={inputCls()} /></Field>
                         <Field label="Giờ hạ cánh"><input required type="datetime-local" value={form.arrivalTime} onChange={e => patch('arrivalTime', e.target.value)} className={inputCls()} /></Field>
+
+                        {/* 🚀 THÊM INPUT SỐ GHÊ VÀ GIÁ VÉ Ở ĐÂY
+                        <Field label="Tổng số ghế (Dự kiến)">
+                            <input
+                                required
+                                type="number"
+                                min="1"
+                                value={form.availableSeats || ''}
+                                onChange={e => patch('availableSeats', e.target.value)}
+                                className={inputCls()}
+                                disabled={!!editTarget} // Chỉ nhập khi thêm mới
+                            />
+                        </Field>
+                        <Field label="Giá vé cơ bản (VND)">
+                            <input
+                                required
+                                type="number"
+                                min="0"
+                                step="1000"
+                                value={form.price || ''}
+                                onChange={e => patch('price', e.target.value)}
+                                className={inputCls()}
+                                disabled={!!editTarget} // Chỉ nhập khi thêm mới
+                            />
+                        </Field> */}
                     </div>
                 </form>
                 <div className="p-6 border-t flex justify-end gap-3">
@@ -160,6 +187,14 @@ export default function FlightManagement() {
     const [deleteTarget, setDeleteTarget] = useState<Flight | null>(null);
     const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
+    // STATE PHÂN TRANG
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 8;
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search]);
+
     useEffect(() => {
         if (!toast) return;
         const id = setTimeout(() => setToast(null), 3500);
@@ -169,43 +204,31 @@ export default function FlightManagement() {
     const fetchFlights = useCallback(async () => {
         setLoading(true);
         try {
-            const res: any = await getFlights({ page: 0, size: 100 });
-            console.log("🔥 JSON GỐC TỪ API:", res);
+            const res: any = await getFlights({ page: 0, size: 500 });
 
-            // 🚀 BỘ HÚT DỮ LIỆU TỰ ĐỘNG (Xuyên qua mọi lớp vỏ bọc JSON)
             const extractArray = (obj: any): any[] => {
                 if (!obj) return [];
                 if (Array.isArray(obj)) return obj;
-
-                // 1. Quét trực tiếp các key phổ biến
                 if (Array.isArray(obj.content)) return obj.content;
                 if (Array.isArray(obj.data)) return obj.data;
                 if (Array.isArray(obj.result)) return obj.result;
                 if (Array.isArray(obj.items)) return obj.items;
-
-                // 2. Quét sâu vào bên trong obj.result (Chuẩn ApiResponse)
                 if (obj.result && typeof obj.result === 'object') {
                     if (Array.isArray(obj.result)) return obj.result;
                     if (Array.isArray(obj.result.content)) return obj.result.content;
                     if (Array.isArray(obj.result.data)) return obj.result.data;
                 }
-
-                // 3. Quét sâu vào bên trong obj.data (Chuẩn Axios)
                 if (obj.data && typeof obj.data === 'object') {
                     if (Array.isArray(obj.data)) return obj.data;
                     if (Array.isArray(obj.data.content)) return obj.data.content;
                     if (Array.isArray(obj.data.result)) return obj.data.result;
                 }
-
                 return [];
             };
 
             const rawArray = extractArray(res);
-            console.log("✈️ DỮ LIỆU ĐÃ BÓC TÁCH:", rawArray);
 
-            // 🚀 MAP DỮ LIỆU VÀO GIAO DIỆN
-            const mappedFlights = rawArray.map((f: any) => {
-                // Xử lý an toàn Object AirportResponseDTO
+            const mappedFlights = rawArray.map((f: any, index: number) => {
                 const originStr = typeof f.origin === 'object' && f.origin !== null
                     ? (f.origin.code || f.origin.cityCode || f.origin.name || 'N/A')
                     : (f.origin || 'N/A');
@@ -214,16 +237,14 @@ export default function FlightManagement() {
                     ? (f.destination.code || f.destination.cityCode || f.destination.name || 'N/A')
                     : (f.destination || 'N/A');
 
-                // Xử lý an toàn Object AirlineResponseDTO
                 const airlineStr = typeof f.airline === 'object' && f.airline !== null
                     ? (f.airline.name || f.airline.code)
                     : (f.airlineName || f.airlineCode || 'N/A');
 
-                // Mảng class có thể tên là 'classes' (SearchDTO) hoặc 'flightClasses' (DetailDTO)
                 const classArray = f.classes || f.flightClasses || [];
 
                 return {
-                    id: f.id,
+                    id: f.id || `${f.flightNumber || 'fallback'}-${index}`,
                     flightNumber: f.flightNumber || 'N/A',
                     airlineName: airlineStr,
                     origin: originStr,
@@ -247,7 +268,6 @@ export default function FlightManagement() {
 
     useEffect(() => { fetchFlights(); }, [fetchFlights]);
 
-    // 🚀 SỬA LỖI 3: Bọc thép hàm Filter chống văng undefined
     const filtered = flights.filter(f => {
         if (!search) return true;
         const q = search.toLowerCase();
@@ -256,14 +276,20 @@ export default function FlightManagement() {
             || (f.destination || '').toLowerCase().includes(q);
     });
 
+    const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+    const paginatedFlights = filtered.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
     const handleSaved = () => {
-        fetchFlights(); // Fetch lại db sau khi Thêm/Sửa
+        fetchFlights();
         setToast({ msg: 'Lưu chuyến bay thành công!', type: 'success' });
     };
 
     const handleDelete = async (id: string) => {
         await deleteFlight(id);
-        fetchFlights(); // Fetch lại
+        fetchFlights();
         setToast({ msg: 'Đã hủy chuyến bay.', type: 'success' });
     };
 
@@ -290,48 +316,94 @@ export default function FlightManagement() {
                 <input type="text" placeholder="Tìm theo mã chuyến bay, sân bay đi/đến..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" />
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50 text-xs uppercase text-gray-500 border-b border-gray-100 font-bold">
-                        <tr>
-                            <th className="px-5 py-4">Số hiệu</th>
-                            <th className="px-5 py-4">Hãng</th>
-                            <th className="px-5 py-4">Lộ trình</th>
-                            <th className="px-5 py-4">Giờ bay</th>
-                            <th className="px-5 py-4 text-center">Ghế trống</th>
-                            <th className="px-5 py-4 text-right">Giá vé từ</th>
-                            <th className="px-5 py-4 text-center">Trạng thái</th>
-                            <th className="px-5 py-4 text-right">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                        {loading ? <SkeletonRow /> : filtered.length === 0 ? <tr><td colSpan={8} className="p-12 text-center text-gray-400">Không có dữ liệu chuyến bay.</td></tr> :
-                            filtered.map(f => (
-                                <tr key={f.id} className="hover:bg-indigo-50/40 transition-colors group">
-                                    <td className="px-5 py-4 font-mono font-bold text-indigo-700">{f.flightNumber}</td>
-                                    <td className="px-5 py-4 text-gray-700 font-medium">{f.airlineName}</td>
-                                    <td className="px-5 py-4 font-bold text-gray-800">{f.origin} <span className="text-gray-400 font-normal mx-1">→</span> {f.destination}</td>
-                                    <td className="px-5 py-4 text-xs text-gray-600">
-                                        <div className="font-semibold text-gray-800 mb-0.5">{fmtDateTime(f.departureTime)}</div>
-                                        <div className="text-gray-500">Đến: {fmtDateTime(f.arrivalTime)}</div>
-                                    </td>
-                                    <td className="px-5 py-4 text-center font-bold text-gray-700">{getTotalSeats(f.classes)}</td>
-                                    <td className="px-5 py-4 text-right text-indigo-600 font-bold">{fmtVND(getMinPrice(f.classes))}</td>
-                                    <td className="px-5 py-4 text-center">
-                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${STATUS_STYLES[f.status] || 'bg-gray-100 text-gray-600'}`}>
-                                            {STATUS_LABELS[f.status] || f.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-5 py-4 text-right">
-                                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => { setEditTarget(f); setModalOpen(true); }} className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded-lg transition" title="Sửa">✏️</button>
-                                            <button onClick={() => setDeleteTarget(f)} className="p-2 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-lg transition" title="Hủy chuyến">🗑️</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                    </tbody>
-                </table>
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-gray-50 text-xs uppercase text-gray-500 border-b border-gray-100 font-bold">
+                            <tr>
+                                <th className="px-5 py-4">Số hiệu</th>
+                                <th className="px-5 py-4">Hãng</th>
+                                <th className="px-5 py-4">Lộ trình</th>
+                                <th className="px-5 py-4">Giờ bay</th>
+                                <th className="px-5 py-4 text-center">Ghế trống</th>
+                                <th className="px-5 py-4 text-right">Giá vé từ</th>
+                                <th className="px-5 py-4 text-center">Trạng thái</th>
+                                <th className="px-5 py-4 text-right">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {loading ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />) :
+                                paginatedFlights.length === 0 ? (
+                                    <tr><td colSpan={8} className="p-12 text-center text-gray-400">Không tìm thấy chuyến bay nào.</td></tr>
+                                ) : paginatedFlights.map(f => (
+                                    <tr key={f.id} className="hover:bg-indigo-50/40 transition-colors group">
+                                        <td className="px-5 py-4 font-mono font-bold text-indigo-700">{f.flightNumber}</td>
+                                        <td className="px-5 py-4 text-gray-700 font-medium">{f.airlineName}</td>
+                                        <td className="px-5 py-4 font-bold text-gray-800">{f.origin} <span className="text-gray-400 font-normal mx-1">→</span> {f.destination}</td>
+                                        <td className="px-5 py-4 text-xs text-gray-600">
+                                            <div className="font-semibold text-gray-800 mb-0.5">{fmtDateTime(f.departureTime)}</div>
+                                            <div className="text-gray-500">Đến: {fmtDateTime(f.arrivalTime)}</div>
+                                        </td>
+                                        <td className="px-5 py-4 text-center font-bold text-gray-700">{getTotalSeats(f.classes)}</td>
+                                        <td className="px-5 py-4 text-right text-indigo-600 font-bold">{fmtVND(getMinPrice(f.classes))}</td>
+                                        <td className="px-5 py-4 text-center">
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${STATUS_STYLES[f.status] || 'bg-gray-100 text-gray-600'}`}>
+                                                {STATUS_LABELS[f.status] || f.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-5 py-4 text-right">
+                                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => { setEditTarget(f); setModalOpen(true); }} className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded-lg transition" title="Sửa">✏️</button>
+                                                <button onClick={() => setDeleteTarget(f)} className="p-2 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-lg transition" title="Hủy chuyến">🗑️</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                {!loading && filtered.length > 0 && (
+                    <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <span className="text-xs text-gray-500">
+                            Hiển thị <span className="font-bold text-gray-700">{(currentPage - 1) * itemsPerPage + 1}</span> đến <span className="font-bold text-gray-700">{Math.min(currentPage * itemsPerPage, filtered.length)}</span> trong số <span className="font-bold text-gray-700">{filtered.length}</span> chuyến bay
+                        </span>
+
+                        <div className="flex items-center gap-4">
+                            <button onClick={fetchFlights} className="text-indigo-600 hover:text-indigo-800 transition text-xs font-bold flex items-center gap-1">
+                                🔄 Làm mới
+                            </button>
+
+                            <div className="flex gap-1">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-1.5 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm"
+                                >
+                                    Trước
+                                </button>
+
+                                {Array.from({ length: totalPages }).map((_, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => setCurrentPage(i + 1)}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition shadow-sm ${currentPage === i + 1 ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                                    >
+                                        {i + 1}
+                                    </button>
+                                ))}
+
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3 py-1.5 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm"
+                                >
+                                    Sau
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <FlightModal open={modalOpen} editTarget={editTarget} onClose={() => setModalOpen(false)} onSaved={handleSaved} />
