@@ -25,6 +25,26 @@
 // src/api/bookingApi.ts
 import axiosClient from "./axiosClient";
 
+export interface MyBookingResponse {
+  id: string;
+  pnrCode: string;
+  status: 'PENDING' | 'AWAITING_PAYMENT' | 'PAID' | 'CONFIRMED' | 'CANCELLED' | 'REFUNDED';
+  totalAmount: number;
+  createdAt: string;
+  flightNumber: string;
+  origin: string;
+  destination: string;
+  departureTime: string;
+}
+
+export interface PageResult<T> {
+  currentPage: number;
+  pageSize: number;
+  totalPages: number;
+  totalElements: number;
+  content: T[];
+}
+
 export const bookingApi = {
   // Lấy danh sách vé (Backend yêu cầu Token)
   getAllBookings: () => {
@@ -39,5 +59,9 @@ export const bookingApi = {
   // Hủy vé theo ID
   deleteBooking: (id: string | number) => {
     return axiosClient.delete(`/bookings/${id}`);
+  },
+
+  getMyBookings: (page: number = 1, size: number = 20) => {
+    return axiosClient.get(`/bookings/my-bookings?page=${page}&size=${size}`);
   }
 };

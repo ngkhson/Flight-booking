@@ -111,6 +111,9 @@ const bookingSlice = createSlice({
     nextStep: (state) => {
       state.currentStep += 1;
     },
+    resetStep: (state) => {
+      state.currentStep = 1;
+    },
   },
 });
 
@@ -124,7 +127,8 @@ export const {
   saveContactInfo,
   setSearchConfigs,
   setBookingResult, 
-  nextStep
+  nextStep,
+  resetStep
 } = bookingSlice.actions;
 
 export default bookingSlice.reducer;

@@ -15,8 +15,8 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
 
     // 1. Chưa đăng nhập -> Đá ra trang login Admin (kèm theo link cũ để sau khi login xong quay lại)
     if (!isAuthenticated || !user) {
-        console.log("❌ Bị chặn vì chưa đăng nhập hoặc mất user!");
-        return <Navigate to="/admin/login" state={{ from: location }} replace />;
+        // Đổi từ /admin/login thành /login
+        return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
     // 2. Đã đăng nhập nhưng kiểm tra xem có đúng Quyền (Role) không

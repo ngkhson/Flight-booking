@@ -2,17 +2,17 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, LogIn, Loader2 } from "lucide-react"; // Import thêm icon Loader2 để làm hiệu ứng xoay
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Mail, Lock, LogIn, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useDispatch } from "react-redux"; // THÊM DÒNG NÀY
-import { setCredentials } from "@/store/authSlice"; // THÊM DÒNG NÀY
+import { useDispatch } from "react-redux";
+import { setCredentials } from "@/store/authSlice";
 
-// Import API đã cấu hình (Đảm bảo bạn đã tạo file này ở các bước trước)
 import { authApi } from "@/api/authApi";
+import axiosClient from "@/api/axiosClient"; // 👈 Thêm axiosClient để gọi API lấy Profile
 
-// 1. Định nghĩa luật bắt lỗi (Validation)
+// 1. Định nghĩa luật bắt lỗi
 const loginSchema = z.object({
   email: z.string().email("Vui lòng nhập đúng định dạng email"),
   password: z.string().min(5, "Mật khẩu phải có ít nhất 6 ký tự"),
@@ -22,7 +22,11 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const LoginClient = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch(); // Khởi tạo dispatch
+  const location = useLocation();
+  const dispatch = useDispatch();
+
+  // Lấy link trang trước đó (nếu bị văng ra từ trang cần đăng nhập)
+  const from = location.state?.from?.pathname || "/";
 
   // State quản lý lúc đang chờ API và Lỗi từ Backend
   const [isLoading, setIsLoading] = useState(false);
@@ -38,22 +42,47 @@ export const LoginClient = () => {
     setApiError(null);
 
     try {
+      // 1. GỌI API ĐĂNG NHẬP
       const response: any = await authApi.login(data);
+      const token = response?.result?.token || response?.result; 
 
-      // AxiosClient của bạn đã bóc tách data, nên cấu trúc sẽ là:
-      const token = response?.result?.token;
-      const user = response?.result?.user; // BE thường trả về thông tin user đi kèm token
-
-      if (token) {
+      if (token && typeof token === 'string') {
+        // 2. LƯU TOKEN
         localStorage.setItem('accessToken', token);
 
-        // --- LƯU VÀO REDUX Ở ĐÂY ---
-        if (user) {
-          dispatch(setCredentials(user));
-        }
-        // ---------------------------
+        try {
+          // 3. LẤY THÔNG TIN USER (Vì BE chỉ trả token lúc login)
+          const userRes: any = await axiosClient.get('/users/my-infor');
+          const user = userRes?.result || userRes?.data;
 
-        navigate("/");
+          if (user) {
+            // LƯU VÀO REDUX
+            dispatch(setCredentials(user));
+
+            // 4. PHÂN LUỒNG TỰ ĐỘNG DỰA VÀO QUYỀN (ROLE)
+            const userRoles = user.roles?.map((r: any) => r.name) || [];
+            const isAdminOrStaff = userRoles.some((role: string) => 
+                ['ADMIN', 'ROLE_ADMIN', 'ACCOUNTANT', 'ROLE_ACCOUNTANT'].includes(role)
+            );
+
+            if (isAdminOrStaff) {
+              // Là Admin/Kế toán -> Mời vào cửa sau (Dashboard)
+              navigate("/admin/dashboard", { replace: true });
+            } else {
+              // Là Khách hàng -> Mời ra cửa trước (Trang chủ hoặc trang đang xem dở)
+              navigate(from, { replace: true });
+            }
+
+          } else {
+            setApiError("Không thể lấy thông tin tài khoản!");
+            localStorage.removeItem('accessToken');
+          }
+        } catch (profileErr) {
+          console.error("Lỗi lấy thông tin user:", profileErr);
+          setApiError("Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
+          localStorage.removeItem('accessToken');
+        }
+
       } else {
         setApiError("Không nhận được token từ máy chủ.");
       }
@@ -61,19 +90,13 @@ export const LoginClient = () => {
     } catch (error: any) {
       console.error("Lỗi đăng nhập:", error);
 
-      // 1. Kiểm tra xem BE có trả về message cụ thể không
-      const serverMessage = error.response?.data?.message;
+      const serverMessage = error.response?.data?.message || error.message;
 
-      // 2. Nếu là lỗi 401 (Unauthorized) - Thường là sai pass hoặc user không tồn tại
       if (error.response?.status === 401) {
         setApiError("Email không tồn tại hoặc mật khẩu không chính xác.");
-      }
-      // 3. Nếu là lỗi 403 (Forbidden) - Tài khoản bị khóa chẳng hạn
-      else if (error.response?.status === 403) {
+      } else if (error.response?.status === 403) {
         setApiError("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin.");
-      }
-      // 4. Nếu Server sập hoặc lỗi khác
-      else if (serverMessage) {
+      } else if (serverMessage) {
         setApiError(serverMessage);
       } else {
         setApiError("Đã có lỗi xảy ra. Vui lòng thử lại sau!");
@@ -92,7 +115,7 @@ export const LoginClient = () => {
             <LogIn className="w-8 h-8 text-blue-600" />
           </div>
           <h2 className="text-2xl font-extrabold text-slate-800">Chào mừng trở lại</h2>
-          <p className="text-slate-500 mt-2">Đăng nhập để quản lý vé máy bay của bạn</p>
+          <p className="text-slate-500 mt-2">Đăng nhập để tiếp tục</p>
         </div>
 
         {/* Khu vực hiển thị lỗi từ Backend */}

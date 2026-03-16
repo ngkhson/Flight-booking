@@ -1,54 +1,82 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AdvancedSearchWidget } from '../../features/customer/search/AdvancedSearchWidget';
 import { FlightCard, type Flight } from '../../features/customer/search/FlightCard';
 import { FlightFilter, TIME_BLOCKS } from '../../features/customer/search/FlightFilter';
 import { flightApi } from '@/api/flightApi';
-import { Loader2 } from 'lucide-react';
-import { format } from 'date-fns'; // Đảm bảo đã cài date-fns
-import { useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import { Loader2, ArrowLeft } from 'lucide-react';
+import { format } from 'date-fns';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { resetStep } from '@/store/bookingSlice';
 
 export const SearchPage = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [apiFlights, setApiFlights] = useState<Flight[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
+  // --- THÊM STATE QUẢN LÝ KHỨ HỒI ---
+  const [currentSearchParams, setCurrentSearchParams] = useState<any>(null);
+  const [step, setStep] = useState(1); // 1 = Chọn chiều đi, 2 = Chọn chiều về
+  const [outboundFlight, setOutboundFlight] = useState<any>(null); // Lưu vé chiều đi khách đã chọn
+
   // --- STATE LỌC ---
   const [selectedAirlines, setSelectedAirlines] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<number[]>([0, 20000000]); // Tăng max price lên cho thực tế
+  const [priceRange, setPriceRange] = useState<number[]>([0, 20000000]);
   const [stops, setStops] = useState<number[]>([]);
   const [maxDuration, setMaxDuration] = useState<number>(48);
   const [takeOffBlocks, setTakeOffBlocks] = useState<string[]>([]);
   const [landingBlocks, setLandingBlocks] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>('price_asc');
 
-  // 2. THÊM USEEFFECT NÀY VÀO ĐỂ TỰ ĐỘNG GỌI API KHI TỪ TRANG CHỦ SANG
+  // Hàm Reset Bộ Lọc (Dùng khi lật trang Đi <-> Về)
+  const resetFilters = () => {
+    setSelectedAirlines([]);
+    setPriceRange([0, 20000000]);
+    setStops([]);
+    setTakeOffBlocks([]);
+    setLandingBlocks([]);
+  };
+
   useEffect(() => {
     if (location.state) {
-      // Nếu có dữ liệu từ HomePage ném sang, tự động gọi hàm tìm kiếm
-      handleFetchFlights(location.state);
-      
-      // (Tùy chọn) Xóa state trong history để f5 không bị gọi lại data cũ
+      setCurrentSearchParams(location.state);
+      handleFetchFlightsForStep(location.state, 1);
       window.history.replaceState({}, document.title);
     }
-  }, []);
+  }, [location.state]);
 
-  // --- HÀM GỌI API ---
-  const handleFetchFlights = async (searchParams: any) => {
+  // Hàm bắt sự kiện khi user nhấn nút "Tìm kiếm" ở Widget trên đầu trang
+  const handleNewSearch = (params: any) => {
+    setCurrentSearchParams(params);
+    setStep(1); // Đặt lại về bước 1
+    setOutboundFlight(null); // Xoá vé đã chọn
+    handleFetchFlightsForStep(params, 1);
+  };
+
+  // --- HÀM GỌI API THÔNG MINH (Xử lý cả chiều đi & về) ---
+  const handleFetchFlightsForStep = async (searchParams: any, targetStep: number) => {
     setLoading(true);
     setHasSearched(true);
+    resetFilters(); // Mỗi lần tìm chuyến mới thì làm sạch bộ lọc
+
     try {
-      const res: any = await flightApi.searchFlights(searchParams);
+      // ⚡ Đảo ngược Điểm đi/đến và Ngày bay nếu đang ở Bước 2 (Chiều về)
+      const origin = targetStep === 1 ? searchParams.origin : searchParams.destination;
+      const destination = targetStep === 1 ? searchParams.destination : searchParams.origin;
+      const date = targetStep === 1 ? searchParams.date : searchParams.returnDate;
+
+      // Tạo payload gọi API cho đúng chặng
+      const apiPayload = { ...searchParams, origin, destination, date };
+
+      const res: any = await flightApi.searchFlights(apiPayload);
 
       if (res.code === 1000 && res.result) {
         const mappedFlights = res.result.map((item: any) => {
-          // 1. Tìm giá thấp nhất để hiển thị ra màn hình lọc
           const minPrice = item.classes && item.classes.length > 0
-            ? Math.min(...item.classes.map((c: any) => c.basePrice))
-            : 0;
-
-          // 2. Parse thời gian từ chuỗi ISO của Backend
+            ? Math.min(...item.classes.map((c: any) => c.basePrice)) : 0;
           const depDate = new Date(item.departureTime);
           const arrDate = new Date(item.arrivalTime);
 
@@ -61,33 +89,54 @@ export const SearchPage = () => {
             arrivalTime: format(arrDate, "HH:mm"),
             originCode: item.origin,
             destinationCode: item.destination,
-            price: minPrice, // Giá hiển thị nhỏ nhất
-            classes: item.classes, // Đẩy nguyên mảng classes vào để FlightCard xử lý
+            price: minPrice,
+            classes: item.classes,
             durationMinutes: Math.floor((arrDate.getTime() - depDate.getTime()) / 60000),
             stops: 0,
-            aircraft: "Airbus A321", // Giả định
+            aircraft: "Airbus A321",
           };
         });
         setApiFlights(mappedFlights);
       }
-      console.log("API trả về:", res);
     } catch (error: any) {
       console.error("Lỗi search:", error);
-      // Nếu lỗi 404 hoặc bất kỳ lỗi nào, reset mảng về rỗng để UI hiện "Không tìm thấy"
       setApiFlights([]);
-      // Bạn có thể thông báo cho người dùng
-      // alert("Không tìm thấy chuyến bay nào trong ngày này");
     } finally {
       setLoading(false);
     }
   };
 
-  // --- LOGIC LỌC (Giữ nguyên logic của bạn nhưng dùng data sạch) ---
+  // --- XỬ LÝ KHI NGƯỜI DÙNG BẤM "CHỌN CHUYẾN BAY" ---
+  const handleSelectFlight = (flight: Flight, selectedClassInfo?: any) => {
+    // Gắn thêm thông tin Hạng vé/Giá vé mà người dùng chọn trong Card vào object Flight
+    const selectedFlightData = { ...flight, selectedClassInfo };
+
+    if (currentSearchParams?.tripType === 'round-trip' && step === 1) {
+      // Đã chọn xong chiều đi -> Lưu lại và Lật sang Bước 2
+      setOutboundFlight(selectedFlightData);
+      setStep(2);
+      window.scrollTo(0, 0); // Cuộn màn hình lên trên cùng
+      handleFetchFlightsForStep(currentSearchParams, 2);
+    } else {
+      dispatch(resetStep());
+      // Nếu là vé 1 chiều, HOẶC đã chọn xong chiều về -> Đẩy sang trang Thanh toán
+      navigate('/booking', { 
+        state: { 
+          outboundFlight: step === 1 ? selectedFlightData : outboundFlight, 
+          returnFlight: step === 2 ? selectedFlightData : null,
+          isRoundTrip: currentSearchParams?.tripType === 'round-trip',
+          passengers: currentSearchParams?.passengers,
+          rawPassengers: currentSearchParams?.rawPassengers
+        } 
+      });
+    }
+  };
+
+  // --- LOGIC LỌC (Giữ nguyên của bạn) ---
   const timeToDecimal = (timeStr: string) => {
     const [hours, minutes] = timeStr.split(':').map(Number);
     return hours + (minutes / 60);
   };
-
   const isTimeInBlocks = (decimalTime: number, selectedBlocks: string[]) => {
     if (selectedBlocks.length === 0) return true;
     return selectedBlocks.some(blockId => {
@@ -95,7 +144,6 @@ export const SearchPage = () => {
       return block ? (decimalTime >= block.min && decimalTime < (block.max === 24 ? 24.1 : block.max)) : false;
     });
   };
-
   const filteredFlights = apiFlights.filter(flight => {
     const depTime = timeToDecimal(flight.departureTime);
     const arrTime = timeToDecimal(flight.arrivalTime);
@@ -108,7 +156,6 @@ export const SearchPage = () => {
       isTimeInBlocks(arrTime, landingBlocks)
     );
   });
-
   const sortedFlights = [...filteredFlights].sort((a, b) => {
     if (sortBy === 'price_asc') return a.price - b.price;
     if (sortBy === 'price_desc') return b.price - a.price;
@@ -116,35 +163,57 @@ export const SearchPage = () => {
     return 0;
   });
 
+  // Lấy thông tin điểm đi/đến hiện tại để hiển thị trên Header
+  const currentOrigin = step === 1 ? currentSearchParams?.origin : currentSearchParams?.destination;
+  const currentDest = step === 1 ? currentSearchParams?.destination : currentSearchParams?.origin;
+
   return (
     <div className="bg-slate-50 min-h-screen pb-20">
-      <div className="bg-blue-600 pb-16 pt-8">
-        <div className="container mx-auto px-4 text-center sm:text-left">
-          <h2 className="text-white text-2xl font-bold mb-6">Chuyến bay từ {apiFlights[0]?.originCode || '...'} đến {apiFlights[0]?.destinationCode || '...'}</h2>
-          <div className="transform translate-y-8">
-            <AdvancedSearchWidget onSearch={handleFetchFlights} loading={loading} />
+      <section className="bg-blue-600 py-24 text-center text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-500 to-blue-700 opacity-90"></div>
+        
+        <div className="container mx-auto px-4 relative z-10 text-center sm:text-left">
+          
+          {/* HEADER HIỂN THỊ TRẠNG THÁI KHỨ HỒI */}
+          <div className="mb-6 flex flex-col items-center sm:items-start">
+            <h2 className="text-white text-3xl font-bold flex items-center gap-3">
+              {step === 2 && (
+                <button 
+                  onClick={() => { setStep(1); handleFetchFlightsForStep(currentSearchParams, 1); }}
+                  className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition"
+                  title="Quay lại chuyến đi"
+                >
+                  <ArrowLeft className="w-5 h-5 text-white" />
+                </button>
+              )}
+              {currentOrigin || '...'} ✈ {currentDest || '...'}
+            </h2>
+            
+            {currentSearchParams?.tripType === 'round-trip' && (
+              <div className="mt-3 inline-block bg-orange-500 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-md">
+                Bước {step} / 2: Chọn chuyến {step === 1 ? 'ĐI' : 'VỀ'}
+              </div>
+            )}
+          </div>
+
+          <div className="text-slate-900">
+            <AdvancedSearchWidget onSearch={handleNewSearch} loading={loading} />
           </div>
         </div>
-      </div>
+      </section>
 
       <div className="h-16"></div>
 
       <div className="container mx-auto px-4 mt-8 flex flex-col lg:flex-row gap-8">
         <aside className="w-full lg:w-1/4">
           <FlightFilter
-            selectedAirlines={selectedAirlines}
-            onAirlineChange={(a, c) => setSelectedAirlines(p => c ? [...p, a] : p.filter(x => x !== a))}
+            selectedAirlines={selectedAirlines} onAirlineChange={(a, c) => setSelectedAirlines(p => c ? [...p, a] : p.filter(x => x !== a))}
             priceRange={priceRange} onPriceChange={setPriceRange}
             stops={stops} onStopsChange={(s, c) => setStops(p => c ? [...p, s] : p.filter(x => x !== s))}
             maxDuration={maxDuration} onMaxDurationChange={setMaxDuration}
             takeOffBlocks={takeOffBlocks} onTakeOffBlockChange={(id, c) => setTakeOffBlocks(p => c ? [...p, id] : p.filter(x => x !== id))}
             landingBlocks={landingBlocks} onLandingBlockChange={(id, c) => setLandingBlocks(p => c ? [...p, id] : p.filter(x => x !== id))}
-            resetFilters={() => {
-              setSelectedAirlines([]);
-              setPriceRange([0, 10000000]);
-              setTakeOffBlocks([]);
-              setLandingBlocks([]);
-            }}
+            resetFilters={resetFilters}
           />
         </aside>
 
@@ -156,9 +225,7 @@ export const SearchPage = () => {
             </div>
           ) : !hasSearched ? (
             <div className="text-center py-20 bg-white rounded-xl border-dashed border-2 flex flex-col items-center">
-              <div className="bg-blue-50 p-4 rounded-full mb-4">
-                <Loader2 className="w-8 h-8 text-blue-400" />
-              </div>
+              <div className="bg-blue-50 p-4 rounded-full mb-4"><Loader2 className="w-8 h-8 text-blue-400" /></div>
               <p className="text-slate-500 text-lg">Chào bạn, vui lòng nhập thông tin để tìm kiếm chuyến bay phù hợp nhất!</p>
             </div>
           ) : (
@@ -181,11 +248,16 @@ export const SearchPage = () => {
                 {sortedFlights.length === 0 ? (
                   <div className="bg-white p-12 text-center rounded-xl border">
                     <p className="text-slate-400">Rất tiếc, không có chuyến bay nào phù hợp với tiêu chí lọc của bạn.</p>
-                    <button onClick={() => setSelectedAirlines([])} className="mt-4 text-blue-600 font-bold">Xóa tất cả bộ lọc</button>
+                    <button onClick={resetFilters} className="mt-4 text-blue-600 font-bold">Xóa tất cả bộ lọc</button>
                   </div>
                 ) : (
                   sortedFlights.map((flight) => (
-                    <FlightCard key={flight.id} flight={flight} />
+                    // Truyền hàm handleSelectFlight xuống component FlightCard
+                    <FlightCard 
+                      key={flight.id} 
+                      flight={flight} 
+                      onSelect={(classInfo) => handleSelectFlight(flight, classInfo)} 
+                    />
                   ))
                 )}
               </div>
