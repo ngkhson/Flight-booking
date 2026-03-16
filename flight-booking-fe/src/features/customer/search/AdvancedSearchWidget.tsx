@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { MapPin, Search } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PassengerSelector, type PassengerState } from './PassengerSelector';

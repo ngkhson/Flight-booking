@@ -13,7 +13,7 @@ import UserManagement from './pages/admin/UserManagement';
 // Customer Pages
 import { HomePage } from './pages/customer/HomePage';
 import { SearchPage } from './pages/customer/SearchPage';
-import { BookingPage } from './pages/customer/BookingPage'; 
+import { BookingPage } from './pages/customer/BookingPage';
 import { MyBookingsPage } from './pages/customer/MyBookingsPage';
 import { ProfilePage } from "@/features/customer/profile/ProfilePage";
 import { PaymentResultPage } from './pages/customer/PaymentResultPage';
@@ -24,7 +24,6 @@ import { VerifyPaymentPage } from './pages/customer/VerifyPaymentPage';
 import { LoginClient } from './pages/auth/LoginClient'; // Customer Login
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
-import ForbiddenPage from './pages/auth/ForbiddenPage';
 
 // Protections & Errors
 import ProtectedRoute from './features/auth/ProtectedRoute';
@@ -43,7 +42,7 @@ function App() {
           <Route path="booking" element={<BookingPage />} />
           <Route path="my-bookings" element={<MyBookingsPage />} />
           <Route path="profile" element={<ProfilePage />} />
-          
+
           {/* Auth Khách hàng */}
           <Route path="login" element={<LoginClient />} />
           <Route path="register" element={<RegisterPage />} />
@@ -79,7 +78,7 @@ function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="flights" element={<FlightManagement />} />
           <Route path="bookings" element={<BookingManagement />} />
-          
+
           {/* Phân quyền UserManagement chỉ dành riêng cho ADMIN */}
           <Route
             path="users"
@@ -97,7 +96,7 @@ function App() {
             ========================================== */}
         {/* Nếu gõ bậy bạ trên URL, tự động đá về Trang chủ Khách hàng */}
         <Route path="*" element={<Navigate to="/" />} />
-        
+
       </Routes>
     </BrowserRouter>
   );

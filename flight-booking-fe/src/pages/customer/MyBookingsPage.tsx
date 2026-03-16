@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Plane, Calendar, Clock, CreditCard, RefreshCw, AlertCircle, 
-  CheckCircle, Ticket, ChevronRight, X, User, QrCode, MapPin 
+import {
+  Plane, Calendar, Clock, CreditCard, RefreshCw, AlertCircle,
+  CheckCircle, Ticket, ChevronRight, X, User, QrCode
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { bookingApi, type MyBookingResponse } from '@/api/bookingApi'; 
+import { bookingApi, type MyBookingResponse } from '@/api/bookingApi';
 
 // --- Helpers ---
 const STATUS_CONFIG: Record<string, { label: string, color: string, icon: any }> = {
@@ -18,11 +18,11 @@ const STATUS_CONFIG: Record<string, { label: string, color: string, icon: any }>
 };
 
 const fmtVND = (amount: number) => amount?.toLocaleString('vi-VN') + ' ₫';
-const fmtDateTime = (isoString: string) => {
-  if (!isoString) return '--';
-  const d = new Date(isoString);
-  return d.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
-};
+// const fmtDateTime = (isoString: string) => {
+//   if (!isoString) return '--';
+//   const d = new Date(isoString);
+//   return d.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+// };
 const fmtTimeOnly = (isoString: string) => {
   if (!isoString) return '--:--';
   const d = new Date(isoString);
@@ -40,7 +40,7 @@ export const MyBookingsPage = () => {
   const [bookings, setBookings] = useState<MyBookingResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // State quản lý Modal Chi tiết vé
   const [selectedTicket, setSelectedTicket] = useState<MyBookingResponse | null>(null);
 
@@ -52,7 +52,7 @@ export const MyBookingsPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const response: any = await bookingApi.getMyBookings(1, 50); 
+      const response: any = await bookingApi.getMyBookings(1, 50);
       const content = response?.result?.content || response?.data?.result?.content || [];
       const sorted = content.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setBookings(sorted);
@@ -71,7 +71,7 @@ export const MyBookingsPage = () => {
   return (
     <div className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8 relative">
       <div className="max-w-4xl mx-auto">
-        
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold text-slate-800 flex items-center gap-3">
@@ -118,7 +118,7 @@ export const MyBookingsPage = () => {
 
               return (
                 <div key={booking.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col sm:flex-row">
-                  
+
                   {/* Cột trái: Thông tin chặng bay */}
                   <div className="p-6 flex-1 border-b sm:border-b-0 sm:border-r border-slate-100">
                     <div className="flex items-center justify-between mb-4">
@@ -165,23 +165,23 @@ export const MyBookingsPage = () => {
                     <div className="w-full flex flex-col gap-2 mt-auto">
                       {booking.status === 'AWAITING_PAYMENT' ? (
                         <>
-                          <Button 
-                            onClick={() => handleRepay(booking.id)} 
+                          <Button
+                            onClick={() => handleRepay(booking.id)}
                             className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-sm"
                           >
                             <CreditCard className="w-4 h-4 mr-2" /> Thanh toán
                           </Button>
-                          <Button 
+                          <Button
                             variant="outline"
-                            onClick={() => navigate(`/verify-payment?pnr=${booking.pnrCode}`)} 
+                            onClick={() => navigate(`/verify-payment?pnr=${booking.pnrCode}`)}
                             className="w-full border-orange-200 text-orange-600 hover:bg-orange-50 rounded-xl"
                           >
                             <RefreshCw className="w-4 h-4 mr-2" /> Tra cứu
                           </Button>
                         </>
                       ) : (
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           className="w-full text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded-xl flex items-center justify-center group"
                           onClick={() => setSelectedTicket(booking)}
                         >
@@ -203,13 +203,13 @@ export const MyBookingsPage = () => {
           ========================================= */}
       {selectedTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          
+
           {/* Vùng bấm ra ngoài để đóng */}
           <div className="absolute inset-0" onClick={() => setSelectedTicket(null)}></div>
-          
+
           {/* Card Vé */}
           <div className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-            
+
             {/* Header Xanh */}
             <div className="bg-blue-600 p-6 text-white flex items-start justify-between relative overflow-hidden">
               <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
@@ -217,7 +217,7 @@ export const MyBookingsPage = () => {
                 <p className="text-blue-100 text-sm font-medium mb-1">E-Ticket / Thẻ lên máy bay</p>
                 <h3 className="text-2xl font-bold tracking-wider">PNR: {selectedTicket.pnrCode}</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedTicket(null)}
                 className="p-1.5 bg-blue-700/50 hover:bg-blue-700 rounded-full text-white transition-colors z-10"
               >
@@ -232,7 +232,7 @@ export const MyBookingsPage = () => {
                   <p className="text-3xl font-black text-slate-800">{selectedTicket.origin}</p>
                   <p className="text-xs text-slate-500 font-medium mt-1">Sân bay đi</p>
                 </div>
-                
+
                 <div className="flex-1 flex flex-col items-center px-4">
                   <Plane className="w-6 h-6 text-blue-500 mb-1" />
                   <div className="w-full border-t-2 border-slate-200 border-dashed"></div>

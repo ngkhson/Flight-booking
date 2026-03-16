@@ -29,7 +29,7 @@ axiosClient.interceptors.response.use(
     return response.data ? response.data : response;
   },
   (error) => {
-    const { response, config } = error;
+    const { response } = error;
 
     // Xử lý lỗi 401 (Unauthorized)
     if (response && response.status === 401) {

@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { type RootState } from '@/store/store';
 import axiosClient from '@/api/axiosClient';
 import { bookingApi } from '@/api/bookingApi'; // Đảm bảo import API này
 import { Button } from '@/components/ui/button';
-import { CreditCard, ShieldCheck, Loader2, Plane, ArrowDownUp, User} from 'lucide-react';
+import { CreditCard, ShieldCheck, Loader2, Plane, ArrowDownUp, User } from 'lucide-react';
 import { AlertCircle } from 'lucide-react';
 
 interface PaymentStepProps {
@@ -16,8 +16,8 @@ interface PaymentStepProps {
 
 export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAmount }: PaymentStepProps) => {
   // Lấy data từ Redux để chuẩn bị payload
-  const { searchConfigs, contactInfo, passengers, addons } = useSelector((state: RootState) => state.booking);
-  
+  const { contactInfo, passengers, addons } = useSelector((state: RootState) => state.booking);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -38,7 +38,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
       const mappedAncillaries = addons.map((a: any) => ({
         catalogId: a.service.id,
         passengerIndex: a.passengerIndex,
-        segmentNo: 1 
+        segmentNo: 1
       }));
 
       // 👇 2. ĐƯA PAYLOAD VỀ ĐÚNG CHUẨN BACKEND YÊU CẦU
@@ -47,7 +47,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
         contactPhone: contactInfo?.phone || contactInfo?.contactPhone || "0999999999",
         contactEmail: contactInfo?.email || contactInfo?.contactEmail || "email@example.com",
         currency: "VND",
-        promotionCode: "", 
+        promotionCode: "",
         // Đưa flightId vào mảng flights giống như bạn đã từng làm thành công ở ServiceSelection
         flights: [
           {
@@ -70,7 +70,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
           contactPhone: contactInfo?.phone || contactInfo?.contactPhone || "0999999999",
           contactEmail: contactInfo?.email || contactInfo?.contactEmail || "email@example.com",
           currency: "VND",
-          promotionCode: "", 
+          promotionCode: "",
           flights: [
             {
               flightId: returnFlight.id || returnFlight.flightId || "",
@@ -86,7 +86,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
 
       // 4. BẮN API SONG SONG VÀ XỬ LÝ VNPay
       const responses = await Promise.all([reqOutbound, reqReturn].filter(Boolean));
-      
+
       const primaryBooking: any = responses[0];
       const secondaryBooking: any = responses[1]; // Lấy thêm data vé về
 
@@ -98,12 +98,12 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
       }
 
       // 👇 BỔ SUNG LẠI ĐOẠN NÀY: GHÉP 2 ID VÉ BẰNG DẤU PHẨY 👇
-      const combinedBookingIds = isRoundTrip && returnBookingId 
-        ? `${mainBookingId},${returnBookingId}` 
+      const combinedBookingIds = isRoundTrip && returnBookingId
+        ? `${mainBookingId},${returnBookingId}`
         : mainBookingId;
 
       console.log(`👉 Đang tạo link VNPay cho các vé: ${combinedBookingIds}`);
-      
+
       const vnpayRes: any = await axiosClient.get('/payments/create-url', {
         params: {
           bookingId: combinedBookingIds, // 👈 Truyền chuỗi ID ghép vào đây
@@ -111,7 +111,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
           // LƯU Ý: Không cần truyền orderInfo ở đây nữa vì Backend Java của bạn đã tự tạo chữ THANHTOAN_VE_PNR1_PNR2 rồi!
         }
       });
-      
+
       if (vnpayRes.result) {
         window.location.href = vnpayRes.result;
       } else {
@@ -143,7 +143,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
         <h2 className="text-xl font-bold mb-1">Xác nhận thanh toán</h2>
         <p className="text-slate-300 text-sm">Vui lòng kiểm tra kỹ thông tin trước khi thanh toán</p>
       </div>
-      
+
       <div className="p-6">
         {errorMsg && (
           <div className="p-4 mb-6 bg-red-50 text-red-600 border border-red-200 rounded-xl text-sm flex gap-3 items-center">
@@ -168,7 +168,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
 
         <div className="bg-slate-50 p-5 rounded-xl mb-8 border border-slate-100">
           <h3 className="font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">Tóm tắt hành trình</h3>
-          
+
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2">
               <Plane size={16} className="text-slate-400" />
@@ -203,7 +203,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
           </div>
         </div>
 
-        <Button 
+        <Button
           onClick={handleCreateBookingAndPay}
           disabled={isProcessing}
           className="w-full h-14 bg-orange-500 hover:bg-orange-600 text-lg font-bold rounded-xl shadow-lg"
@@ -216,7 +216,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
             "Thanh toán an toàn ngay"
           )}
         </Button>
-        
+
         <div className="mt-5 flex items-center justify-center gap-2 text-green-600 text-xs font-medium bg-green-50 py-2 rounded-lg">
           <ShieldCheck size={16} />
           Thông tin của bạn được mã hóa an toàn 256-bit

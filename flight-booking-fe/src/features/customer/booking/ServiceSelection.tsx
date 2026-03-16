@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { type RootState } from '@/store/store';
-import { Briefcase, Utensils, CheckCircle2, Loader2 } from 'lucide-react';
+import { Briefcase, Utensils, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import axiosClient from '@/api/axiosClient';
 // ❌ Đã gỡ setBookingResult vì việc tạo đơn chuyển sang Bước 3
 import { saveAddons, nextStep } from '@/store/bookingSlice';
-
+import { setBookingResult } from '@/store/bookingSlice';
 interface AncillaryService {
   id: string;
   code: string;
@@ -74,7 +74,7 @@ export const ServiceSelection = () => {
   };
 
   // HÀM CHỐT DỊCH VỤ VÀ CHUYỂN BƯỚC
-  const onConfirm = () => {
+  const onConfirm = async () => {
     const finalAddons: any[] = [];
 
     // Gom nhặt các dịch vụ khách đã chọn
