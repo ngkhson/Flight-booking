@@ -169,7 +169,7 @@ export const SearchPage = () => {
 
   return (
     <div className="bg-slate-50 min-h-screen pb-20">
-      <section className="bg-blue-600 py-24 text-center text-white relative overflow-hidden">
+      <section className="bg-blue-600 py-24 text-center text-white relative">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-500 to-blue-700 opacity-90"></div>
         
         <div className="container mx-auto px-4 relative z-10 text-center sm:text-left">

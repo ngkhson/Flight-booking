@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { useDispatch } from 'react-redux';
 import { setSearchConfigs } from '@/store/bookingSlice';
 import { useLocation } from 'react-router-dom';
+import { AirportSelector } from './AirportSelector';
 
 interface Props {
   onSearch: (params: any) => void;
@@ -92,8 +93,81 @@ export const AdvancedSearchWidget = ({ onSearch, loading }: Props) => {
     }
   };
 
+  // return (
+  //   <div className="bg-white p-5 rounded-xl shadow-2xl border border-slate-200 w-full max-w-6xl mx-auto text-left transform translate-y-8">
+  //     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-4 border-b border-slate-100 gap-4">
+  //       <div className="flex gap-6">
+  //         <label className="flex items-center gap-2 cursor-pointer text-slate-700 font-medium">
+  //           <input 
+  //             type="radio" 
+  //             checked={tripType === 'one-way'} 
+  //             onChange={() => handleTripTypeChange('one-way')} 
+  //             className="w-4 h-4" 
+  //           />
+  //           Một chiều
+  //         </label>
+  //         <label className="flex items-center gap-2 cursor-pointer text-slate-700 font-medium">
+  //           <input 
+  //             type="radio" 
+  //             checked={tripType === 'round-trip'} 
+  //             onChange={() => handleTripTypeChange('round-trip')} 
+  //             className="w-4 h-4" 
+  //           />
+  //           Khứ hồi
+  //         </label>
+  //       </div>
+  //     </div>
+
+  //     <div className="flex flex-col lg:flex-row gap-3 items-end">
+  //       <div className="flex flex-col md:flex-row flex-1 gap-2 w-full">
+  //         <div className="flex-1">
+  //           <label className="text-xs font-semibold text-slate-500 uppercase ml-1">Điểm đi</label>
+  //           {/* 👇 Thay Input bằng AirportSelector 👇 */}
+  //           <AirportSelector 
+  //             value={origin} 
+  //             onChange={setOrigin} 
+  //             placeholder="Chọn điểm khởi hành"
+  //           />
+  //         </div>
+  //         <div className="flex-1">
+  //           <label className="text-xs font-semibold text-slate-500 uppercase ml-1">Điểm đến</label>
+  //           {/* 👇 Thay Input bằng AirportSelector 👇 */}
+  //           <AirportSelector 
+  //             value={destination} 
+  //             onChange={setDestination} 
+  //             placeholder="Chọn điểm đến"
+  //           />
+  //         </div>
+  //       </div>
+
+  //       <div className="flex flex-1 gap-2 w-full">
+  //         <FlightDatePicker 
+  //           label="Ngày đi" 
+  //           value={departureDate} 
+  //           onChange={setDepartureDate} 
+  //         />
+  //         {/* 👈 4. Gắn state returnDate vào Component Picker */}
+  //         <FlightDatePicker 
+  //           label="Ngày về" 
+  //           disabledState={tripType === 'one-way'} 
+  //           value={returnDate} 
+  //           onChange={setReturnDate} 
+  //         />
+  //       </div>
+
+  //       <div className="w-full lg:w-56">
+  //         <PassengerSelector value={passengers} onChange={setPassengers} />
+  //       </div>
+
+  //       <Button onClick={handleSearch} disabled={loading} className="w-full lg:w-auto h-12 px-8 bg-orange-500 hover:bg-orange-600 font-bold">
+  //         {loading ? "Đang tìm..." : "Tìm Chuyến"}
+  //       </Button>
+  //     </div>
+  //   </div>
+  // );
   return (
-    <div className="bg-white p-5 rounded-xl shadow-2xl border border-slate-200 w-full max-w-6xl mx-auto text-left transform translate-y-8">
+    <div className="bg-white p-5 rounded-xl shadow-2xl border border-slate-200 w-full max-w-[1200px] mx-auto text-left transform translate-y-8">
+      {/* KHỐI RADIO BUTTON (MỘT CHIỀU / KHỨ HỒI) */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-4 border-b border-slate-100 gap-4">
         <div className="flex gap-6">
           <label className="flex items-center gap-2 cursor-pointer text-slate-700 font-medium">
@@ -101,7 +175,7 @@ export const AdvancedSearchWidget = ({ onSearch, loading }: Props) => {
               type="radio" 
               checked={tripType === 'one-way'} 
               onChange={() => handleTripTypeChange('one-way')} 
-              className="w-4 h-4" 
+              className="w-4 h-4 text-blue-600 focus:ring-blue-500" 
             />
             Một chiều
           </label>
@@ -110,53 +184,71 @@ export const AdvancedSearchWidget = ({ onSearch, loading }: Props) => {
               type="radio" 
               checked={tripType === 'round-trip'} 
               onChange={() => handleTripTypeChange('round-trip')} 
-              className="w-4 h-4" 
+              className="w-4 h-4 text-blue-600 focus:ring-blue-500" 
             />
             Khứ hồi
           </label>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-3 items-end">
-        <div className="flex flex-col md:flex-row flex-1 gap-2 w-full">
+      {/* KHỐI TÌM KIẾM CHÍNH */}
+      <div className="flex flex-col lg:flex-row gap-3 items-end w-full">
+        
+        {/* 👇 KHU VỰC SÂN BAY: Cho flex-[2] để nó rộng gấp đôi các ô khác 👇 */}
+        <div className="flex flex-col md:flex-row gap-2 w-full lg:flex-[2] relative z-50">
           <div className="flex-1">
             <label className="text-xs font-semibold text-slate-500 uppercase ml-1">Điểm đi</label>
-            <div className="relative mt-1">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-              <Input value={origin} onChange={(e) => setOrigin(e.target.value.toUpperCase())} className="pl-10 h-12 text-md uppercase font-semibold" />
-            </div>
+            <AirportSelector 
+              value={origin} 
+              onChange={setOrigin} 
+              placeholder="Chọn điểm khởi hành"
+            />
           </div>
           <div className="flex-1">
             <label className="text-xs font-semibold text-slate-500 uppercase ml-1">Điểm đến</label>
-            <div className="relative mt-1">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-              <Input value={destination} onChange={(e) => setDestination(e.target.value.toUpperCase())} className="pl-10 h-12 text-md uppercase font-semibold" />
-            </div>
+            <AirportSelector 
+              value={destination} 
+              onChange={setDestination} 
+              placeholder="Chọn điểm đến"
+            />
           </div>
         </div>
 
-        <div className="flex flex-1 gap-2 w-full">
-          <FlightDatePicker 
-            label="Ngày đi" 
-            value={departureDate} 
-            onChange={setDepartureDate} 
-          />
-          {/* 👈 4. Gắn state returnDate vào Component Picker */}
-          <FlightDatePicker 
-            label="Ngày về" 
-            disabledState={tripType === 'one-way'} 
-            value={returnDate} 
-            onChange={setReturnDate} 
-          />
+        {/* 👇 KHU VỰC NGÀY THÁNG: Cho flex-[1.2] để nó gọn lại một chút 👇 */}
+        <div className="flex flex-row gap-2 w-full lg:flex-[1.2] relative z-40">
+          <div className="flex-1">
+             <FlightDatePicker 
+               label="Ngày đi" 
+               value={departureDate} 
+               onChange={setDepartureDate} 
+             />
+          </div>
+          <div className="flex-1">
+             <FlightDatePicker 
+               label="Ngày về" 
+               disabledState={tripType === 'one-way'} 
+               value={returnDate} 
+               onChange={setReturnDate} 
+             />
+          </div>
         </div>
 
-        <div className="w-full lg:w-56">
+        {/* 👇 KHU VỰC HÀNH KHÁCH: Cho flex-1 (chuẩn) 👇 */}
+        <div className="w-full lg:flex-1 relative z-30">
           <PassengerSelector value={passengers} onChange={setPassengers} />
         </div>
 
-        <Button onClick={handleSearch} disabled={loading} className="w-full lg:w-auto h-12 px-8 bg-orange-500 hover:bg-orange-600 font-bold">
-          {loading ? "Đang tìm..." : "Tìm Chuyến"}
-        </Button>
+        {/* 👇 NÚT TÌM KIẾM: Ép kích thước cố định để không bị biến dạng 👇 */}
+        <div className="w-full lg:w-auto shrink-0 relative z-10">
+          <Button 
+            onClick={handleSearch} 
+            disabled={loading} 
+            className="w-full lg:w-[140px] h-12 bg-orange-500 hover:bg-orange-600 font-bold text-white rounded-lg shadow-md transition-all active:scale-95"
+          >
+            {loading ? "Đang tìm..." : "Tìm Chuyến"}
+          </Button>
+        </div>
+
       </div>
     </div>
   );

@@ -51,7 +51,7 @@ export const HomePage = () => {
   return (
     <div>
       {/* Hero Banner Section */}
-      <section className="bg-blue-600 py-24 text-center text-white relative overflow-hidden">
+      <section className="bg-blue-600 py-24 text-center text-white relative">
         {/* Lớp phủ mờ (Optional: Thêm ảnh nền mờ phía sau nếu thích) */}
         <div className="absolute inset-0 bg-gradient-to-b from-blue-500 to-blue-700 opacity-90"></div>
         

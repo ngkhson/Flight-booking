@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plane, Calendar, Clock, CreditCard, RefreshCw, AlertCircle, 
-  CheckCircle, Ticket, ChevronRight, X, User, QrCode 
+  CheckCircle, Ticket, ChevronRight, X, User, QrCode, Loader2 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { bookingApi, type MyBookingResponse } from '@/api/bookingApi'; 
+import axiosClient from '@/api/axiosClient'; // Bổ sung import để gọi VNPay
 
 // --- Helpers ---
 const STATUS_CONFIG: Record<string, { label: string, color: string, icon: any }> = {
@@ -21,11 +22,13 @@ const fmtVND = (amount: number) => amount ? amount.toLocaleString('vi-VN') + ' �
 const fmtTimeOnly = (isoString: string) => {
   if (!isoString) return '--:--';
   const d = new Date(isoString);
+  if(isNaN(d.getTime())) return isoString;
   return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 };
 const fmtDateOnly = (isoString: string) => {
   if (!isoString) return '--/--/----';
   const d = new Date(isoString);
+  if(isNaN(d.getTime())) return isoString;
   return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
@@ -71,9 +74,12 @@ export const MyBookingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // State quản lý Modal
+  // State quản lý Modal và Loading
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [isFetchingDetail, setIsFetchingDetail] = useState(false);
+  
+  // State quản lý Loading khi bấm nút Thanh Toán Lại
+  const [processingPaymentId, setProcessingPaymentId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMyBookings();
@@ -123,8 +129,28 @@ export const MyBookingsPage = () => {
     }
   };
 
-  const handleRepay = (bookingId: string) => {
-    alert(`Tính năng thanh toán lại cho đơn ${bookingId} đang được cập nhật!`);
+  // 👇 HÀM XỬ LÝ THANH TOÁN LẠI 👇
+  const handleRepay = async (bookingId: string) => {
+    try {
+      setProcessingPaymentId(bookingId); // Bật hiệu ứng xoay ở cái nút đang bấm
+      
+      // Gọi API lấy link VNPay
+      const vnpayRes: any = await axiosClient.get('/payments/create-url', {
+        params: { bookingId }
+      });
+
+      if (vnpayRes.result) {
+        // Chuyển sang trang thanh toán VNPay
+        window.location.href = vnpayRes.result;
+      } else {
+        alert("Không thể tạo link thanh toán lúc này. Vui lòng thử lại sau.");
+      }
+    } catch (error: any) {
+      console.error("Lỗi gọi thanh toán:", error);
+      alert(error.response?.data?.message || "Đã xảy ra lỗi kết nối với cổng thanh toán!");
+    } finally {
+      setProcessingPaymentId(null);
+    }
   };
 
   const modalFlights = selectedTicket ? getDetailedFlights(selectedTicket) : [];
@@ -175,10 +201,9 @@ export const MyBookingsPage = () => {
               return (
                 <div key={booking.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col md:flex-row">
                   
-                  {/* ====== CỘT TRÁI: THÔNG TIN CHUYẾN BAY (CHUẨN ẢNH 1) ====== */}
+                  {/* ====== CỘT TRÁI: THÔNG TIN CHUYẾN BAY ====== */}
                   <div className="p-6 flex-1 border-b md:border-b-0 md:border-r border-slate-100 flex flex-col justify-between">
                     
-                    {/* Hàng Header PNR & Status */}
                     <div className="flex items-center justify-between mb-8">
                       <div className="flex items-center gap-3">
                          <span className="text-sm text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg">
@@ -196,12 +221,10 @@ export const MyBookingsPage = () => {
                       </span>
                     </div>
 
-                    {/* Danh sách chuyến bay */}
                     <div className="space-y-6">
                       {flightList.map((flight: any, idx: number) => (
                         <div key={idx} className="relative">
                           
-                          {/* Sân bay - Máy bay - Sân bay */}
                           <div className="flex items-center justify-between gap-2 mb-3">
                             <div className="text-left flex-1 min-w-0">
                               {flightList.length > 1 && (
@@ -231,20 +254,13 @@ export const MyBookingsPage = () => {
                             </div>
                           </div>
 
-                          {/* Thời gian & Giá vé từng chặng */}
                           <div className="flex justify-between items-center text-sm mt-4">
                             <div className="flex items-center gap-2 text-slate-700">
                               <Calendar className="w-4 h-4 text-slate-400" />
                               <span className="font-medium">{fmtDateOnly(flight.departureTime)} {fmtTimeOnly(flight.departureTime)}</span>
                             </div>
-                            {flight.price && flightList.length > 1 && (
-                              <div className="text-slate-500 font-medium text-xs">
-                                Giá vé: <span className="font-bold text-slate-700 ml-1">{fmtVND(flight.price)}</span>
-                              </div>
-                            )}
                           </div>
 
-                          {/* Dấu phân cách */}
                           {idx === 0 && flightList.length > 1 && (
                             <div className="border-b border-dashed border-slate-200 mt-6 mb-4"></div>
                           )}
@@ -252,13 +268,12 @@ export const MyBookingsPage = () => {
                       ))}
                     </div>
 
-                    {/* Ngày đặt */}
                     <div className="mt-6 pt-4 text-sm text-slate-400 flex items-center gap-2">
                       Ngày đặt: {fmtDateOnly(booking.createdAt)}
                     </div>
                   </div>
 
-                  {/* ====== CỘT PHẢI: TỔNG TIỀN & XEM CHI TIẾT (CHUẨN ẢNH 1) ====== */}
+                  {/* ====== CỘT PHẢI: TỔNG TIỀN ====== */}
                   <div className="p-6 md:w-64 bg-white flex flex-col justify-center items-center">
                     <div className="mb-2 text-sm text-slate-500 font-medium">Tổng thanh toán</div>
                     <div className="text-[28px] font-black text-slate-800 mb-8 border-b-2 border-slate-800 inline-block pb-0.5">
@@ -266,13 +281,19 @@ export const MyBookingsPage = () => {
                     </div>
 
                     <div className="w-full mt-auto">
-                      {booking.status === 'AWAITING_PAYMENT' ? (
+                      {/* BẬT NÚT THANH TOÁN CHO ĐƠN CHƯA HOÀN TẤT */}
+                      {['AWAITING_PAYMENT', 'PENDING'].includes(booking.status) ? (
                         <>
                           <Button 
                             onClick={() => handleRepay(booking.id)} 
+                            disabled={processingPaymentId === booking.id}
                             className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-sm mb-2"
                           >
-                            Thanh toán ngay
+                            {processingPaymentId === booking.id ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang kết nối...</>
+                            ) : (
+                              "Thanh toán ngay"
+                            )}
                           </Button>
                           <Button 
                             variant="ghost"

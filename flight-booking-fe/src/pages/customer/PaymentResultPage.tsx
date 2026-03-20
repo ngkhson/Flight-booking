@@ -1,9 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle, XCircle, AlertTriangle, Home, Calendar } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, Home, Calendar, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDispatch } from 'react-redux';
 import { clearBooking } from '@/store/bookingSlice'; 
+import axiosClient from '@/api/axiosClient';
+import { bookingApi } from '@/api/bookingApi'; // 👈 Thêm import này
 
 export const PaymentResultPage = () => {
   const [searchParams] = useSearchParams();
@@ -11,26 +13,71 @@ export const PaymentResultPage = () => {
   const location = useLocation();
   const dispatch = useDispatch();
 
-  // Kiểm tra xem BE đang đá về đường link nào
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const isSuccess = location.pathname.includes('/payment-success');
   const isFailed = location.pathname.includes('/payment-failed');
   const isError = location.pathname.includes('/payment-error');
 
-  // Lấy dữ liệu từ URL (Tùy thuộc vào link)
   const amountStr = searchParams.get('vnp_Amount');
   const amount = amountStr ? (parseInt(amountStr) / 100) : 0;
   const transactionNo = searchParams.get('vnp_TransactionNo');
   const orderInfo = searchParams.get('vnp_OrderInfo');
   
-  const pnrCode = searchParams.get('pnr'); // Dùng cho màn hình thất bại
-  const errorMessage = searchParams.get('message'); // Dùng cho màn hình lỗi chữ ký
+  // 👉 CHÌA KHÓA: Lấy PNR từ URL
+  const pnrCode = searchParams.get('pnr');
+  const errorMessage = searchParams.get('message');
 
   useEffect(() => {
     if (isSuccess) {
-      // Xóa giỏ hàng nếu thanh toán thành công
       dispatch(clearBooking());
     }
   }, [isSuccess, dispatch]);
+
+  // 👇 HÀM XỬ LÝ THANH TOÁN LẠI TỪ MÃ PNR 👇
+  const handleRepay = async () => {
+    if (!pnrCode) {
+      alert("Không tìm thấy mã đặt chỗ (PNR) để thanh toán lại!");
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+
+      // BƯỚC 1: Tìm bookingId từ mã PNR
+      // Gọi danh sách vé của user hiện tại
+      const response: any = await bookingApi.getMyBookings(1, 50);
+      const content = response?.result?.content || response?.data?.result?.content || [];
+      
+      // Quét tìm vé có mã PNR khớp với URL
+      const targetBooking = content.find((b: any) => b.pnrCode === pnrCode);
+
+      if (!targetBooking || !targetBooking.id) {
+        alert("Không tìm thấy thông tin đơn hàng trong hệ thống!");
+        setIsProcessing(false);
+        return;
+      }
+
+      const bookingId = targetBooking.id;
+      console.log(`👉 Đã tìm thấy ID: ${bookingId} cho PNR: ${pnrCode}. Đang gọi VNPay...`);
+
+      // BƯỚC 2: Gọi API VNPay bằng bookingId vừa tìm được
+      const vnpayRes: any = await axiosClient.get('/payments/create-url', {
+        params: { bookingId }
+      });
+
+      if (vnpayRes.result) {
+        window.location.href = vnpayRes.result;
+      } else {
+        alert("Không thể tạo link thanh toán lúc này. Vui lòng thử lại sau.");
+      }
+    } catch (error: any) {
+      console.error("Lỗi gọi thanh toán:", error);
+      alert(error.response?.data?.message || "Đã xảy ra lỗi kết nối với cổng thanh toán!");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -89,24 +136,33 @@ export const PaymentResultPage = () => {
 
         {/* MÃ PNR (Chỉ hiện khi thất bại) */}
         {isFailed && pnrCode && (
-           <div className="bg-red-50 text-red-700 rounded-xl p-4 mb-8 border border-red-100 font-medium">
-             Mã đặt chỗ (PNR) của bạn: <span className="font-bold">{pnrCode}</span>
+           <div className="bg-red-50 text-red-700 rounded-xl p-4 mb-8 border border-red-100 font-medium flex justify-center items-center gap-2">
+             Mã đặt chỗ (PNR): <span className="font-black text-xl text-red-800 tracking-wider">{pnrCode}</span>
            </div>
         )}
 
         {/* NÚT ĐIỀU HƯỚNG */}
         <div className="space-y-3">
           {isSuccess ? (
-            <Button onClick={() => navigate('/my-bookings')} className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-md rounded-xl">
+            <Button onClick={() => navigate('/my-bookings')} className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-md font-bold rounded-xl shadow-md">
               <Calendar className="mr-2 h-5 w-5" /> Quản lý vé của tôi
             </Button>
           ) : (
-            <Button onClick={() => navigate(-1)} className="w-full h-12 bg-red-600 hover:bg-red-700 text-md rounded-xl">
-              Thử thanh toán lại
+            // 👇 NÚT THANH TOÁN LẠI ĐÃ ĐƯỢC TÍCH HỢP 👇
+            <Button 
+              onClick={handleRepay} 
+              disabled={isProcessing || !pnrCode}
+              className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-md font-bold rounded-xl shadow-md transition-all"
+            >
+              {isProcessing ? (
+                <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang kết nối VNPay...</>
+              ) : (
+                <><RefreshCw className="mr-2 h-5 w-5" /> Thử thanh toán lại</>
+              )}
             </Button>
           )}
           
-          <Button onClick={() => navigate('/')} variant="outline" className="w-full h-12 text-md rounded-xl border-slate-300 text-slate-600">
+          <Button onClick={() => navigate('/')} variant="outline" className="w-full h-12 text-md font-bold rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50">
             <Home className="mr-2 h-5 w-5" /> Về trang chủ
           </Button>
         </div>
