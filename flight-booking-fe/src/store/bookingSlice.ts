@@ -16,10 +16,13 @@ export interface BookingState {
   totalAmount: number;
   currentStep: number;
   searchConfigs: {
+    origin?: string;       
+    destination?: string;
     adults: number;
     children: number;
     infants: number;
     date?: string;
+    returnDate?: string;
   };
   contactInfo: any | null; // Lưu thông tin liên hệ
   bookingResult: {
@@ -35,7 +38,7 @@ const initialState: BookingState = {
   addons: [],
   totalAmount: 0,
   currentStep: 1,
-  searchConfigs: { adults: 1, children: 0, infants: 0 },
+  searchConfigs: { origin: '', destination: '', adults: 1, children: 0, infants: 0 },
   contactInfo: null,
   bookingResult: null,
 };
@@ -102,7 +105,7 @@ const bookingSlice = createSlice({
     saveContactInfo: (state, action: PayloadAction<any>) => {
       state.contactInfo = action.payload;
     },
-    setSearchConfigs: (state, action: PayloadAction<{ adults: number, children: number, infants: number, date?: string }>) => {
+    setSearchConfigs: (state, action: PayloadAction<{ origin?: string, destination?: string, adults: number, children: number, infants: number, date?: string, returnDate?: string }>) => {
       state.searchConfigs = action.payload;
     },
     setBookingResult: (state, action: PayloadAction<{bookingId: string,pnrCode: string, totalAmount: number}>) => {

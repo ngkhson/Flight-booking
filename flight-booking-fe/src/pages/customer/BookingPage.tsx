@@ -163,7 +163,7 @@ export const BookingPage = () => {
                   <div className="text-right">
                     <p className="text-xs text-slate-400 uppercase font-bold">Ngày về</p>
                     <p className="font-bold text-slate-700">
-                      {location.state?.returnDate ? new Date(location.state.returnDate).toLocaleDateString('vi-VN') : "---"}
+                      {searchConfigs.returnDate ? new Date(searchConfigs.returnDate).toLocaleDateString('vi-VN') : "---"}
                     </p>
                   </div>
                 </div>

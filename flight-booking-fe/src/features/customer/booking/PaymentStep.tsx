@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { type RootState } from '@/store/store';
 import axiosClient from '@/api/axiosClient';
-import { bookingApi } from '@/api/bookingApi'; // Đảm bảo import API này
+import { bookingApi } from '@/api/bookingApi';
 import { Button } from '@/components/ui/button';
-import { CreditCard, ShieldCheck, Loader2, Plane, ArrowDownUp, User} from 'lucide-react';
+import { CreditCard, ShieldCheck, Loader2, Plane, ArrowDownUp, User, Ticket, Calendar } from 'lucide-react';
 import { AlertCircle } from 'lucide-react';
 
 interface PaymentStepProps {
@@ -15,18 +15,63 @@ interface PaymentStepProps {
 }
 
 export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAmount }: PaymentStepProps) => {
-  // Lấy data từ Redux để chuẩn bị payload
   const { searchConfigs, contactInfo, passengers, addons } = useSelector((state: RootState) => state.booking);
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // 👇 HÀM BÓC TÁCH DỮ LIỆU ĐỒNG NHẤT VỚI SIDEBAR 👇
+  const extractFlightInfo = (flight: any, fallbackDate: string | undefined, isReturn: boolean = false) => {
+    // Ưu tiên lấy origin/dest từ searchConfigs để chống sai lệch, nếu không có mới lấy từ flight
+    const origin = isReturn 
+      ? ((searchConfigs as any)?.destination || flight?.origin || flight?.departureAirport || '---')
+      : ((searchConfigs as any)?.origin || flight?.origin || flight?.departureAirport || '---');
+      
+    const dest = isReturn 
+      ? ((searchConfigs as any)?.origin || flight?.destination || flight?.arrivalAirport || '---')
+      : ((searchConfigs as any)?.destination || flight?.destination || flight?.arrivalAirport || '---');
+    
+    const code = flight?.flightCode || flight?.flightNumber || flight?.flight?.flightNumber || '---';
+    const cls = flight?.selectedClassName || flight?.selectedClassInfo?.className || flight?.classType || 'ECONOMY';
+    
+    // Tách Giờ và Ngày
+    const rawTime = flight?.departureTime || flight?.flight?.departureTime || fallbackDate;
+    let time = '--:--';
+    let date = '--/--/----';
+    
+    if (rawTime && typeof rawTime === 'string') {
+      if (rawTime.includes('T')) {
+        const [d, t] = rawTime.split('T');
+        const [y, m, day] = d.split('-');
+        const [h, min] = t.split(':');
+        time = `${h}:${min}`;
+        date = `${day}/${m}/${y}`;
+      } else if (rawTime.includes('-')) {
+        const [y, m, day] = rawTime.split('-');
+        date = `${day}/${m}/${y}`;
+      } else if (rawTime.includes(':')) {
+        // Trường hợp Backend chỉ trả về Giờ (VD: "15:20")
+        time = rawTime;
+        // Lấy ngày từ fallbackDate (searchConfigs)
+        if (fallbackDate && fallbackDate.includes('-')) {
+          const [y, m, day] = fallbackDate.split('-');
+          date = `${day}/${m}/${y}`;
+        }
+      }
+    }
+    return { origin, dest, code, cls: cls.replace('_', ' '), time, date };
+  };
+
+  // Áp dụng hàm bóc tách cho 2 lượt
+  const outInfo = extractFlightInfo(outboundFlight, (searchConfigs as any)?.date, false);
+  const retInfo = extractFlightInfo(returnFlight, (searchConfigs as any)?.returnDate, true);
+
 
   const handleCreateBookingAndPay = async () => {
     setIsProcessing(true);
     setErrorMsg(null);
 
     try {
-      // 1. FORMAT LẠI DATA HÀNH KHÁCH VÀ DỊCH VỤ
       const mappedPassengers = passengers.map((p: any) => ({
         firstName: p.fullName?.split(' ').slice(0, -1).join(' ') || p.fullName || "Nguyễn",
         lastName: p.fullName?.split(' ').slice(-1).join(' ') || p.fullName || "A",
@@ -38,80 +83,54 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
       const mappedAncillaries = addons.map((a: any) => ({
         catalogId: a.service.id,
         passengerIndex: a.passengerIndex,
-        segmentNo: 1 
+        segmentNo: a.segmentNo || 1 
       }));
 
-      // 👇 2. ĐƯA PAYLOAD VỀ ĐÚNG CHUẨN BACKEND YÊU CẦU
-      const outboundPayload = {
+      const flightList = [];
+      
+      if (outboundFlight) {
+        flightList.push({
+          flightId: outboundFlight.id || outboundFlight.flightId || "",
+          flightClassId: outboundFlight.selectedClassInfo?.id || outboundFlight.classId || ""
+        });
+      }
+
+      if (isRoundTrip && returnFlight) {
+        flightList.push({
+          flightId: returnFlight.id || returnFlight.flightId || "",
+          flightClassId: returnFlight.selectedClassInfo?.id || returnFlight.classId || ""
+        });
+      }
+
+      const bookingPayload = {
         contactName: contactInfo?.fullName || contactInfo?.contactName || passengers[0]?.fullName || "Khách hàng",
         contactPhone: contactInfo?.phone || contactInfo?.contactPhone || "0999999999",
         contactEmail: contactInfo?.email || contactInfo?.contactEmail || "email@example.com",
         currency: "VND",
         promotionCode: "", 
-        // Đưa flightId vào mảng flights giống như bạn đã từng làm thành công ở ServiceSelection
-        flights: [
-          {
-            flightId: outboundFlight.id || outboundFlight.flightId || "",
-            flightClassId: outboundFlight.selectedClassInfo?.id || outboundFlight.classId || ""
-          }
-        ],
+        flights: flightList, 
         passengers: mappedPassengers,
         bookingAncillaries: mappedAncillaries
       };
 
-      console.log("👉 Payload Chiều ĐI:", JSON.stringify(outboundPayload, null, 2));
-      const reqOutbound = bookingApi.createBooking(outboundPayload);
-      let reqReturn = null;
-
-      // 👇 3. PAYLOAD CHIỀU VỀ (Nếu có)
-      if (isRoundTrip && returnFlight) {
-        const returnPayload = {
-          contactName: contactInfo?.fullName || contactInfo?.contactName || passengers[0]?.fullName || "Khách hàng",
-          contactPhone: contactInfo?.phone || contactInfo?.contactPhone || "0999999999",
-          contactEmail: contactInfo?.email || contactInfo?.contactEmail || "email@example.com",
-          currency: "VND",
-          promotionCode: "", 
-          flights: [
-            {
-              flightId: returnFlight.id || returnFlight.flightId || "",
-              flightClassId: returnFlight.selectedClassInfo?.id || returnFlight.classId || ""
-            }
-          ],
-          passengers: mappedPassengers,
-          bookingAncillaries: [] // Tạm để rỗng dịch vụ chiều về
-        };
-        console.log("👉 Payload Chiều VỀ:", JSON.stringify(returnPayload, null, 2));
-        reqReturn = bookingApi.createBooking(returnPayload);
-      }
-
-      // 4. BẮN API SONG SONG VÀ XỬ LÝ VNPay
-      const responses = await Promise.all([reqOutbound, reqReturn].filter(Boolean));
+      console.log("👉 Đang tạo Đơn đặt vé (1 PNR chung)...", bookingPayload);
       
-      const primaryBooking: any = responses[0];
-      const secondaryBooking: any = responses[1]; // Lấy thêm data vé về
-
-      const mainBookingId = primaryBooking?.result?.id || primaryBooking?.id;
-      const returnBookingId = secondaryBooking?.result?.id || secondaryBooking?.id;
+      const response: any = await bookingApi.createBooking(bookingPayload);
+      
+      const mainBookingId = response?.result?.id || response?.id;
+      const pnrCode = response?.result?.pnrCode || response?.pnrCode;
 
       if (!mainBookingId) {
         throw new Error("Không lấy được mã đặt chỗ từ Server.");
       }
 
-      // 👇 BỔ SUNG LẠI ĐOẠN NÀY: GHÉP 2 ID VÉ BẰNG DẤU PHẨY 👇
-      const combinedBookingIds = isRoundTrip && returnBookingId 
-        ? `${mainBookingId},${returnBookingId}` 
-        : mainBookingId;
-
-      console.log(`👉 Đang tạo link VNPay cho các vé: ${combinedBookingIds}`);
-      
+      console.log(`👉 Đang tạo link thanh toán VNPay cho PNR: ${pnrCode}`);
       const vnpayRes: any = await axiosClient.get('/payments/create-url', {
         params: {
-          bookingId: combinedBookingIds, // 👈 Truyền chuỗi ID ghép vào đây
-          amount: finalAmount
-          // LƯU Ý: Không cần truyền orderInfo ở đây nữa vì Backend Java của bạn đã tự tạo chữ THANHTOAN_VE_PNR1_PNR2 rồi!
+          bookingId: mainBookingId 
         }
       });
-      
+
       if (vnpayRes.result) {
         window.location.href = vnpayRes.result;
       } else {
@@ -126,7 +145,6 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
     }
   };
 
-  // Fallback an toàn nếu chưa chọn chuyến bay
   if (!outboundFlight && !finalAmount) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-slate-500 bg-white border rounded-2xl shadow-sm">
@@ -166,39 +184,72 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
           </div>
         </div>
 
-        <div className="bg-slate-50 p-5 rounded-xl mb-8 border border-slate-100">
-          <h3 className="font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">Tóm tắt hành trình</h3>
+        {/* =======================================
+            BẢNG TÓM TẮT HÀNH TRÌNH ĐỒNG BỘ 100% VỚI SIDEBAR
+            ======================================= */}
+        <div className="bg-slate-50 p-5 rounded-xl mb-8 border border-slate-100 shadow-inner">
+          <h3 className="font-bold text-slate-800 mb-4 border-b border-slate-200 pb-3 flex items-center gap-2">
+            <Ticket className="text-blue-500 w-5 h-5" /> Tóm tắt hành trình
+          </h3>
           
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-2">
-              <Plane size={16} className="text-slate-400" />
-              <span className="text-slate-600 text-sm">Chiều đi:</span>
+          {/* LƯỢT ĐI */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Plane size={18} className="text-blue-500" />
+                <span className="font-bold text-slate-800 uppercase text-sm tracking-wide">
+                  {outInfo.origin} ➔ {outInfo.dest}
+                </span>
+              </div>
+              {isRoundTrip && <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded">LƯỢT ĐI</span>}
             </div>
-            <span className="font-bold text-slate-800">{outboundFlight?.flightCode || outboundFlight?.flightNumber}</span>
+            
+            <div className="bg-white p-3 rounded-lg border border-slate-100 flex justify-between items-center ml-6">
+              <div>
+                <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">Chuyến bay</p>
+                <p className="text-sm font-bold text-slate-700">{outInfo.code} <span className="text-[10px] font-normal ml-1">({outInfo.cls})</span></p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5 flex items-center justify-end gap-1"><Calendar size={12}/> Khởi hành</p>
+                <p className="text-sm font-bold text-blue-600">
+                  {outInfo.time} | {outInfo.date}
+                </p>
+              </div>
+            </div>
           </div>
 
+          {/* LƯỢT VỀ */}
           {isRoundTrip && returnFlight && (
-            <div className="flex justify-between items-center mb-3">
-              <div className="flex items-center gap-2">
-                <ArrowDownUp size={16} className="text-slate-400" />
-                <span className="text-slate-600 text-sm">Chiều về:</span>
+            <div className="mb-4 pt-4 border-t border-dashed border-slate-200">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <ArrowDownUp size={18} className="text-orange-500" />
+                  <span className="font-bold text-slate-800 uppercase text-sm tracking-wide">
+                    {retInfo.origin} ➔ {retInfo.dest}
+                  </span>
+                </div>
+                <span className="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-0.5 rounded">LƯỢT VỀ</span>
               </div>
-              <span className="font-bold text-slate-800">{returnFlight?.flightCode || returnFlight?.flightNumber}</span>
+
+              <div className="bg-white p-3 rounded-lg border border-slate-100 flex justify-between items-center ml-6">
+                <div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">Chuyến bay</p>
+                  <p className="text-sm font-bold text-slate-700">{retInfo.code} <span className="text-[10px] font-normal ml-1">({retInfo.cls})</span></p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5 flex items-center justify-end gap-1"><Calendar size={12}/> Khởi hành</p>
+                  <p className="text-sm font-bold text-orange-600">
+                    {retInfo.time} | {retInfo.date}
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-2">
-              <User size={16} className="text-slate-400" />
-              <span className="text-slate-600 text-sm">Hành khách:</span>
-            </div>
-            <span className="font-bold text-slate-800">{contactInfo?.fullName || "Khách"}</span>
-          </div>
-
-          <div className="flex justify-between text-xl border-t border-slate-200 pt-4 mt-2">
-            <span className="font-bold text-slate-800">Tổng cần thanh toán:</span>
-            <span className="font-black text-orange-500">
-              {finalAmount.toLocaleString()} đ
+          <div className="flex justify-between items-end border-t border-slate-200 pt-5 mt-4">
+            <span className="font-bold text-slate-600 text-sm">Tổng cần thanh toán</span>
+            <span className="font-black text-3xl text-orange-500 leading-none">
+              {finalAmount.toLocaleString('vi-VN')} <span className="text-xl underline decoration-2">đ</span>
             </span>
           </div>
         </div>
@@ -206,7 +257,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
         <Button 
           onClick={handleCreateBookingAndPay}
           disabled={isProcessing}
-          className="w-full h-14 bg-orange-500 hover:bg-orange-600 text-lg font-bold rounded-xl shadow-lg"
+          className="w-full h-14 bg-orange-500 hover:bg-orange-600 text-lg font-bold rounded-xl shadow-lg transition-transform active:scale-95"
         >
           {isProcessing ? (
             <>
@@ -216,11 +267,6 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
             "Thanh toán an toàn ngay"
           )}
         </Button>
-        
-        <div className="mt-5 flex items-center justify-center gap-2 text-green-600 text-xs font-medium bg-green-50 py-2 rounded-lg">
-          <ShieldCheck size={16} />
-          Thông tin của bạn được mã hóa an toàn 256-bit
-        </div>
       </div>
     </div>
   );

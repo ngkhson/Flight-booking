@@ -27,7 +27,6 @@ export const AdvancedSearchWidget = ({ onSearch, loading }: Props) => {
   const dispatch = useDispatch();
 
   const handleSearch = () => {
-    // 👈 2. Bắt lỗi Validation nếu chọn khứ hồi
     if (tripType === 'round-trip') {
       if (!returnDate) {
         alert("Vui lòng chọn ngày về!");
@@ -43,7 +42,6 @@ export const AdvancedSearchWidget = ({ onSearch, loading }: Props) => {
       origin,
       destination,
       date: departureDate ? format(departureDate, "yyyy-MM-dd") : "",
-      // Truyền thêm dữ liệu khứ hồi vào payload
       tripType, 
       returnDate: (tripType === 'round-trip' && returnDate) ? format(returnDate, "yyyy-MM-dd") : "",
       passengers: passengers.adult + passengers.child, 
@@ -53,13 +51,13 @@ export const AdvancedSearchWidget = ({ onSearch, loading }: Props) => {
     onSearch(payload);
 
     dispatch(setSearchConfigs({
+      origin: payload.origin,             
+      destination: payload.destination,
       adults: passengers.adult,
       children: passengers.child,
       infants: passengers.infant,
       date: payload.date,
-      // Tuỳ chọn: Bạn có thể cập nhật bookingSlice để nhận thêm returnDate nếu cần
-      // returnDate: payload.returnDate, 
-      // tripType: payload.tripType
+      returnDate: payload.returnDate
     }));
   };
 

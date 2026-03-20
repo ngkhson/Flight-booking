@@ -63,5 +63,7 @@ export const bookingApi = {
 
   getMyBookings: (page: number = 1, size: number = 20) => {
     return axiosClient.get(`/bookings/my-bookings?page=${page}&size=${size}`);
-  }
+  },
+
+  getBookingById: (id: string) => axiosClient.get(`/bookings/${id}`)
 };
