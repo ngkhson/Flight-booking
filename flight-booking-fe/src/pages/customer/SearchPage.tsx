@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { AdvancedSearchWidget } from '../../features/customer/search/AdvancedSearchWidget';
 import { FlightCard, type Flight } from '../../features/customer/search/FlightCard';
 import { FlightFilter, TIME_BLOCKS } from '../../features/customer/search/FlightFilter';
@@ -20,22 +20,61 @@ export const SearchPage = () => {
   // --- THÊM STATE QUẢN LÝ KHỨ HỒI ---
   const [currentSearchParams, setCurrentSearchParams] = useState<any>(null);
   const [step, setStep] = useState(1); // 1 = Chọn chiều đi, 2 = Chọn chiều về
-  const [outboundFlight, setOutboundFlight] = useState<any>(null); // Lưu vé chiều đi khách đã chọn
+  const [outboundFlight, setOutboundFlight] = useState<any>(null);
+
+  // ==========================================
+  // 1. TÍNH TOÁN DỮ LIỆU ĐỘNG TỪ API FLIGHTS
+  // ==========================================
+  
+  // Quét danh sách các hãng bay có chuyến
+  const availableAirlines = useMemo(() => {
+    if (!apiFlights.length) return [];
+    const airlines = apiFlights.map((f) => f.airline);
+    return Array.from(new Set(airlines)); // Lọc trùng lặp
+  }, [apiFlights]);
+
+  // Quét tìm giá rẻ nhất và đắt nhất
+  const { minPriceLimit, maxPriceLimit } = useMemo(() => {
+    if (!apiFlights.length) return { minPriceLimit: 0, maxPriceLimit: 20000000 };
+    const prices = apiFlights.map((f) => f.price);
+    const min = Math.floor(Math.min(...prices) / 100000) * 100000; // Làm tròn xuống hàng trăm ngàn
+    const max = Math.ceil(Math.max(...prices) / 100000) * 100000;  // Làm tròn lên hàng trăm ngàn
+    return { minPriceLimit: min, maxPriceLimit: max };
+  }, [apiFlights]);
+
+  // Quét tìm thời gian bay lâu nhất
+  const maxDurationLimit = useMemo(() => {
+    if (!apiFlights.length) return 48;
+    const maxMins = Math.max(...apiFlights.map((f) => f.durationMinutes));
+    return Math.ceil(maxMins / 60); // Đổi ra giờ làm tròn lên
+  }, [apiFlights]);
+
 
   // --- STATE LỌC ---
   const [selectedAirlines, setSelectedAirlines] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<number[]>([0, 20000000]);
+  const [maxPrice, setMaxPrice] = useState<number>(20000000);
   const [stops, setStops] = useState<number[]>([]);
   const [maxDuration, setMaxDuration] = useState<number>(48);
   const [takeOffBlocks, setTakeOffBlocks] = useState<string[]>([]);
   const [landingBlocks, setLandingBlocks] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>('price_asc');
 
-  // Hàm Reset Bộ Lọc (Dùng khi lật trang Đi <-> Về)
+  // ==========================================
+  // 2. TỰ ĐỘNG CẬP NHẬT THANH TRƯỢT KHI CÓ DATA MỚI
+  // ==========================================
+  useEffect(() => {
+    if (apiFlights.length > 0) {
+      setMaxPrice(maxPriceLimit);
+      setMaxDuration(maxDurationLimit);
+    }
+  }, [apiFlights, minPriceLimit, maxPriceLimit, maxDurationLimit]);
+
+  // Hàm Reset Bộ Lọc đã được nâng cấp (Lấy giá trị động)
   const resetFilters = () => {
     setSelectedAirlines([]);
-    setPriceRange([0, 20000000]);
+    setMaxPrice(maxPriceLimit);
     setStops([]);
+    setMaxDuration(maxDurationLimit);
     setTakeOffBlocks([]);
     setLandingBlocks([]);
   };
@@ -48,29 +87,24 @@ export const SearchPage = () => {
     }
   }, [location.state]);
 
-  // Hàm bắt sự kiện khi user nhấn nút "Tìm kiếm" ở Widget trên đầu trang
   const handleNewSearch = (params: any) => {
     setCurrentSearchParams(params);
-    setStep(1); // Đặt lại về bước 1
-    setOutboundFlight(null); // Xoá vé đã chọn
+    setStep(1); 
+    setOutboundFlight(null); 
     handleFetchFlightsForStep(params, 1);
   };
 
-  // --- HÀM GỌI API THÔNG MINH (Xử lý cả chiều đi & về) ---
   const handleFetchFlightsForStep = async (searchParams: any, targetStep: number) => {
     setLoading(true);
     setHasSearched(true);
-    resetFilters(); // Mỗi lần tìm chuyến mới thì làm sạch bộ lọc
+    resetFilters(); 
 
     try {
-      // ⚡ Đảo ngược Điểm đi/đến và Ngày bay nếu đang ở Bước 2 (Chiều về)
       const origin = targetStep === 1 ? searchParams.origin : searchParams.destination;
       const destination = targetStep === 1 ? searchParams.destination : searchParams.origin;
       const date = targetStep === 1 ? searchParams.date : searchParams.returnDate;
 
-      // Tạo payload gọi API cho đúng chặng
       const apiPayload = { ...searchParams, origin, destination, date };
-
       const res: any = await flightApi.searchFlights(apiPayload);
 
       if (res.code === 1000 && res.result) {
@@ -106,20 +140,16 @@ export const SearchPage = () => {
     }
   };
 
-  // --- XỬ LÝ KHI NGƯỜI DÙNG BẤM "CHỌN CHUYẾN BAY" ---
   const handleSelectFlight = (flight: Flight, selectedClassInfo?: any) => {
-    // Gắn thêm thông tin Hạng vé/Giá vé mà người dùng chọn trong Card vào object Flight
     const selectedFlightData = { ...flight, selectedClassInfo };
 
     if (currentSearchParams?.tripType === 'round-trip' && step === 1) {
-      // Đã chọn xong chiều đi -> Lưu lại và Lật sang Bước 2
       setOutboundFlight(selectedFlightData);
       setStep(2);
-      window.scrollTo(0, 0); // Cuộn màn hình lên trên cùng
+      window.scrollTo(0, 0); 
       handleFetchFlightsForStep(currentSearchParams, 2);
     } else {
       dispatch(resetStep());
-      // Nếu là vé 1 chiều, HOẶC đã chọn xong chiều về -> Đẩy sang trang Thanh toán
       navigate('/booking', { 
         state: { 
           outboundFlight: step === 1 ? selectedFlightData : outboundFlight, 
@@ -132,7 +162,7 @@ export const SearchPage = () => {
     }
   };
 
-  // --- LOGIC LỌC (Giữ nguyên của bạn) ---
+  // --- LOGIC LỌC ---
   const timeToDecimal = (timeStr: string) => {
     const [hours, minutes] = timeStr.split(':').map(Number);
     return hours + (minutes / 60);
@@ -149,13 +179,14 @@ export const SearchPage = () => {
     const arrTime = timeToDecimal(flight.arrivalTime);
     return (
       (selectedAirlines.length === 0 || selectedAirlines.includes(flight.airline)) &&
-      (flight.price >= priceRange[0] && flight.price <= priceRange[1]) &&
+      (flight.price <= maxPrice) &&
       (stops.length === 0 || stops.includes(flight.stops)) &&
       ((flight.durationMinutes / 60) <= maxDuration) &&
       isTimeInBlocks(depTime, takeOffBlocks) &&
       isTimeInBlocks(arrTime, landingBlocks)
     );
   });
+  
   const sortedFlights = [...filteredFlights].sort((a, b) => {
     if (sortBy === 'price_asc') return a.price - b.price;
     if (sortBy === 'price_desc') return b.price - a.price;
@@ -163,18 +194,16 @@ export const SearchPage = () => {
     return 0;
   });
 
-  // Lấy thông tin điểm đi/đến hiện tại để hiển thị trên Header
   const currentOrigin = step === 1 ? currentSearchParams?.origin : currentSearchParams?.destination;
   const currentDest = step === 1 ? currentSearchParams?.destination : currentSearchParams?.origin;
 
   return (
     <div className="bg-slate-50 min-h-screen pb-20">
-      <section className="bg-blue-600 py-24 text-center text-white relative">
+      <section className="bg-blue-600 py-24 text-center text-white relative z-0">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-500 to-blue-700 opacity-90"></div>
         
         <div className="container mx-auto px-4 relative z-10 text-center sm:text-left">
           
-          {/* HEADER HIỂN THỊ TRẠNG THÁI KHỨ HỒI */}
           <div className="mb-6 flex flex-col items-center sm:items-start">
             <h2 className="text-white text-3xl font-bold flex items-center gap-3">
               {step === 2 && (
@@ -205,10 +234,19 @@ export const SearchPage = () => {
       <div className="h-16"></div>
 
       <div className="container mx-auto px-4 mt-8 flex flex-col lg:flex-row gap-8">
-        <aside className="w-full lg:w-1/4">
+        <aside className="w-full lg:w-1/4 relative z-0">
+          {/* ==========================================
+              3. TRUYỀN PROPS ĐỘNG XUỐNG COMPONENT LỌC
+              ========================================== */}
           <FlightFilter
+            availableAirlines={availableAirlines}
+            minPriceLimit={minPriceLimit}
+            maxPriceLimit={maxPriceLimit}
+            maxDurationLimit={maxDurationLimit}
+            
             selectedAirlines={selectedAirlines} onAirlineChange={(a, c) => setSelectedAirlines(p => c ? [...p, a] : p.filter(x => x !== a))}
-            priceRange={priceRange} onPriceChange={setPriceRange}
+            maxPrice={maxPrice} 
+            onPriceChange={setMaxPrice}
             stops={stops} onStopsChange={(s, c) => setStops(p => c ? [...p, s] : p.filter(x => x !== s))}
             maxDuration={maxDuration} onMaxDurationChange={setMaxDuration}
             takeOffBlocks={takeOffBlocks} onTakeOffBlockChange={(id, c) => setTakeOffBlocks(p => c ? [...p, id] : p.filter(x => x !== id))}
@@ -248,11 +286,10 @@ export const SearchPage = () => {
                 {sortedFlights.length === 0 ? (
                   <div className="bg-white p-12 text-center rounded-xl border">
                     <p className="text-slate-400">Rất tiếc, không có chuyến bay nào phù hợp với tiêu chí lọc của bạn.</p>
-                    <button onClick={resetFilters} className="mt-4 text-blue-600 font-bold">Xóa tất cả bộ lọc</button>
+                    <button onClick={resetFilters} className="mt-4 text-blue-600 font-bold hover:underline">Xóa tất cả bộ lọc</button>
                   </div>
                 ) : (
                   sortedFlights.map((flight) => (
-                    // Truyền hàm handleSelectFlight xuống component FlightCard
                     <FlightCard 
                       key={flight.id} 
                       flight={flight} 
