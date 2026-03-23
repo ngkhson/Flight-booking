@@ -9,6 +9,9 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import FlightManagement from './pages/admin/FlightManagement';
 import BookingManagement from './pages/admin/BookingManagement';
 import UserManagement from './pages/admin/UserManagement';
+// 🚀 IMPORT TRANG QUẢN LÝ GIAO DỊCH MỚI TẠO
+import TransactionManagement from './pages/admin/TransactionManagement';
+import AncillaryManagement from './pages/admin/AncillaryManagement';
 
 // Customer Pages
 import { HomePage } from './pages/customer/HomePage';
@@ -78,6 +81,10 @@ function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="flights" element={<FlightManagement />} />
           <Route path="bookings" element={<BookingManagement />} />
+          <Route path="ancillaries" element={<AncillaryManagement />} />
+          
+          {/* 🚀 ROUTE GIAO DỊCH (Cho phép Admin và Kế toán xem) */}
+          <Route path="transactions" element={<TransactionManagement />} />
 
           {/* Phân quyền UserManagement chỉ dành riêng cho ADMIN */}
           <Route

@@ -1,33 +1,33 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
-    LayoutDashboard, Plane, Ticket, Users, LogOut,
+    LayoutDashboard, Plane, Ticket, Users, LogOut, CreditCard, PackageOpen
 } from 'lucide-react';
 import { useDispatch } from 'react-redux';
 import { logoutUser } from '@/store/authSlice'; // Đảm bảo đường dẫn này đúng với project của bạn
 
+// 🚀 Menu đã được gộp chuẩn xác (6 chức năng)
 const navItems = [
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/admin/flights', label: 'Chuyến bay', icon: Plane },
     { to: '/admin/bookings', label: 'Đặt vé', icon: Ticket },
+    { to: '/admin/transactions', label: 'Giao dịch', icon: CreditCard }, 
+    { to: '/admin/ancillaries', label: 'DV Phụ trợ', icon: PackageOpen },
     { to: '/admin/users', label: 'Người dùng', icon: Users },
 ];
 
 export default function AdminLayout() {
     const navigate = useNavigate();
-
-    const dispatch = useDispatch(); // 👇 2. Khai báo dispatch
+    const dispatch = useDispatch();
 
     const handleLogout = () => {
-        // 👇 3. Gọi action xóa token và user
         dispatch(logoutUser());
-        // 👇 4. Đá về trang đăng nhập của Admin
         navigate('/admin/login');
     };
 
     return (
         <div className="flex h-screen bg-gray-50 font-sans">
             {/* ── Sidebar ────────────────────────────────────────────── */}
-            <aside className="w-64 flex-shrink-0 bg-white border-r border-gray-200 shadow-[2px_0_8px_rgba(0,0,0,0.04)] flex flex-col">
+            <aside className="w-64 flex-shrink-0 bg-white border-r border-gray-200 shadow-[2px_0_8px_rgba(0,0,0,0.04)] flex flex-col z-50">
                 {/* Logo */}
                 <div className="h-16 flex items-center gap-2.5 px-6 border-b border-gray-100">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center">

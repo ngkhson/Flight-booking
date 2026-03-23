@@ -3,7 +3,7 @@ import {
     ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip
 } from 'recharts';
 import {
-    Search, Bell, Plane, PlaneTakeoff, PlaneLanding,
+    Search, Plane, PlaneTakeoff, PlaneLanding,
     Ban, DollarSign, Filter, X
 } from 'lucide-react';
 import StatsCard from '../../components/admin/dashboard/StatsCard';
@@ -11,6 +11,9 @@ import {
     getDashboardSummary, getTopRoutes, getRevenueChart,
     type IDashboardSummary, type ITopRoute, type IRevenueChart
 } from '../../features/admin/services/adminApi';
+
+// NẠP COMPONENT HEADER MỚI
+import AdminHeader from '../../components/admin/layout/AdminHeader';
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 const fmtNumber = (n?: number) => (n || 0).toLocaleString('vi-VN');
@@ -40,7 +43,14 @@ function CardHeader({ title }: { title: string }) {
     );
 }
 
-function RevenueTooltip({ active, payload, label }: any) {
+// KHAI BÁO RÕ RÀNG KIỂU DỮ LIỆU (Tránh lỗi ESLint 'any')
+interface TooltipProps {
+    active?: boolean;
+    payload?: { value: number; payload: { bookingCount: number } }[];
+    label?: string;
+}
+
+function RevenueTooltip({ active, payload, label }: TooltipProps) {
     if (!active || !payload?.length) return null;
     return (
         <div className="bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 text-sm space-y-2 min-w-[150px] z-50">
@@ -77,64 +87,66 @@ export default function AdminDashboard() {
     const [customRange, setCustomRange] = useState({ start: '', end: '' });
     const [appliedRange, setAppliedRange] = useState({ start: '', end: '' });
 
-    // Hàm quy đổi Tab filter thành format YYYY-MM-DD gửi xuống API
-    const getFilterDates = () => {
-        const today = new Date();
-        const formatDate = (date: Date) => {
-            const y = date.getFullYear();
-            const m = String(date.getMonth() + 1).padStart(2, '0');
-            const d = String(date.getDate()).padStart(2, '0');
-            return `${y}-${m}-${d}`;
-        };
-
-        let startDate = '';
-        let endDate = formatDate(today);
-
-        switch (dateFilter) {
-            case 'today':
-                startDate = formatDate(today);
-                break;
-            case 'this_week':
-                const lastWeek = new Date(today); lastWeek.setDate(today.getDate() - 7);
-                startDate = formatDate(lastWeek);
-                break;
-            case 'this_month':
-                const lastMonth = new Date(today); lastMonth.setDate(today.getDate() - 30);
-                startDate = formatDate(lastMonth);
-                break;
-            case 'all':
-                startDate = '2020-01-01'; // Để lấy tất cả, truyền mốc thời gian từ xa xưa
-                break;
-            case 'custom':
-                startDate = appliedRange.start;
-                endDate = appliedRange.end;
-                break;
-            default:
-                startDate = formatDate(new Date(today.setDate(today.getDate() - 30)));
-        }
-        return { startDate, endDate };
-    };
-
-    // FETCH API (Mỗi khi dateFilter hoặc appliedRange thay đổi)
+    // FETCH API
     useEffect(() => {
         let isCancelled = false;
+
+        const getFilterDates = () => {
+            const today = new Date();
+            const formatDate = (date: Date) => {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            };
+
+            let startDate = '';
+            let endDate = formatDate(today);
+
+            switch (dateFilter) {
+                case 'today':
+                    startDate = formatDate(today);
+                    break;
+                case 'this_week': { 
+                    const lastWeek = new Date(today); lastWeek.setDate(today.getDate() - 7);
+                    startDate = formatDate(lastWeek);
+                    break;
+                }
+                case 'this_month': { 
+                    const lastMonth = new Date(today); lastMonth.setDate(today.getDate() - 30);
+                    startDate = formatDate(lastMonth);
+                    break;
+                }
+                case 'all':
+                    startDate = '2020-01-01'; // Để lấy tất cả, truyền mốc thời gian từ xa xưa
+                    break;
+                case 'custom':
+                    startDate = appliedRange.start;
+                    endDate = appliedRange.end;
+                    break;
+                default:
+                    startDate = formatDate(new Date(today.setDate(today.getDate() - 30)));
+            }
+            return { startDate, endDate };
+        };
+
         const fetchDashboardData = async () => {
             setIsLoading(true); setIsError(false);
             try {
                 const { startDate, endDate } = getFilterDates();
-                const params = { startDate, endDate }; // Data sẽ được axios nối thành ?startDate=...&endDate=...
+                const params = { startDate, endDate };
 
-                // Gọi đồng thời 3 API từ Spring Boot
+                // Ép kiểu an toàn (unknown -> Record) thay vì any để không bị ESLint mắng
                 const [summaryRes, routesRes, revenueRes] = await Promise.all([
-                    (getDashboardSummary as any)(params),
-                    (getTopRoutes as any)(params),
-                    (getRevenueChart as any)(params)
+                    getDashboardSummary(params) as unknown as Record<string, unknown>,
+                    getTopRoutes(params) as unknown as Record<string, unknown>,
+                    getRevenueChart(params) as unknown as Record<string, unknown>
                 ]);
 
                 if (!isCancelled) {
-                    setSummary((summaryRes as any)?.result || summaryRes);
-                    setTopRoutes((routesRes as any)?.result || routesRes || []);
-                    setRevenueData((revenueRes as any)?.result || revenueRes || []);
+                    setSummary((summaryRes?.result || summaryRes) as IDashboardSummary);
+                    setTopRoutes((routesRes?.result || routesRes || []) as ITopRoute[]);
+                    setRevenueData((revenueRes?.result || revenueRes || []) as IRevenueChart[]);
                 }
             } catch (err) {
                 console.error("Lỗi lấy dữ liệu Dashboard:", err);
@@ -169,23 +181,9 @@ export default function AdminDashboard() {
 
     return (
         <div className="min-h-screen bg-[#F8F9FA] space-y-6 pb-10">
-            {/* ── Header ─────────────────────────────────────────────── */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h1 className="text-2xl font-bold text-gray-900 whitespace-nowrap">Tổng quan hệ thống</h1>
-                <div className="flex items-center gap-4 w-full md:w-auto">
-                    <div className="relative flex-1 md:w-80">
-                        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input type="text" placeholder="Tìm kiếm..." className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-gray-200 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" />
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                        <button className="relative p-2.5 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition"><Bell size={18} className="text-gray-600" /><span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" /></button>
-                        <div className="flex items-center gap-2.5 bg-white border border-gray-200 rounded-xl px-3 py-2 cursor-pointer hover:bg-gray-50 transition">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">AD</div>
-                            <div className="hidden sm:block"><p className="text-sm font-medium text-gray-800 leading-tight">Admin</p></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            
+            {/* 🚀 NẠP COMPONENT HEADER MỚI VÀO ĐÂY */}
+            <AdminHeader title="Tổng quan hệ thống" />
 
             {/* 🚀 THANH BỘ LỌC */}
             <div className="flex items-center justify-between w-full pb-2 md:pb-0 relative z-20">

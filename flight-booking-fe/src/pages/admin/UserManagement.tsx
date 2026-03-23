@@ -22,25 +22,21 @@ export interface IUser {
 // ─── Constants ────────────────────────────────────────────────────────────────
 type RoleName = string;
 
-const ALL_ROLES: RoleName[] = ['ADMIN', 'ACCOUNTANT', 'AGENT', 'CUSTOMER'];
+const ALL_ROLES: RoleName[] = ['ADMIN', 'USER'];
 
 const ROLE_BADGE: Record<string, string> = {
     ADMIN: 'bg-purple-100 text-purple-700',
-    ACCOUNTANT: 'bg-blue-100 text-blue-700',
-    AGENT: 'bg-indigo-100 text-indigo-700',
-    CUSTOMER: 'bg-gray-100 text-gray-600',
+    USER: 'bg-gray-100 text-gray-600',
 };
 
 const ROLE_LABELS: Record<string, string> = {
     ADMIN: 'Admin',
-    ACCOUNTANT: 'Kế toán',
-    AGENT: 'Đại lý',
-    CUSTOMER: 'Khách hàng',
+    USER: 'Khách hàng',
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const getPrimaryRole = (roles: IRole[]): string =>
-    roles[0]?.name ?? 'CUSTOMER';
+    roles[0]?.name ?? 'USER';
 
 // ─── Skeleton row ─────────────────────────────────────────────────────────────
 function SkeletonRow() {
@@ -60,9 +56,10 @@ interface RoleDropdownProps {
     userId: string;
     current: string;
     onChangeRole: (id: string, role: string) => void;
+    dropUp?: boolean;
 }
 
-function RoleDropdown({ userId, current, onChangeRole }: RoleDropdownProps) {
+function RoleDropdown({ userId, current, onChangeRole, dropUp }: RoleDropdownProps) {
     const [open, setOpen] = useState(false);
 
     return (
@@ -74,13 +71,13 @@ function RoleDropdown({ userId, current, onChangeRole }: RoleDropdownProps) {
                 aria-expanded={open}
             >
                 🔄 Đổi Role
-                <span className="text-[10px] opacity-60">▾</span>
+                <span className="text-[10px] opacity-60">{dropUp ? '▴' : '▾'}</span>
             </button>
 
             {open && (
                 <>
                     <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden="true" />
-                    <div className="absolute right-0 mt-1 z-20 w-40 bg-white rounded-xl shadow-lg border border-gray-100 py-1 overflow-hidden">
+                    <div className={`absolute right-0 z-50 w-40 bg-white rounded-xl shadow-xl border border-gray-100 py-1 overflow-hidden ${dropUp ? 'bottom-full mb-2' : 'top-full mt-1'}`}>
                         {ALL_ROLES.map((role) => (
                             <button
                                 key={role}
@@ -113,11 +110,12 @@ export default function UserManagement() {
     const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'info' } | null>(null);
     const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // 🚀 THÊM STATE PHÂN TRANG (Tối đa 8 user/trang)
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 8;
 
-    // Reset về trang 1 nếu người dùng gõ tìm kiếm
+    // 🚀 STATE LƯU THÔNG TIN ROLE ĐANG CHỜ XÁC NHẬN
+    const [pendingRoleChange, setPendingRoleChange] = useState<{ userId: string, roleName: string } | null>(null);
+
     useEffect(() => {
         setCurrentPage(1);
     }, [search]);
@@ -139,25 +137,32 @@ export default function UserManagement() {
         setIsLoading(true);
         setApiError(null);
         try {
-            // Lấy nhiều dữ liệu để FE tự phân trang
-            const res: any = await getUsers({ page: 0, size: 500 });
+            const rawRes = await getUsers({ page: 0, size: 500 }) as unknown;
             let userArray: IUser[] = [];
 
-            if (Array.isArray(res)) {
-                userArray = res;
-            } else if (res && typeof res === 'object') {
-                if (Array.isArray(res.data?.content)) userArray = res.data.content;
-                else if (Array.isArray(res.result?.content)) userArray = res.result.content;
-                else if (Array.isArray(res.content)) userArray = res.content;
-                else if (Array.isArray(res.data)) userArray = res.data;
-                else if (Array.isArray(res.result)) userArray = res.result;
+            if (Array.isArray(rawRes)) {
+                userArray = rawRes as IUser[];
+            } else if (rawRes && typeof rawRes === 'object') {
+                const typedRes = rawRes as {
+                    data?: { content?: IUser[] } | IUser[];
+                    result?: { content?: IUser[] } | IUser[];
+                    content?: IUser[];
+                };
+
+                if (typedRes.data && !Array.isArray(typedRes.data) && Array.isArray(typedRes.data.content)) {
+                    userArray = typedRes.data.content;
+                } else if (typedRes.result && !Array.isArray(typedRes.result) && Array.isArray(typedRes.result.content)) {
+                    userArray = typedRes.result.content;
+                } else if (Array.isArray(typedRes.content)) {
+                    userArray = typedRes.content;
+                } else if (Array.isArray(typedRes.data)) {
+                    userArray = typedRes.data;
+                } else if (Array.isArray(typedRes.result)) {
+                    userArray = typedRes.result;
+                }
             }
 
-            if (!Array.isArray(userArray)) {
-                userArray = [];
-            }
-
-            setUsers(userArray);
+            setUsers(userArray || []);
         } catch (err: unknown) {
             console.error('[UserManagement] getUsers failed:', err);
             setApiError('Không thể tải danh sách người dùng.');
@@ -169,19 +174,51 @@ export default function UserManagement() {
 
     useEffect(() => { loadUsers(); }, [loadUsers]);
 
-    // ── Role change ───────────────────────────────────────────────────────────
-    const handleChangeRole = useCallback(async (id: string, roleName: string) => {
-        setUsers((prev) => prev.map((u) =>
-            u.id === id ? { ...u, roles: [{ id: 0, name: roleName, description: '' }] } : u,
-        ));
-        try {
-            await updateUser(id, { roles: [roleName] });
-            showToast(`Đã đổi role → ${ROLE_LABELS[roleName] ?? roleName}.`);
-        } catch {
-            await loadUsers();
-            showToast('Không thể đổi role. Kiểm tra lại kết nối.', 'error');
+    // ── Hành động BẤM ĐỔI ROLE TỪ MENU (Chỉ lưu vào State chờ) ───────────────
+    const handleRequestRoleChange = useCallback((id: string, roleName: string) => {
+        const targetUser = users.find(u => u.id === id);
+        const currentRole = getPrimaryRole(targetUser?.roles || []);
+        
+        // Nếu chọn lại role hiện tại thì không làm gì cả
+        if (currentRole === roleName) return;
+
+        setPendingRoleChange({ userId: id, roleName });
+    }, [users]);
+
+    // ── Hành động XÁC NHẬN ĐỔI ROLE TỪ DIALOG (Gọi API) ───────────────────────
+    const confirmRoleChange = useCallback(async () => {
+        if (!pendingRoleChange) return;
+        const { userId, roleName } = pendingRoleChange;
+
+        const targetUser = users.find(u => u.id === userId);
+        if (!targetUser) {
+            setPendingRoleChange(null);
+            return;
         }
-    }, [showToast, loadUsers]);
+
+        // Đóng dialog
+        setPendingRoleChange(null);
+
+        // Optimistic Update
+        setUsers((prev) => prev.map((u) =>
+            u.id === userId ? { ...u, roles: [{ id: 0, name: roleName, description: '' }] } : u,
+        ));
+        
+        try {
+            const payload = {
+                fullName: targetUser.fullName || "Unknown",
+                phone: targetUser.phone && targetUser.phone.length === 10 ? targetUser.phone : "0999999999", 
+                roles: [roleName] 
+            };
+
+            await updateUser(userId, payload);
+            showToast(`Đã đổi role → ${ROLE_LABELS[roleName] ?? roleName}.`);
+        } catch (error) {
+            console.error("Lỗi đổi role:", error);
+            await loadUsers(); // Rollback lại
+            showToast('Không thể đổi role. Kiểm tra lại thông tin.', 'error');
+        }
+    }, [pendingRoleChange, users, showToast, loadUsers]);
 
     // ── Lọc Dữ Liệu ───────────────────────────────────────────────────────────
     const visible = (users || []).filter((u) => {
@@ -197,7 +234,6 @@ export default function UserManagement() {
         );
     });
 
-    // 🚀 TÍNH TOÁN CẮT MẢNG CHO TRANG HIỆN TẠI
     const totalPages = Math.ceil(visible.length / itemsPerPage) || 1;
     const paginatedUsers = visible.slice(
         (currentPage - 1) * itemsPerPage,
@@ -259,17 +295,17 @@ export default function UserManagement() {
                 />
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+                <div className="overflow-x-auto min-h-[350px]">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50 border-b border-gray-100 text-xs uppercase text-gray-500 tracking-wide font-bold">
                             <tr>
-                                <th className="px-5 py-4">ID</th>
+                                <th className="px-5 py-4 rounded-tl-2xl">ID</th>
                                 <th className="px-5 py-4">Họ tên</th>
                                 <th className="px-5 py-4">Email</th>
                                 <th className="px-5 py-4">Điện thoại</th>
                                 <th className="px-5 py-4">Phân quyền (Role)</th>
-                                <th className="px-5 py-4 text-right">Hành động</th>
+                                <th className="px-5 py-4 text-right rounded-tr-2xl">Hành động</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -283,8 +319,10 @@ export default function UserManagement() {
                                             </td>
                                         </tr>
                                     )
-                                    : paginatedUsers.map((u) => {
+                                    : paginatedUsers.map((u, index) => {
                                         const primaryRole = getPrimaryRole(u.roles);
+                                        const isNearBottom = paginatedUsers.length > 3 && index >= paginatedUsers.length - 3;
+
                                         return (
                                             <tr key={u.id} className="hover:bg-indigo-50/40 transition-colors group">
                                                 <td className="px-5 py-4 font-mono text-xs text-gray-400">{u.id.substring(0, 8)}...</td>
@@ -301,7 +339,8 @@ export default function UserManagement() {
                                                         <RoleDropdown
                                                             userId={u.id}
                                                             current={primaryRole}
-                                                            onChangeRole={handleChangeRole}
+                                                            onChangeRole={handleRequestRoleChange} // Sửa gọi hàm request thay vì đổi ngay
+                                                            dropUp={isNearBottom}
                                                         />
                                                     </div>
                                                 </td>
@@ -313,20 +352,17 @@ export default function UserManagement() {
                     </table>
                 </div>
 
-                {/* 🚀 BỘ PHÂN TRANG (PAGINATION) */}
                 {!isLoading && visible.length > 0 && (
-                    <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-b-2xl">
                         <span className="text-xs text-gray-500">
                             Hiển thị <span className="font-bold text-gray-700">{(currentPage - 1) * itemsPerPage + 1}</span> đến <span className="font-bold text-gray-700">{Math.min(currentPage * itemsPerPage, visible.length)}</span> trong số <span className="font-bold text-gray-700">{visible.length}</span> tài khoản
                         </span>
 
                         <div className="flex items-center gap-4">
-                            {/* Nút Làm mới giữ nguyên */}
                             <button onClick={loadUsers} className="text-indigo-600 hover:text-indigo-800 transition text-xs font-bold flex items-center gap-1">
                                 🔄 Làm mới
                             </button>
 
-                            {/* Các nút bấm chuyển trang */}
                             <div className="flex gap-1">
                                 <button
                                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
@@ -358,6 +394,39 @@ export default function UserManagement() {
                     </div>
                 )}
             </div>
+
+            {/* 🚀 MODAL XÁC NHẬN ĐỔI ROLE */}
+            {pendingRoleChange && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center text-xl">
+                                ⚠️
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-800">Xác nhận đổi quyền</h3>
+                        </div>
+                        
+                        <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+                            Bạn có chắc chắn muốn cấp quyền <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider ${ROLE_BADGE[pendingRoleChange.roleName]}`}>{ROLE_LABELS[pendingRoleChange.roleName]}</span> cho người dùng <span className="font-bold text-gray-900">{users.find(u => u.id === pendingRoleChange.userId)?.fullName || 'này'}</span> không?
+                        </p>
+                        
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setPendingRoleChange(null)}
+                                className="px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-lg text-sm hover:bg-gray-200 transition"
+                            >
+                                Hủy bỏ
+                            </button>
+                            <button
+                                onClick={confirmRoleChange}
+                                className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg text-sm hover:bg-indigo-700 transition shadow-sm"
+                            >
+                                Xác nhận đổi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

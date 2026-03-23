@@ -141,3 +141,80 @@ export const deleteUser = async (userId: string) => {
 export const getRoles = async () => {
     return await axiosClient.get('/roles');
 };
+// ─── TRANSACTION INTERFACES ───────────────────────────────────────────────────
+export interface ITransaction {
+    amount: number;
+    paymentMethod: string;
+    status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
+    transactionNo: string;
+    bankRefNo: string;
+    gatewayResponse: string;
+    createdAt: string; 
+}
+
+export interface ITransactionSearchRequest {
+    keyword?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    size?: number;
+}
+
+// ─── API LẤY DANH SÁCH GIAO DỊCH ──────────────────────────────────────────────
+// Dùng axiosClient và trả về Promise<any> để tránh lỗi Interface không tồn tại
+export const getTransactions = async (params: ITransactionSearchRequest = { page: 1, size: 10 }): Promise<any> => {
+    return await axiosClient.get('/admin/transactions', { params });
+};
+
+// ─── ANCILLARY CATALOG INTERFACES ─────────────────────────────────────────────
+export interface IAncillaryCatalog {
+    id: string;
+    code: string;
+    type: string;
+    name: string;
+    price: number;
+    status: 'ACTIVE' | 'INACTIVE';
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface IAncillaryCatalogSearchRequest {
+    keyword?: string;
+    type?: string;
+    status?: string;
+    page?: number;
+    size?: number;
+}
+
+export interface IAncillaryCatalogCreationRequest {
+    code: string;
+    type: string;
+    name: string;
+    price: number;
+    status: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface IAncillaryCatalogUpdateRequest {
+    type: string;
+    name: string;
+    price: number;
+    status: 'ACTIVE' | 'INACTIVE';
+}
+
+// ─── API DỊCH VỤ PHỤ TRỢ ──────────────────────────────────────────────────────
+export const searchAncillaryCatalogs = async (params: IAncillaryCatalogSearchRequest = { page: 1, size: 10 }): Promise<any> => {
+    return await axiosClient.get('/ancillary-catalogs/search', { params });
+};
+
+export const createAncillaryCatalog = async (payload: IAncillaryCatalogCreationRequest): Promise<any> => {
+    return await axiosClient.post('/ancillary-catalogs', payload);
+};
+
+export const updateAncillaryCatalog = async (id: string, payload: IAncillaryCatalogUpdateRequest): Promise<any> => {
+    return await axiosClient.put(`/ancillary-catalogs/${id}`, payload);
+};
+
+export const deleteAncillaryCatalog = async (id: string): Promise<any> => {
+    return await axiosClient.delete(`/ancillary-catalogs/${id}`);
+};
