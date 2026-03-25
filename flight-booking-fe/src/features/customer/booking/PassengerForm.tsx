@@ -1,11 +1,11 @@
-import { useForm, useFieldArray, type SubmitHandler } from "react-hook-form";
+import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useDispatch, useSelector } from "react-redux";
 import { savePassengers, saveContactInfo } from "@/store/bookingSlice";
-import { User, Mail, Phone, Baby, Users, Info } from "lucide-react";
+import { User, Mail, Baby, Users, Info } from "lucide-react";
 import { type RootState } from "@/store/store";
 
 // Schema cho từng loại khách
@@ -34,9 +34,9 @@ type BookingFormValues = z.infer<typeof bookingSchema>;
 export const PassengerForm = () => {
   const dispatch = useDispatch();
   // Giả sử bạn lấy số lượng từ Redux searchConfigs
-  const { searchConfigs, selectedFlight } = useSelector((state: RootState) => state.booking);
+  const { searchConfigs } = useSelector((state: RootState) => state.booking);
 
-  const { register, control, handleSubmit, formState: { errors } } = useForm<BookingFormValues>({
+  const { register, handleSubmit } = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
       contact: { contactName: "", contactEmail: "", contactPhone: "" },
@@ -57,7 +57,7 @@ export const PassengerForm = () => {
     <div key={`${type}-${index}`} className="p-6 border border-slate-200 rounded-xl bg-white shadow-sm space-y-4">
       <div className="flex items-center justify-between border-b pb-2">
         <h3 className="font-bold text-slate-700 flex items-center gap-2">
-          {type === 'adults' ? <User size={18}/> : <Baby size={18}/>} {title} #{index + 1}
+          {type === 'adults' ? <User size={18} /> : <Baby size={18} />} {title} #{index + 1}
         </h3>
         {(type === 'children' || type === 'infants') && (
           <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold">
@@ -65,7 +65,7 @@ export const PassengerForm = () => {
           </span>
         )}
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1">
           <label className="text-xs font-bold text-slate-500">HỌ TÊN</label>
@@ -111,7 +111,7 @@ export const PassengerForm = () => {
         <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
           <Users className="w-5 h-5" /> Thông tin hành khách
         </h2>
-        
+
         {/* Render lần lượt Người lớn -> Trẻ em -> Em bé */}
         {Array(searchConfigs.adults).fill(0).map((_, i) => renderPersonForm('adults', i, 'Người lớn'))}
         {Array(searchConfigs.children).fill(0).map((_, i) => renderPersonForm('children', i, 'Trẻ em'))}

@@ -88,7 +88,7 @@ export const ServiceSelection = () => {
   };
 
   // HÀM CHỐT DỊCH VỤ VÀ CHUYỂN BƯỚC
-  const onConfirm = () => {
+  const onConfirm = async () => {
     const finalAddons: any[] = [];
     
     // Quét qua toàn bộ lựa chọn: Hành khách -> Lượt bay -> Loại dịch vụ

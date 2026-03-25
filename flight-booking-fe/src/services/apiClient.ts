@@ -13,8 +13,9 @@ const apiClient = axios.create({
 // 2. Cấu hình Interceptor (Bộ chặn) - Tự động gắn Token
 apiClient.interceptors.request.use(
   (config) => {
-    // Lấy token từ localStorage (nếu có)
-    const token = localStorage.getItem('token');
+    // [SỬA Ở ĐÂY]: Đổi 'token' thành 'accessToken' để đồng bộ với trang Login
+    const token = localStorage.getItem('accessToken');
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`; // Gắn token vào Header
     }
@@ -34,8 +35,16 @@ apiClient.interceptors.response.use(
     // Nếu lỗi 401 (Hết hạn token hoặc không hợp lệ) -> Đá về trang login
     if (error.response?.status === 401) {
       console.log('Hết phiên đăng nhập, vui lòng login lại!');
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+
+      // [SỬA Ở ĐÂY]: Xóa đúng key 'accessToken'
+      localStorage.removeItem('accessToken');
+
+      // [SỬA Ở ĐÂY]: Điều hướng thông minh phân biệt Admin và Khách hàng
+      if (window.location.pathname.startsWith('/admin')) {
+        window.location.href = '/admin/login';
+      } else {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

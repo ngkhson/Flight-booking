@@ -1,7 +1,7 @@
 import { Outlet, Link } from 'react-router-dom';
 // import { useSelector } from 'react-redux'; // Thêm cái này
 import { useLogout } from '@/hooks/useLogout';
-import { LogOut, User, Ticket, ChevronDown } from 'lucide-react';
+import { LogOut, User, Ticket } from 'lucide-react';
 import { type RootState } from '@/store/store'; // Type của RootState
 
 // export const CustomerLayout = () => {

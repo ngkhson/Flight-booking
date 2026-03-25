@@ -107,31 +107,59 @@ export const SearchPage = () => {
       const apiPayload = { ...searchParams, origin, destination, date };
       const res: any = await flightApi.searchFlights(apiPayload);
 
-      if (res.code === 1000 && res.result) {
-        const mappedFlights = res.result.map((item: any) => {
-          const minPrice = item.classes && item.classes.length > 0
-            ? Math.min(...item.classes.map((c: any) => c.basePrice)) : 0;
-          const depDate = new Date(item.departureTime);
-          const arrDate = new Date(item.arrivalTime);
-
-          return {
-            id: item.id,
-            flightCode: item.flightNumber,
-            airline: item.airlineName,
-            airlineLogo: item.airlineName.toLowerCase().includes("vietnam") ? "VN" : "VJ",
-            departureTime: format(depDate, "HH:mm"),
-            arrivalTime: format(arrDate, "HH:mm"),
-            originCode: item.origin,
-            destinationCode: item.destination,
-            price: minPrice,
-            classes: item.classes,
-            durationMinutes: Math.floor((arrDate.getTime() - depDate.getTime()) / 60000),
-            stops: 0,
-            aircraft: "Airbus A321",
-          };
-        });
-        setApiFlights(mappedFlights);
+      // 🚀 BỘ HÚT DỮ LIỆU AN TOÀN ĐỂ XUYÊN QUA LỚP PHÂN TRANG (PAGERESPONSE)
+      let flightArray: any[] = [];
+      if (res && res.code === 1000) {
+        if (Array.isArray(res.result)) {
+          flightArray = res.result;
+        } else if (res.result && Array.isArray(res.result.data)) {
+          flightArray = res.result.data; // Lấy từ PageResponse.data
+        } else if (res.result && Array.isArray(res.result.content)) {
+          flightArray = res.result.content; // Lấy từ PageResponse.content
+        }
+      } else if (Array.isArray(res)) {
+        flightArray = res;
+      } else if (res && Array.isArray(res.data)) {
+        flightArray = res.data;
       }
+
+      // CHẠY HÀM MAP TRÊN MẢNG AN TOÀN
+      const mappedFlights = flightArray.map((item: any, index: number) => {
+        const minPrice = item.classes && item.classes.length > 0
+          ? Math.min(...item.classes.map((c: any) => c.basePrice)) : 0;
+        const depDate = new Date(item.departureTime);
+        const arrDate = new Date(item.arrivalTime);
+
+        // Tính tổng số phút bay
+        const totalMinutes = isNaN(arrDate.getTime()) ? 0 : Math.floor((arrDate.getTime() - depDate.getTime()) / 60000);
+
+        // 🚀 THÊM LOGIC ĐỔI RA CHUỖI "Xh Ym" Ở ĐÂY
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        const durationString = `${hours}h ${minutes}m`;
+
+        return {
+          id: item.id || item.flightNumber || `fallback-${index}`,
+          flightCode: item.flightNumber || item.flightCode || 'N/A',
+          airline: item.airlineName || item.airline || 'N/A',
+          airlineLogo: (item.airlineName || '').toLowerCase().includes("vietnam") ? "VN" : "VJ",
+          departureTime: isNaN(depDate.getTime()) ? "00:00" : format(depDate, "HH:mm"),
+          arrivalTime: isNaN(arrDate.getTime()) ? "00:00" : format(arrDate, "HH:mm"),
+          originCode: item.origin || 'N/A',
+          destinationCode: item.destination || 'N/A',
+          price: minPrice,
+          classes: item.classes || [],
+
+          durationMinutes: totalMinutes,
+          duration: durationString, // <--- THÊM DÒNG NÀY VÀO ĐỂ FIX LỖI
+
+          stops: item.stops || 0,
+          aircraft: item.aircraft || "Airbus A321",
+        };
+      });
+
+      setApiFlights(mappedFlights);
+
     } catch (error: any) {
       console.error("Lỗi search:", error);
       setApiFlights([]);
@@ -156,8 +184,9 @@ export const SearchPage = () => {
           returnFlight: step === 2 ? selectedFlightData : null,
           isRoundTrip: currentSearchParams?.tripType === 'round-trip',
           passengers: currentSearchParams?.passengers,
-          rawPassengers: currentSearchParams?.rawPassengers
-        } 
+          rawPassengers: currentSearchParams?.rawPassengers,
+          returnDate: currentSearchParams?.returnDate // Gửi ngày về sang trang booking
+        }
       });
     }
   };
@@ -201,13 +230,13 @@ export const SearchPage = () => {
     <div className="bg-slate-50 min-h-screen pb-20">
       <section className="bg-blue-600 py-24 text-center text-white relative z-0">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-500 to-blue-700 opacity-90"></div>
-        
+
         <div className="container mx-auto px-4 relative z-10 text-center sm:text-left">
           
           <div className="mb-6 flex flex-col items-center sm:items-start">
             <h2 className="text-white text-3xl font-bold flex items-center gap-3">
               {step === 2 && (
-                <button 
+                <button
                   onClick={() => { setStep(1); handleFetchFlightsForStep(currentSearchParams, 1); }}
                   className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition"
                   title="Quay lại chuyến đi"
@@ -217,7 +246,7 @@ export const SearchPage = () => {
               )}
               {currentOrigin || '...'} ✈ {currentDest || '...'}
             </h2>
-            
+
             {currentSearchParams?.tripType === 'round-trip' && (
               <div className="mt-3 inline-block bg-orange-500 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-md">
                 Bước {step} / 2: Chọn chuyến {step === 1 ? 'ĐI' : 'VỀ'}
