@@ -89,7 +89,7 @@ export const MyBookingsPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const response: any = await bookingApi.getMyBookings(1, 50);
+      const response: any = await bookingApi.getMyBookings(1, 50); 
       const content = response?.result?.content || response?.data?.result?.content || [];
       
       const detailedPromises = content.map(async (b: any) => {
@@ -158,7 +158,7 @@ export const MyBookingsPage = () => {
   return (
     <div className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8 relative">
       <div className="max-w-4xl mx-auto">
-
+        
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold text-slate-800 flex items-center gap-3">
@@ -343,7 +343,7 @@ export const MyBookingsPage = () => {
                   )}
                 </div>
               </div>
-              <button
+              <button 
                 onClick={() => setSelectedTicket(null)}
                 className="p-1.5 bg-blue-700/50 hover:bg-blue-700 rounded-full text-white transition-colors z-10"
               >

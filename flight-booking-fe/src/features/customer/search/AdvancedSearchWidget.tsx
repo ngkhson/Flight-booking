@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapPin } from 'lucide-react';
+import { MapPin, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PassengerSelector, type PassengerState } from './PassengerSelector';
@@ -20,10 +20,10 @@ export const AdvancedSearchWidget = ({ onSearch, loading }: Props) => {
   const [tripType, setTripType] = useState<'one-way' | 'round-trip'>('one-way');
   const [origin, setOrigin] = useState("HKT");
   const [destination, setDestination] = useState("KUL");
-
+  
   const [departureDate, setDepartureDate] = useState<Date | undefined>(new Date());
   const [returnDate, setReturnDate] = useState<Date | undefined>(); // 👈 1. Thêm state quản lý ngày về
-
+  
   const [passengers, setPassengers] = useState<PassengerState>({ adult: 1, child: 0, infant: 0 });
   const dispatch = useDispatch();
 
@@ -45,10 +45,10 @@ export const AdvancedSearchWidget = ({ onSearch, loading }: Props) => {
       date: departureDate ? format(departureDate, "yyyy-MM-dd") : "",
       tripType, 
       returnDate: (tripType === 'round-trip' && returnDate) ? format(returnDate, "yyyy-MM-dd") : "",
-      passengers: passengers.adult + passengers.child,
+      passengers: passengers.adult + passengers.child, 
       rawPassengers: passengers
     };
-
+    
     onSearch(payload);
 
     dispatch(setSearchConfigs({
@@ -66,8 +66,7 @@ export const AdvancedSearchWidget = ({ onSearch, loading }: Props) => {
     if (location.state) {
       if (location.state.origin) setOrigin(location.state.origin);
       if (location.state.destination) setDestination(location.state.destination);
-
-      // 2. Khôi phục Ngày bay (Phải biến chuỗi "YYYY-MM-DD" ngược lại thành Object Date)
+      
       if (location.state.date) {
         setDepartureDate(new Date(location.state.date));
       }
@@ -83,11 +82,6 @@ export const AdvancedSearchWidget = ({ onSearch, loading }: Props) => {
       if (location.state.rawPassengers) {
         setPassengers(location.state.rawPassengers);
       }
-
-      // Khôi phục số lượng khách (Vì bạn dùng chung 1 Object nên phải set kiểu này)
-      // Lưu ý: Trong handleSearch bạn chỉ truyền 'passengers' là TỔNG SỐ KHÁCH.
-      // Nếu bạn muốn chia lại chính xác người lớn/trẻ em, cách tốt nhất là 
-      // đọc ngược từ Redux ra (vì lúc ở HomePage bạn đã dispatch lên Redux rồi).
     }
   }, [location.state]);
 

@@ -131,7 +131,6 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
         }
       });
 
-
       if (vnpayRes.result) {
         window.location.href = vnpayRes.result;
       } else {
@@ -162,7 +161,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
         <h2 className="text-xl font-bold mb-1">Xác nhận thanh toán</h2>
         <p className="text-slate-300 text-sm">Vui lòng kiểm tra kỹ thông tin trước khi thanh toán</p>
       </div>
-
+      
       <div className="p-6">
         {errorMsg && (
           <div className="p-4 mb-6 bg-red-50 text-red-600 border border-red-200 rounded-xl text-sm flex gap-3 items-center">
@@ -255,7 +254,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
           </div>
         </div>
 
-        <Button
+        <Button 
           onClick={handleCreateBookingAndPay}
           disabled={isProcessing}
           className="w-full h-14 bg-orange-500 hover:bg-orange-600 text-lg font-bold rounded-xl shadow-lg transition-transform active:scale-95"
