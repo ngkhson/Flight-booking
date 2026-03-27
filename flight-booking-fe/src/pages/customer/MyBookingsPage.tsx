@@ -1,21 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plane, Calendar, Clock, CreditCard, RefreshCw, AlertCircle, 
-  CheckCircle, Ticket, ChevronRight, X, User, QrCode, Loader2 
+  CheckCircle, Ticket, ChevronRight, X, User, QrCode, Loader2, ChevronDown, Search 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { bookingApi, type MyBookingResponse } from '@/api/bookingApi'; 
-import axiosClient from '@/api/axiosClient'; // Bổ sung import để gọi VNPay
+import { bookingApi } from '@/api/bookingApi'; 
+import axiosClient from '@/api/axiosClient';
 
 // --- Helpers ---
 const STATUS_CONFIG: Record<string, { label: string, color: string, icon: any }> = {
-  PENDING: { label: 'Chờ xử lý', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock },
+  // PENDING: { label: 'Chờ xử lý', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock },
   AWAITING_PAYMENT: { label: 'Chờ thanh toán', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: AlertCircle },
-  PAID: { label: 'Đã thanh toán', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CreditCard },
+  // PAID: { label: 'Đã thanh toán', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CreditCard },
   CONFIRMED: { label: 'Đã xác nhận', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle },
   CANCELLED: { label: 'Đã huỷ', color: 'bg-red-100 text-red-700 border-red-200', icon: AlertCircle },
-  REFUNDED: { label: 'Đã hoàn tiền', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: RefreshCw },
+  // REFUNDED: { label: 'Đã hoàn tiền', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: RefreshCw },
 };
 
 const fmtVND = (amount: number) => amount ? amount.toLocaleString('vi-VN') + ' ₫' : '--- ₫';
@@ -32,7 +32,12 @@ const fmtDateOnly = (isoString: string) => {
   return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
-// Hàm trích xuất chính xác cấu trúc tickets từ API Detail
+// Hàm bỏ dấu tiếng Việt để tìm kiếm thông minh hơn
+const removeAccents = (str: string) => {
+  if (!str) return '';
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+};
+
 const getDetailedFlights = (booking: any) => {
   if (booking.passengers && booking.passengers[0]?.tickets?.length > 0) {
     return booking.passengers[0].tickets.map((t: any) => ({
@@ -67,44 +72,39 @@ const getDetailedFlights = (booking: any) => {
   }];
 };
 
-// --- Component ---
 export const MyBookingsPage = () => {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // State quản lý Modal và Loading
+  const [loading, setLoading] = useState(true); 
+
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [isFetchingDetail, setIsFetchingDetail] = useState(false);
-  
-  // State quản lý Loading khi bấm nút Thanh Toán Lại
   const [processingPaymentId, setProcessingPaymentId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchMyBookings();
-  }, []);
+  // 👇 THÊM STATE CHO TÌM KIẾM & LỌC 👇
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('ALL');
+
+  // useEffect(() => {
+  //   fetchMyBookings(1, false);
+  // }, []);
 
   const fetchMyBookings = async () => {
     setLoading(true);
     setError(null);
+    
     try {
-      const response: any = await bookingApi.getMyBookings(1, 50); 
-      const content = response?.result?.content || response?.data?.result?.content || [];
+      // ĐIỂM MẤU CHỐT: Yêu cầu Backend trả luôn 1000 vé ở trang 1
+      const response: any = await bookingApi.getMyBookings(1, 1000); 
       
-      const detailedPromises = content.map(async (b: any) => {
-        try {
-          const detailRes: any = await bookingApi.getBookingById(b.id);
-          const detailedData = detailRes.result || detailRes.data?.result;
-          return detailedData ? { ...b, ...detailedData } : b;
-        } catch (e) {
-          return b;
-        }
-      });
-      
-      const detailedBookings = await Promise.all(detailedPromises);
-      const sorted = detailedBookings.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setBookings(sorted);
+      if (response.code === 1000 && response.result) {
+        // Trích xuất mảng data
+        const content = response.result.data || response.result.content || [];
+        // Ghi đè toàn bộ vé vào state
+        setBookings(content);
+      }
     } catch (err) {
       console.error("Lỗi lấy danh sách vé:", err);
       setError("Không thể tải danh sách chuyến bay. Vui lòng thử lại sau.");
@@ -113,6 +113,11 @@ export const MyBookingsPage = () => {
     }
   };
 
+  // Sửa lại cái useEffect gọi API lần đầu
+  useEffect(() => {
+    fetchMyBookings();
+  }, []);
+
   const handleViewDetails = async (booking: any) => {
     setIsFetchingDetail(true);
     try {
@@ -120,27 +125,25 @@ export const MyBookingsPage = () => {
       const fullData = response.result || response.data?.result;
       if (fullData) {
         setSelectedTicket({ ...booking, ...fullData });
+      } else {
+        setSelectedTicket(booking);
       }
     } catch (error) {
       console.error("Lỗi lấy chi tiết vé:", error);
-      alert("Không thể tải chi tiết vé lúc này. Vui lòng thử lại.");
+      setSelectedTicket(booking); 
     } finally {
       setIsFetchingDetail(false);
     }
   };
 
-  // 👇 HÀM XỬ LÝ THANH TOÁN LẠI 👇
   const handleRepay = async (bookingId: string) => {
     try {
-      setProcessingPaymentId(bookingId); // Bật hiệu ứng xoay ở cái nút đang bấm
-      
-      // Gọi API lấy link VNPay
+      setProcessingPaymentId(bookingId); 
       const vnpayRes: any = await axiosClient.get('/payments/create-url', {
         params: { bookingId }
       });
 
       if (vnpayRes.result) {
-        // Chuyển sang trang thanh toán VNPay
         window.location.href = vnpayRes.result;
       } else {
         alert("Không thể tạo link thanh toán lúc này. Vui lòng thử lại sau.");
@@ -152,6 +155,27 @@ export const MyBookingsPage = () => {
       setProcessingPaymentId(null);
     }
   };
+
+  // 👇 HÀM LỌC DỮ LIỆU TỰ ĐỘNG (useMemo) 👇
+  const filteredBookings = useMemo(() => {
+    return bookings.filter(booking => {
+      // 1. Lọc theo trạng thái
+      const matchStatus = filterStatus === 'ALL' || booking.status === filterStatus;
+
+      // 2. Lọc theo từ khóa (Mã PNR, Điểm đi, Điểm đến, Số hiệu)
+      const term = removeAccents(searchTerm.trim());
+      const flightList = getDetailedFlights(booking);
+      
+      const searchString = removeAccents(`
+        ${booking.pnrCode || ''} 
+        ${flightList.map((f: any) => `${f.origin} ${f.destination} ${f.flightNumber}`).join(' ')}
+      `);
+      
+      const matchSearch = !term || searchString.includes(term);
+
+      return matchStatus && matchSearch;
+    });
+  }, [bookings, searchTerm, filterStatus]);
 
   const modalFlights = selectedTicket ? getDetailedFlights(selectedTicket) : [];
 
@@ -172,7 +196,37 @@ export const MyBookingsPage = () => {
           <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl mb-6 flex items-center gap-3 shadow-sm">
             <AlertCircle className="w-5 h-5" />
             <p>{error}</p>
-            <Button variant="outline" size="sm" onClick={fetchMyBookings} className="ml-auto bg-white">Thử lại</Button>
+            <Button variant="outline" size="sm" onClick={() => fetchMyBookings()} className="ml-auto bg-white">Thử lại</Button>
+          </div>
+        )}
+
+        {/* 👇 THANH TÌM KIẾM VÀ LỌC 👇 */}
+        {!loading && bookings.length > 0 && (
+          <div className="flex flex-col md:flex-row gap-4 mb-8">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <input 
+                type="text" 
+                placeholder="Tìm mã PNR, tên sân bay, số hiệu..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 h-12 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-shadow text-slate-700 shadow-sm"
+              />
+            </div>
+            
+            <div className="md:w-56 shrink-0">
+              <select 
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-slate-700 shadow-sm font-medium cursor-pointer appearance-none"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
+              >
+                <option value="ALL">Tất cả trạng thái</option>
+                {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+                  <option key={key} value={key}>{config.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
 
@@ -192,146 +246,153 @@ export const MyBookingsPage = () => {
                 Tìm chuyến bay ngay
               </Button>
             </div>
+          ) : filteredBookings.length === 0 ? (
+            /* HIỂN THỊ KHI TÌM KIẾM/LỌC KHÔNG RA KẾT QUẢ */
+            <div className="bg-slate-100/50 p-10 rounded-3xl border border-slate-200 border-dashed text-center">
+              <Search className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-slate-700 mb-2">Không tìm thấy vé phù hợp</h3>
+              <p className="text-slate-500">Thử thay đổi từ khóa, điều chỉnh bộ lọc, hoặc bấm "Xem thêm vé" bên dưới để tìm trong lịch sử cũ hơn.</p>
+              <Button variant="outline" onClick={() => { setSearchTerm(''); setFilterStatus('ALL'); }} className="mt-4 bg-white">
+                Xóa bộ lọc
+              </Button>
+            </div>
           ) : (
-            bookings.map((booking) => {
-              const status = STATUS_CONFIG[booking.status] || { label: booking.status, color: 'bg-slate-100 text-slate-600', icon: Clock };
-              const StatusIcon = status.icon;
-              const flightList = getDetailedFlights(booking);
+            <>
+              {filteredBookings.map((booking) => {
+                const status = STATUS_CONFIG[booking.status] || { label: booking.status, color: 'bg-slate-100 text-slate-600', icon: Clock };
+                const StatusIcon = status.icon;
+                const flightList = getDetailedFlights(booking);
+                
 
-              return (
-                <div key={booking.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col md:flex-row">
-                  
-                  {/* ====== CỘT TRÁI: THÔNG TIN CHUYẾN BAY ====== */}
-                  <div className="p-6 flex-1 border-b md:border-b-0 md:border-r border-slate-100 flex flex-col justify-between">
-                    
-                    <div className="flex items-center justify-between mb-8">
-                      <div className="flex items-center gap-3">
-                         <span className="text-sm text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg">
-                           PNR: <span className="text-slate-800 font-bold tracking-wider">{booking.pnrCode}</span>
-                         </span>
-                         {flightList.length > 1 && (
-                           <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-1.5 rounded border border-orange-100">
-                             Khứ hồi
+                return (
+                  <div key={booking.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col md:flex-row">
+                    {/* ====== CỘT TRÁI: THÔNG TIN CHUYẾN BAY ====== */}
+                    <div className="p-6 flex-1 border-b md:border-b-0 md:border-r border-slate-100 flex flex-col justify-between">
+                      <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-3">
+                           <span className="text-sm text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg">
+                             PNR: <span className="text-slate-800 font-bold tracking-wider">{booking.pnrCode}</span>
                            </span>
-                         )}
-                      </div>
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border ${status.color}`}>
-                        <StatusIcon className="w-4 h-4" />
-                        {status.label}
-                      </span>
-                    </div>
-
-                    <div className="space-y-6">
-                      {flightList.map((flight: any, idx: number) => (
-                        <div key={idx} className="relative">
-                          
-                          <div className="flex items-center justify-between gap-2 mb-3">
-                            <div className="text-left flex-1 min-w-0">
-                              {flightList.length > 1 && (
-                                <div className={`text-[10px] font-bold uppercase mb-1 ${idx === 0 ? 'text-blue-500' : 'text-orange-500'}`}>
-                                  {idx === 0 ? 'Lượt đi' : 'Lượt về'}
-                                </div>
-                              )}
-                              <div className="text-[22px] sm:text-[26px] font-black text-blue-600 leading-tight break-words">
-                                {flight.origin}
-                              </div>
-                            </div>
-
-                            <div className="w-20 sm:w-28 flex flex-col items-center px-2 flex-shrink-0">
-                              <span className="text-xs text-slate-400 mb-1">{flight.flightNumber}</span>
-                              <div className="w-full border-t border-dashed border-slate-300 relative">
-                                <Plane className="w-4 h-4 text-blue-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-0.5" />
-                              </div>
-                            </div>
-
-                            <div className="text-right flex-1 min-w-0">
-                              {flightList.length > 1 && (
-                                <div className="text-[10px] font-bold uppercase mb-1 text-transparent select-none">.</div>
-                              )}
-                              <div className="text-[22px] sm:text-[26px] font-black text-blue-600 leading-tight break-words">
-                                {flight.destination}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex justify-between items-center text-sm mt-4">
-                            <div className="flex items-center gap-2 text-slate-700">
-                              <Calendar className="w-4 h-4 text-slate-400" />
-                              <span className="font-medium">{fmtDateOnly(flight.departureTime)} {fmtTimeOnly(flight.departureTime)}</span>
-                            </div>
-                          </div>
-
-                          {idx === 0 && flightList.length > 1 && (
-                            <div className="border-b border-dashed border-slate-200 mt-6 mb-4"></div>
-                          )}
+                           {flightList.length > 1 && (
+                             <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-1.5 rounded border border-orange-100">
+                               Khứ hồi
+                             </span>
+                           )}
                         </div>
-                      ))}
-                    </div>
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border ${status.color}`}>
+                          <StatusIcon className="w-4 h-4" />
+                          {status.label}
+                        </span>
+                      </div>
 
-                    <div className="mt-6 pt-4 text-sm text-slate-400 flex items-center gap-2">
-                      Ngày đặt: {fmtDateOnly(booking.createdAt)}
-                    </div>
-                  </div>
+                      <div className="space-y-6">
+                        {flightList.map((flight: any, idx: number) => (
+                          <div key={idx} className="relative">
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                              <div className="text-left flex-1 min-w-0">
+                                {flightList.length > 1 && (
+                                  <div className={`text-[10px] font-bold uppercase mb-1 ${idx === 0 ? 'text-blue-500' : 'text-orange-500'}`}>
+                                    {idx === 0 ? 'Lượt đi' : 'Lượt về'}
+                                  </div>
+                                )}
+                                <div className="text-[22px] sm:text-[26px] font-black text-blue-600 leading-tight break-words">
+                                  {flight.origin}
+                                </div>
+                              </div>
 
-                  {/* ====== CỘT PHẢI: TỔNG TIỀN ====== */}
-                  <div className="p-6 md:w-64 bg-white flex flex-col justify-center items-center">
-                    <div className="mb-2 text-sm text-slate-500 font-medium">Tổng thanh toán</div>
-                    <div className="text-[28px] font-black text-slate-800 mb-8 border-b-2 border-slate-800 inline-block pb-0.5">
-                      {booking.totalAmount?.toLocaleString('vi-VN')} <span className="underline decoration-2">đ</span>
-                    </div>
+                              <div className="w-20 sm:w-28 flex flex-col items-center px-2 flex-shrink-0">
+                                <span className="text-xs text-slate-400 mb-1">{flight.flightNumber}</span>
+                                <div className="w-full border-t border-dashed border-slate-300 relative">
+                                  <Plane className="w-4 h-4 text-blue-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-0.5" />
+                                </div>
+                              </div>
 
-                    <div className="w-full mt-auto">
-                      {/* BẬT NÚT THANH TOÁN CHO ĐƠN CHƯA HOÀN TẤT */}
-                      {['AWAITING_PAYMENT', 'PENDING'].includes(booking.status) ? (
-                        <>
-                          <Button 
-                            onClick={() => handleRepay(booking.id)} 
-                            disabled={processingPaymentId === booking.id}
-                            className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-sm mb-2"
-                          >
-                            {processingPaymentId === booking.id ? (
-                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang kết nối...</>
-                            ) : (
-                              "Thanh toán ngay"
+                              <div className="text-right flex-1 min-w-0">
+                                {flightList.length > 1 && (
+                                  <div className="text-[10px] font-bold uppercase mb-1 text-transparent select-none">.</div>
+                                )}
+                                <div className="text-[22px] sm:text-[26px] font-black text-blue-600 leading-tight break-words">
+                                  {flight.destination}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-between items-center text-sm mt-4">
+                              <div className="flex items-center gap-2 text-slate-700">
+                                <Calendar className="w-4 h-4 text-slate-400" />
+                                <span className="font-medium">{fmtDateOnly(flight.departureTime)} {fmtTimeOnly(flight.departureTime)}</span>
+                              </div>
+                            </div>
+
+                            {idx === 0 && flightList.length > 1 && (
+                              <div className="border-b border-dashed border-slate-200 mt-6 mb-4"></div>
                             )}
-                          </Button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-6 pt-4 text-sm text-slate-400 flex items-center gap-2">
+                        Ngày đặt: {fmtDateOnly(booking.createdAt)}
+                      </div>
+                    </div>
+
+                    {/* ====== CỘT PHẢI: TỔNG TIỀN ====== */}
+                    <div className="p-6 md:w-64 bg-white flex flex-col justify-center items-center">
+                      <div className="mb-2 text-sm text-slate-500 font-medium">Tổng thanh toán</div>
+                      <div className="text-[28px] font-black text-slate-800 mb-8 border-b-2 border-slate-800 inline-block pb-0.5">
+                        {booking.totalAmount?.toLocaleString('vi-VN')} <span className="underline decoration-2">đ</span>
+                      </div>
+
+                      <div className="w-full mt-auto">
+                        {['AWAITING_PAYMENT', 'PENDING'].includes(booking.status) ? (
+                          <>
+                            <Button 
+                              onClick={() => handleRepay(booking.id)} 
+                              disabled={processingPaymentId === booking.id}
+                              className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-sm mb-2"
+                            >
+                              {processingPaymentId === booking.id ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang kết nối...</>
+                              ) : (
+                                "Thanh toán ngay"
+                              )}
+                            </Button>
+                            <Button 
+                              variant="ghost"
+                              onClick={() => navigate(`/verify-payment?pnr=${booking.pnrCode}`)} 
+                              className="w-full text-slate-500 hover:bg-slate-50"
+                            >
+                              Kiểm tra trạng thái
+                            </Button>
+                          </>
+                        ) : (
                           <Button 
-                            variant="ghost"
-                            onClick={() => navigate(`/verify-payment?pnr=${booking.pnrCode}`)} 
-                            className="w-full text-slate-500 hover:bg-slate-50"
+                            variant="ghost" 
+                            className="w-full text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded-xl flex items-center justify-center font-bold"
+                            onClick={() => handleViewDetails(booking)}
+                            disabled={isFetchingDetail}
                           >
-                            Kiểm tra trạng thái
+                            {isFetchingDetail ? 'Đang tải...' : 'Xem chi tiết'} <ChevronRight className="w-4 h-4 ml-1" />
                           </Button>
-                        </>
-                      ) : (
-                        <Button 
-                          variant="ghost" 
-                          className="w-full text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded-xl flex items-center justify-center font-bold"
-                          onClick={() => handleViewDetails(booking)}
-                          disabled={isFetchingDetail}
-                        >
-                          {isFetchingDetail ? 'Đang tải...' : 'Xem chi tiết'} <ChevronRight className="w-4 h-4 ml-1" />
-                        </Button>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
+                );
+              })}
 
-                </div>
-              );
-            })
+            </>
           )}
+
         </div>
       </div>
 
-      {/* =========================================
-          MODAL CHI TIẾT VÉ (BOARDING PASS) 
-          ========================================= */}
+      {/* MODAL CHI TIẾT VÉ (Giữ nguyên) */}
       {selectedTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="absolute inset-0" onClick={() => setSelectedTicket(null)}></div>
           
           <div className="relative w-full max-w-3xl max-h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-            
             <div className="bg-blue-600 p-6 text-white flex items-start justify-between relative overflow-hidden shrink-0">
               <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
               <div>

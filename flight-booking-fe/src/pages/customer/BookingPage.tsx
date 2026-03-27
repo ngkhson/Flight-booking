@@ -2,7 +2,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { type RootState } from '@/store/store';
 import { ChevronLeft, Plane, User, CreditCard, ShieldCheck, ArrowDownUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { prevStep } from '@/store/bookingSlice';
 import { PassengerForm } from "@/features/customer/booking/PassengerForm";
 import { ServiceSelection } from "@/features/customer/booking/ServiceSelection";
@@ -36,7 +36,7 @@ export const BookingPage = () => {
     if (!flight) return 0;
     // Chú ý: Dữ liệu từ FlightCard đẩy vào có thể nằm ở `finalPrice` hoặc `price` hoặc `selectedClassInfo.basePrice`
     const basePrice = flight.selectedClassInfo?.basePrice || flight.finalPrice || flight.price || 0;
-    return (basePrice * searchConfigs.adults) + (basePrice * searchConfigs.children) + (basePrice * 0.1 * searchConfigs.infants);
+    return (basePrice * searchConfigs.adults) + (basePrice * 0.75 * searchConfigs.children) + (basePrice * 0.1 * searchConfigs.infants);
   };
 
   const ticketTotal = calcFlightPrice(primaryFlight) + calcFlightPrice(returnFlight);

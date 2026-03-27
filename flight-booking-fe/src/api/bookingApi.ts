@@ -65,5 +65,11 @@ export const bookingApi = {
     return axiosClient.get(`/bookings/my-bookings?page=${page}&size=${size}`);
   },
 
+  // getMyBookings: (page: number = 1, size: number = 10, filter: string = 'ALL') => {
+  // return axiosClient.get(`/bookings/my-bookings`, {
+  //   params: { page, size, filter } // Backend sẽ nhận được ?page=1&size=10&filter=PAID...
+  // });
+// },
+
   getBookingById: (id: string) => axiosClient.get(`/bookings/${id}`)
 };

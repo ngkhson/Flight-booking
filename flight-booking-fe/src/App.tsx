@@ -21,6 +21,7 @@ import { MyBookingsPage } from './pages/customer/MyBookingsPage';
 import { ProfilePage } from "@/features/customer/profile/ProfilePage";
 import { PaymentResultPage } from './pages/customer/PaymentResultPage';
 import { VerifyPaymentPage } from './pages/customer/VerifyPaymentPage';
+import { PromotionsPage } from './pages/customer/PromotionsPage';
 
 // Auth Pages
 // import LoginPage from './pages/auth/LoginPage'; // Admin Login
@@ -45,6 +46,7 @@ function App() {
           <Route path="booking" element={<BookingPage />} />
           <Route path="my-bookings" element={<MyBookingsPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="promotions" element={<PromotionsPage />} />
 
           {/* Auth Khách hàng */}
           <Route path="login" element={<LoginClient />} />

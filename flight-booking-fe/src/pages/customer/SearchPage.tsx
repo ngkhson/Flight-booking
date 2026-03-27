@@ -108,29 +108,51 @@ export const SearchPage = () => {
       const res: any = await flightApi.searchFlights(apiPayload);
 
       if (res.code === 1000 && res.result) {
-        const mappedFlights = res.result.map((item: any) => {
-          const minPrice = item.classes && item.classes.length > 0
-            ? Math.min(...item.classes.map((c: any) => c.basePrice)) : 0;
-          const depDate = new Date(item.departureTime);
-          const arrDate = new Date(item.arrivalTime);
+        
+        // 👇 BƯỚC SỬA LỖI: Tìm chính xác mảng dữ liệu đang nằm ở đâu
+        const flightArray = Array.isArray(res.result) ? res.result : res.result?.data;
 
-          return {
-            id: item.id,
-            flightCode: item.flightNumber,
-            airline: item.airlineName,
-            airlineLogo: item.airlineName.toLowerCase().includes("vietnam") ? "VN" : "VJ",
-            departureTime: format(depDate, "HH:mm"),
-            arrivalTime: format(arrDate, "HH:mm"),
-            originCode: item.origin,
-            destinationCode: item.destination,
-            price: minPrice,
-            classes: item.classes,
-            durationMinutes: Math.floor((arrDate.getTime() - depDate.getTime()) / 60000),
-            stops: 0,
-            aircraft: "Airbus A321",
-          };
-        });
-        setApiFlights(mappedFlights);
+        // Kiểm tra chắc chắn nó là mảng rồi mới map
+        if (Array.isArray(flightArray)) {
+          
+          const mappedFlights = flightArray.map((item: any) => {
+            const minPrice = item.classes && item.classes.length > 0
+              ? Math.min(...item.classes.map((c: any) => c.basePrice)) : 0;
+            const depDate = new Date(item.departureTime);
+            const arrDate = new Date(item.arrivalTime);
+
+            // 👇 1. TÍNH TOÁN TỔNG SỐ PHÚT, GIỜ VÀ PHÚT LẺ 👇
+            const totalMinutes = Math.floor((arrDate.getTime() - depDate.getTime()) / 60000);
+            const hours = Math.floor(totalMinutes / 60);
+            const mins = totalMinutes % 60;
+
+            return {
+              id: item.id,
+              flightCode: item.flightNumber,
+              airline: item.airlineName,
+              airlineLogo: item.airlineName?.toLowerCase().includes("vietnam") ? "VN" : "VJ",
+              departureTime: format(depDate, "HH:mm"),
+              arrivalTime: format(arrDate, "HH:mm"),
+              originCode: item.origin,
+              destinationCode: item.destination,
+              price: minPrice,
+              classes: item.classes,
+              
+              // 👇 2. TRẢ VỀ CẢ 2 TRƯỜNG ĐỂ CHIỀU LÒNG TYPESCRIPT 👇
+              durationMinutes: totalMinutes, 
+              duration: `${hours}h ${mins}m`, // Tạo ra chuỗi "Xh Ym" xịn xò
+              
+              stops: 0,
+              aircraft: "Airbus A321",
+            };
+          });
+          
+          setApiFlights(mappedFlights);
+          
+        } else {
+          console.error("Dữ liệu chuyến bay từ Backend không chứa mảng hợp lệ:", res.result);
+          setApiFlights([]); // Set mảng rỗng để giao diện không bị sập
+        }
       }
     } catch (error: any) {
       console.error("Lỗi search:", error);
@@ -199,7 +221,7 @@ export const SearchPage = () => {
 
   return (
     <div className="bg-slate-50 min-h-screen pb-20">
-      <section className="bg-blue-600 py-24 text-center text-white relative z-0">
+      <section className="bg-blue-600 py-24 text-center text-white relative">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-500 to-blue-700 opacity-90"></div>
         
         <div className="container mx-auto px-4 relative z-10 text-center sm:text-left">

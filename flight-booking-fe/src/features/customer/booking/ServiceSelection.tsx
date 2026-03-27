@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { type RootState } from '@/store/store';
-import { Briefcase, Utensils, Loader2, PlaneTakeoff, PlaneLanding } from 'lucide-react';
+import { Briefcase, Utensils, Loader2, PlaneTakeoff, PlaneLanding, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import axiosClient from '@/api/axiosClient';
@@ -21,7 +21,6 @@ export const ServiceSelection = () => {
   const location = useLocation();
   const { passengers, searchConfigs } = useSelector((state: RootState) => state.booking);
   
-  // Xác định xem có phải là vé Khứ hồi không (thông qua location.state từ trang Search truyền sang)
   const isRoundTrip = location.state?.isRoundTrip || false;
 
   const [services, setServices] = useState<{ baggages: AncillaryService[], meals: AncillaryService[] }>({
@@ -29,30 +28,26 @@ export const ServiceSelection = () => {
     meals: []
   });
   const [loading, setLoading] = useState(true);
-  
-  // State nâng cấp: Chứa data của Lượt đi (segment 1) và Lượt về (segment 2)
   const [selections, setSelections] = useState<Record<number, Record<number, Record<string, string>>>>({});
   
-  // State tab hiện tại (1: Lượt đi, 2: Lượt về)
+  // State quản lý luồng: 1 (Chiều đi), 2 (Chiều về)
   const [activeSegment, setActiveSegment] = useState<number>(1);
 
   const eligiblePax = passengers ? passengers.slice(0, searchConfigs.adults + searchConfigs.children) : [];
 
-  // Khởi tạo trạng thái ban đầu là 'none' cho tất cả hành khách, cho CẢ 2 LƯỢT
   useEffect(() => {
     if (eligiblePax.length > 0 && Object.keys(selections).length === 0) {
       const initial: Record<number, Record<number, Record<string, string>>> = {};
       eligiblePax.forEach((_, idx) => {
         initial[idx] = {
-          1: { BAGGAGE: 'none', MEAL: 'none' }, // Lượt đi
-          2: { BAGGAGE: 'none', MEAL: 'none' }  // Lượt về
+          1: { BAGGAGE: 'none', MEAL: 'none' },
+          2: { BAGGAGE: 'none', MEAL: 'none' }
         };
       });
       setSelections(initial);
     }
   }, [eligiblePax, isRoundTrip]);
 
-  // Gọi API lấy danh sách Dịch vụ
   useEffect(() => {
     const fetchServices = async () => {
       try {
@@ -73,7 +68,6 @@ export const ServiceSelection = () => {
     fetchServices();
   }, []);
 
-  // Xử lý khi người dùng click chọn dịch vụ (Lưu kèm Segment)
   const handleSelect = (pIdx: number, type: 'BAGGAGE' | 'MEAL', sId: string) => {
     setSelections(prev => ({
       ...prev,
@@ -87,15 +81,11 @@ export const ServiceSelection = () => {
     }));
   };
 
-  // HÀM CHỐT DỊCH VỤ VÀ CHUYỂN BƯỚC
   const onConfirm = () => {
     const finalAddons: any[] = [];
     
-    // Quét qua toàn bộ lựa chọn: Hành khách -> Lượt bay -> Loại dịch vụ
     Object.entries(selections).forEach(([pIdx, segmentData]) => {
       Object.entries(segmentData).forEach(([segmentNo, types]) => {
-        
-        // Bỏ qua segment 2 nếu khách chỉ đi 1 chiều
         if (!isRoundTrip && segmentNo === '2') return;
 
         Object.entries(types).forEach(([type, sId]) => {
@@ -105,7 +95,7 @@ export const ServiceSelection = () => {
             if (found) {
               finalAddons.push({
                 passengerIndex: Number(pIdx),
-                segmentNo: Number(segmentNo), // Đẩy SegmentNo vào mảng để gửi BE
+                segmentNo: Number(segmentNo),
                 type,
                 service: found
               });
@@ -115,19 +105,21 @@ export const ServiceSelection = () => {
       });
     });
 
-    // 1. Lưu Dịch vụ vào Redux
     dispatch(saveAddons(finalAddons));
-
-    // 2. Chuyển thẳng sang Bước 3 (PaymentStep)
     dispatch(nextStep());
   };
 
-  // Tính tổng tiền cả đi lẫn về
+  // Hàm chuyển sang bước chọn dịch vụ chuyến về
+  const handleNextSegment = () => {
+    window.scrollTo(0, 0); // Cuộn lên đầu trang
+    setActiveSegment(2);
+  };
+
   const calculateCurrentTotal = () => {
     let total = 0;
     Object.values(selections).forEach(segmentData => {
       Object.entries(segmentData).forEach(([segmentNo, types]) => {
-        if (!isRoundTrip && segmentNo === '2') return; // Bỏ qua chiều về nếu 1 chiều
+        if (!isRoundTrip && segmentNo === '2') return;
 
         if (types['BAGGAGE'] && types['BAGGAGE'] !== 'none') {
           const b = services.baggages.find(i => i.id === types['BAGGAGE']);
@@ -147,25 +139,22 @@ export const ServiceSelection = () => {
   return (
     <div className="space-y-6">
       
-      {/* 🚀 CHỌN LƯỢT BAY (CHỈ HIỂN THỊ NẾU LÀ KHỨ HỒI) 🚀 */}
+      {/* 🚀 TIÊU ĐỀ HƯỚNG DẪN LUỒNG 🚀 */}
       {isRoundTrip && (
-        <div className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200">
-          <button
-            onClick={() => setActiveSegment(1)}
-            className={`flex-1 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${
-              activeSegment === 1 ? 'bg-white text-blue-600 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:bg-slate-200/50'
-            }`}
-          >
-            <PlaneTakeoff size={18} /> Chuyến Đi
-          </button>
-          <button
-            onClick={() => setActiveSegment(2)}
-            className={`flex-1 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${
-              activeSegment === 2 ? 'bg-white text-orange-500 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:bg-slate-200/50'
-            }`}
-          >
-            <PlaneLanding size={18} /> Chuyến Về
-          </button>
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`p-3 rounded-full ${activeSegment === 1 ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-500'}`}>
+              {activeSegment === 1 ? <PlaneTakeoff size={24} /> : <PlaneLanding size={24} />}
+            </div>
+            <div>
+              <h3 className="font-black text-lg text-slate-800">
+                {activeSegment === 1 ? 'Chọn dịch vụ cho chiều đi' : 'Chọn dịch vụ cho chiều về'}
+              </h3>
+              <p className="text-sm text-slate-500 font-medium">
+                Bước {activeSegment} / 2
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -187,7 +176,6 @@ export const ServiceSelection = () => {
               key={idx}
               passengerName={p.fullName || `Hành khách ${idx + 1}`}
               options={services.baggages}
-              // 👇 Đọc ID đang được chọn dựa trên activeSegment 👇
               selectedId={selections[idx]?.[activeSegment]?.['BAGGAGE'] || 'none'}
               onSelect={(id: string) => handleSelect(idx, 'BAGGAGE', id)}
             />
@@ -201,7 +189,6 @@ export const ServiceSelection = () => {
               key={idx}
               passengerName={p.fullName || `Hành khách ${idx + 1}`}
               options={services.meals}
-              // 👇 Đọc ID đang được chọn dựa trên activeSegment 👇
               selectedId={selections[idx]?.[activeSegment]?.['MEAL'] || 'none'}
               onSelect={(id: string) => handleSelect(idx, 'MEAL', id)}
             />
@@ -209,30 +196,50 @@ export const ServiceSelection = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Box Tính tiền dính ở đáy */}
+      {/* Box Tính tiền dính ở đáy có Logic Nút Thông Minh */}
       <div className="sticky bottom-0 bg-white p-4 border rounded-xl shadow-[0_-4px_10px_rgba(0,0,0,0.05)] flex justify-between items-center z-10">
         <div>
-          <p className="text-xs text-slate-500 uppercase font-bold">Dịch vụ đã chọn</p>
+          <p className="text-xs text-slate-500 uppercase font-bold">Tổng dịch vụ</p>
           <p className="text-xl font-black text-blue-600">
             +{calculateCurrentTotal().toLocaleString()} đ
           </p>
         </div>
-        <Button onClick={onConfirm} className="bg-blue-600 hover:bg-blue-700 h-12 px-8 font-bold">
-          Tiếp tục thanh toán
-        </Button>
+        
+        <div className="flex gap-3">
+          {/* Hiện nút Quay lại nếu đang ở Bước 2 */}
+          {isRoundTrip && activeSegment === 2 && (
+            <Button 
+              variant="outline" 
+              onClick={() => setActiveSegment(1)} 
+              className="h-12 px-4 font-bold border-slate-300 text-slate-600"
+            >
+              <ArrowLeft size={18} className="mr-2" /> Quay lại
+            </Button>
+          )}
+
+          {/* Logic nút Tiếp Tục */}
+          {isRoundTrip && activeSegment === 1 ? (
+            <Button onClick={handleNextSegment} className="bg-orange-500 hover:bg-orange-600 h-12 px-8 font-bold text-white">
+              Tiếp tục
+            </Button>
+          ) : (
+            <Button onClick={onConfirm} className="bg-blue-600 hover:bg-blue-700 h-12 px-8 font-bold text-white">
+              Xác nhận thanh toán
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
-// Component con để render từng dòng chọn dịch vụ (GIỮ NGUYÊN)
 const ServiceCard = ({ passengerName, options, selectedId, onSelect }: any) => (
-  <div className="border rounded-xl p-4 bg-white">
-    <p className="text-sm font-bold text-slate-500 mb-3 uppercase">Hành khách: {passengerName}</p>
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+  <div className="border rounded-xl p-4 bg-white shadow-sm">
+    <p className="text-sm font-bold text-slate-500 mb-3 uppercase border-b pb-2">Hành khách: <span className="text-slate-800">{passengerName}</span></p>
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
       <div
         onClick={() => onSelect('none')}
-        className={`p-3 border rounded-lg cursor-pointer text-center text-xs font-bold transition-all flex items-center justify-center ${selectedId === 'none' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-100 hover:bg-slate-50'}`}
+        className={`p-3 border-2 rounded-lg cursor-pointer text-center text-sm font-bold transition-all flex items-center justify-center ${selectedId === 'none' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 hover:bg-slate-50 text-slate-500'}`}
       >
         Không chọn
       </div>
@@ -240,10 +247,10 @@ const ServiceCard = ({ passengerName, options, selectedId, onSelect }: any) => (
         <div
           key={opt.id}
           onClick={() => onSelect(opt.id)}
-          className={`p-3 border rounded-lg cursor-pointer transition-all flex flex-col justify-center ${selectedId === opt.id ? 'border-blue-600 bg-blue-50' : 'border-slate-100 hover:border-slate-200'}`}
+          className={`p-3 border-2 rounded-lg cursor-pointer transition-all flex flex-col justify-center ${selectedId === opt.id ? 'border-blue-600 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}
         >
-          <p className="text-xs font-bold truncate">{opt.name}</p>
-          <p className="text-[10px] text-blue-500 font-bold">+{opt.price.toLocaleString()} đ</p>
+          <p className={`text-sm font-bold truncate ${selectedId === opt.id ? 'text-blue-800' : 'text-slate-700'}`}>{opt.name}</p>
+          <p className="text-xs text-orange-600 font-black mt-1">+{opt.price.toLocaleString()} đ</p>
         </div>
       ))}
     </div>

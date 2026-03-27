@@ -21,10 +21,14 @@ export const PromoFlightCard = ({ flight }: { flight: PromoFlight }) => {
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 border-slate-200 group cursor-pointer">
       {/* Phần Hình ảnh địa điểm */}
       <div className="relative h-48 overflow-hidden">
-        <img 
-          src={flight.imageUrl} 
-          alt={`Vé máy bay đi ${flight.destination}`} 
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+        <img
+          src={flight.imageUrl}
+          alt={flight.destination}
+          className="w-full h-48 object-cover rounded-t-xl"
+          onError={(e) => {
+            // Nếu ảnh gốc lỗi, nhảy về ảnh mặc định
+            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=800&q=80';
+          }}
         />
         <Badge className="absolute top-3 right-3 bg-red-500 text-white hover:bg-red-600 border-none shadow-md">
           Giảm {(100 - (flight.price / flight.originalPrice) * 100).toFixed(0)}%
@@ -39,10 +43,16 @@ export const PromoFlightCard = ({ flight }: { flight: PromoFlight }) => {
         <h4 className="text-xl font-bold text-slate-800 mb-1">
           {flight.origin} ✈ {flight.destination}
         </h4>
-        
+
         <div className="flex items-center text-slate-500 text-sm mt-2 mb-4">
           <Calendar className="w-4 h-4 mr-2 text-blue-500" />
-          <span>Khởi hành: {flight.date}</span>
+          <span>
+            Khởi hành: {new Date(flight.date).toLocaleDateString('vi-VN', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            })}
+          </span>
         </div>
 
         <div className="flex items-end justify-between mt-auto pt-4 border-t border-slate-100">
