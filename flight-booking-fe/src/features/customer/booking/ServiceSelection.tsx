@@ -19,7 +19,7 @@ interface AncillaryService {
 export const ServiceSelection = () => {
   const dispatch = useDispatch();
   const location = useLocation();
-  const { passengers, searchConfigs } = useSelector((state: RootState) => state.booking);
+  const { passengers } = useSelector((state: RootState) => state.booking); // KHÔNG LẤY searchConfigs NỮA
   
   const isRoundTrip = location.state?.isRoundTrip || false;
 
@@ -33,20 +33,48 @@ export const ServiceSelection = () => {
   // State quản lý luồng: 1 (Chiều đi), 2 (Chiều về)
   const [activeSegment, setActiveSegment] = useState<number>(1);
 
-  const eligiblePax = passengers ? passengers.slice(0, searchConfigs.adults + searchConfigs.children) : [];
+  // 👇 LỌC HÀNH KHÁCH HỢP LỆ (Bỏ qua Em bé - INFANT)
+  const eligiblePax = passengers ? passengers.filter((p: any) => {
+    // Nếu có type đã được lưu từ lúc submit Form thì dùng luôn
+    if (p.type && p.type === 'INFANT') return false;
+    
+    // Nếu không có type, tính tuổi từ ngày sinh (dob)
+    if (p.dob) {
+      const dob = new Date(p.dob);
+      const age = new Date().getFullYear() - dob.getFullYear();
+      if (age < 2) return false;
+    }
+    
+    return true; // Người lớn và Trẻ em được giữ lại
+  }) : [];
+
+  // 👇 LƯU Ý: Phải dùng Index GỐC của hành khách trong mảng passengers 
+  // để Backend biết dịch vụ thuộc về ai. 
+  // mapEligibleToOriginal là một mảng phụ trợ lưu lại vị trí gốc của các eligiblePax
+  const mapEligibleToOriginal = passengers ? passengers.reduce((acc: number[], p: any, idx: number) => {
+    if (p.type !== 'INFANT') {
+      const dob = p.dob ? new Date(p.dob) : null;
+      if (!dob || (new Date().getFullYear() - dob.getFullYear() >= 2)) {
+         acc.push(idx);
+      }
+    }
+    return acc;
+  }, []) : [];
+
 
   useEffect(() => {
     if (eligiblePax.length > 0 && Object.keys(selections).length === 0) {
       const initial: Record<number, Record<number, Record<string, string>>> = {};
-      eligiblePax.forEach((_, idx) => {
-        initial[idx] = {
+      // Khởi tạo state bằng originalIndex (vị trí gốc) thay vì thứ tự của mảng đã lọc
+      mapEligibleToOriginal.forEach((originalIdx) => {
+        initial[originalIdx] = {
           1: { BAGGAGE: 'none', MEAL: 'none' },
           2: { BAGGAGE: 'none', MEAL: 'none' }
         };
       });
       setSelections(initial);
     }
-  }, [eligiblePax, isRoundTrip]);
+  }, [eligiblePax.length, isRoundTrip, mapEligibleToOriginal]);
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -68,13 +96,13 @@ export const ServiceSelection = () => {
     fetchServices();
   }, []);
 
-  const handleSelect = (pIdx: number, type: 'BAGGAGE' | 'MEAL', sId: string) => {
+  const handleSelect = (originalIdx: number, type: 'BAGGAGE' | 'MEAL', sId: string) => {
     setSelections(prev => ({
       ...prev,
-      [pIdx]: {
-        ...prev[pIdx],
+      [originalIdx]: {
+        ...prev[originalIdx],
         [activeSegment]: {
-          ...prev[pIdx][activeSegment],
+          ...prev[originalIdx][activeSegment],
           [type]: sId
         }
       }
@@ -94,7 +122,7 @@ export const ServiceSelection = () => {
             const found = serviceList.find(s => s.id === sId);
             if (found) {
               finalAddons.push({
-                passengerIndex: Number(pIdx),
+                passengerIndex: Number(pIdx), // Đây đã là ID gốc của hành khách
                 segmentNo: Number(segmentNo),
                 type,
                 service: found
@@ -109,9 +137,8 @@ export const ServiceSelection = () => {
     dispatch(nextStep());
   };
 
-  // Hàm chuyển sang bước chọn dịch vụ chuyến về
   const handleNextSegment = () => {
-    window.scrollTo(0, 0); // Cuộn lên đầu trang
+    window.scrollTo(0, 0); 
     setActiveSegment(2);
   };
 
@@ -171,32 +198,38 @@ export const ServiceSelection = () => {
 
         {/* Nội dung Hành lý */}
         <TabsContent value="baggage" className="mt-6 space-y-6">
-          {eligiblePax.map((p, idx) => (
-            <ServiceCard
-              key={idx}
-              passengerName={p.fullName || `Hành khách ${idx + 1}`}
-              options={services.baggages}
-              selectedId={selections[idx]?.[activeSegment]?.['BAGGAGE'] || 'none'}
-              onSelect={(id: string) => handleSelect(idx, 'BAGGAGE', id)}
-            />
-          ))}
+          {eligiblePax.map((p: any, idx: number) => {
+            const originalIdx = mapEligibleToOriginal[idx];
+            return (
+              <ServiceCard
+                key={originalIdx}
+                passengerName={p.fullName || `Hành khách ${originalIdx + 1}`}
+                options={services.baggages}
+                selectedId={selections[originalIdx]?.[activeSegment]?.['BAGGAGE'] || 'none'}
+                onSelect={(id: string) => handleSelect(originalIdx, 'BAGGAGE', id)}
+              />
+            );
+          })}
         </TabsContent>
 
         {/* Nội dung Suất ăn */}
         <TabsContent value="meal" className="mt-6 space-y-6">
-          {eligiblePax.map((p, idx) => (
-            <ServiceCard
-              key={idx}
-              passengerName={p.fullName || `Hành khách ${idx + 1}`}
-              options={services.meals}
-              selectedId={selections[idx]?.[activeSegment]?.['MEAL'] || 'none'}
-              onSelect={(id: string) => handleSelect(idx, 'MEAL', id)}
-            />
-          ))}
+          {eligiblePax.map((p: any, idx: number) => {
+             const originalIdx = mapEligibleToOriginal[idx];
+             return (
+              <ServiceCard
+                key={originalIdx}
+                passengerName={p.fullName || `Hành khách ${originalIdx + 1}`}
+                options={services.meals}
+                selectedId={selections[originalIdx]?.[activeSegment]?.['MEAL'] || 'none'}
+                onSelect={(id: string) => handleSelect(originalIdx, 'MEAL', id)}
+              />
+            );
+          })}
         </TabsContent>
       </Tabs>
 
-      {/* Box Tính tiền dính ở đáy có Logic Nút Thông Minh */}
+      {/* Box Tính tiền */}
       <div className="sticky bottom-0 bg-white p-4 border rounded-xl shadow-[0_-4px_10px_rgba(0,0,0,0.05)] flex justify-between items-center z-10">
         <div>
           <p className="text-xs text-slate-500 uppercase font-bold">Tổng dịch vụ</p>
@@ -206,7 +239,6 @@ export const ServiceSelection = () => {
         </div>
         
         <div className="flex gap-3">
-          {/* Hiện nút Quay lại nếu đang ở Bước 2 */}
           {isRoundTrip && activeSegment === 2 && (
             <Button 
               variant="outline" 
@@ -217,7 +249,6 @@ export const ServiceSelection = () => {
             </Button>
           )}
 
-          {/* Logic nút Tiếp Tục */}
           {isRoundTrip && activeSegment === 1 ? (
             <Button onClick={handleNextSegment} className="bg-orange-500 hover:bg-orange-600 h-12 px-8 font-bold text-white">
               Tiếp tục
@@ -233,6 +264,7 @@ export const ServiceSelection = () => {
   );
 };
 
+// ... (Component ServiceCard giữ nguyên)
 const ServiceCard = ({ passengerName, options, selectedId, onSelect }: any) => (
   <div className="border rounded-xl p-4 bg-white shadow-sm">
     <p className="text-sm font-bold text-slate-500 mb-3 uppercase border-b pb-2">Hành khách: <span className="text-slate-800">{passengerName}</span></p>

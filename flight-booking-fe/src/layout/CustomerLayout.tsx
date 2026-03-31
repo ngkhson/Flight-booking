@@ -1,7 +1,7 @@
 import { Outlet, Link } from 'react-router-dom';
 // import { useSelector } from 'react-redux'; // Thêm cái này
 import { useLogout } from '@/hooks/useLogout';
-import { LogOut, User, Ticket } from 'lucide-react';
+import { LogOut, User, Ticket, MapPin, Mail, Phone, Facebook, Instagram, Twitter, PlaneTakeoff } from 'lucide-react';
 import { type RootState } from '@/store/store'; // Type của RootState
 
 // export const CustomerLayout = () => {
@@ -98,9 +98,77 @@ export const CustomerLayout = () => {
         <Outlet />
       </main>
 
-      <footer className="bg-slate-800 text-slate-300 py-8 text-center">
+      {/* <footer className="bg-slate-800 text-slate-300 py-8 text-center">
         <p className="font-medium mb-2">✈️ FlightBooking Platform</p>
         <p className="text-sm text-slate-500">© 2026 Đồ án môn học. All rights reserved.</p>
+      </footer> */}
+
+      {/* 8. FOOTER (Chân trang) */}
+      <footer className="bg-slate-900 text-slate-300 pt-16 pb-8">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 border-b border-slate-800 pb-12 mb-8">
+
+            {/* Cột 1: Thông tin */}
+            <div>
+              <h2 className="text-2xl font-black text-white mb-6 flex items-center gap-2">
+                <PlaneTakeoff className="text-orange-500" /> BookingFlight
+              </h2>
+              <p className="text-slate-400 leading-relaxed mb-6">
+                Nền tảng đặt vé máy bay trực tuyến hàng đầu Việt Nam. Mang thế giới đến gần bạn hơn bằng những chuyến bay an toàn và tiết kiệm.
+              </p>
+              {/* <div className="flex gap-4">
+                <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-colors"><Facebook size={18} /></a>
+                <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-pink-600 hover:text-white transition-colors"><Instagram size={18} /></a>
+                <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-blue-400 hover:text-white transition-colors"><Twitter size={18} /></a>
+              </div> */}
+            </div>
+
+            {/* Cột 2: Về chúng tôi */}
+            <div>
+              <h4 className="text-white font-bold text-lg mb-6">Về chúng tôi</h4>
+              <ul className="space-y-4">
+                <li><Link to="/gioi-thieu" className="hover:text-blue-400">Giới thiệu công ty</Link></li>
+                {/* <li><a href="#" className="hover:text-white transition-colors">Cơ hội việc làm</a></li> */}
+                <li><Link to="/info/chinh-sach-bao-mat" className="hover:text-white transition-colors">Chính sách bảo mật</Link></li>
+                <li><Link to="/info/dieu-khoan-su-dung" className="hover:text-white transition-colors">Điều khoản sử dụng</Link></li>
+              </ul>
+            </div>
+
+            {/* Cột 3: Hỗ trợ */}
+            <div>
+              <h4 className="text-white font-bold text-lg mb-6">Hỗ trợ khách hàng</h4>
+              <ul className="space-y-4">
+                <li><Link to="/info/huong-dan-dat-ve" className="hover:text-white transition-colors">Hướng dẫn đặt vé</Link></li>
+                <li><Link to="/cau-hoi-thuong-gap" className="hover:text-blue-400">Câu hỏi thường gặp (FAQ)</Link></li>
+                <li><Link to="/info/quy-dinh-hanh-ly" className="hover:text-white transition-colors">Quy định hành lý</Link></li>
+                {/* <li><a href="#" className="hover:text-white transition-colors">Gửi yêu cầu hỗ trợ</a></li> */}
+              </ul>
+            </div>
+
+            {/* Cột 4: Liên hệ */}
+            <div>
+              <h4 className="text-white font-bold text-lg mb-6">Liên hệ</h4>
+              <ul className="space-y-4">
+                <li className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-slate-500 shrink-0 mt-0.5" />
+                  <span>Tầng 12, Tòa nhà Landmark, 72 Tôn Thất Thuyết, Cầu Giấy, Hà Nội</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <Phone className="w-5 h-5 text-slate-500 shrink-0" />
+                  <span>1900 1234 (24/7)</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <Mail className="w-5 h-5 text-slate-500 shrink-0" />
+                  <span>support@bookingflight.vn</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="text-center text-slate-500 text-sm">
+            <p>&copy; {new Date().getFullYear()} BookingFlight. All rights reserved.</p>
+          </div>
+        </div>
       </footer>
     </div>
   );

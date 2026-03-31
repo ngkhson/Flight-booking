@@ -49,14 +49,40 @@ export const AIRPORT_IMAGES: Record<string, string> = {
 
 export const DEFAULT_FLIGHT_IMAGE = 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=800&q=80';
 
-export const getAirportImage = (code: string): string => {
-  const cleanCode = code?.trim().toUpperCase();
+export const getAirportImage = (codeOrName: string): string => {
+  if (!codeOrName) return DEFAULT_FLIGHT_IMAGE;
+
+  const cleanInput = codeOrName.trim().toUpperCase();
   
-  if (AIRPORT_IMAGES[cleanCode]) {
-    return AIRPORT_IMAGES[cleanCode];
+  // 1. Nếu truyền đúng mã (SGN, HAN) -> Lấy trong list
+  if (AIRPORT_IMAGES[cleanInput]) {
+    return AIRPORT_IMAGES[cleanInput];
   }
 
-  // 👇 THAY ĐỔI Ở ĐÂY: Nếu không có ảnh mã sân bay, lấy ảnh theo keyword 
-  // Mỗi code sẽ ra 1 ảnh khác nhau (nhờ vào tham số sig=${code})
-  return `https://source.unsplash.com/featured/800x600?city,travel&sig=${cleanCode}`;
+  // 2. Thử match theo tên thành phố (nếu API trả về "Hà Nội" thay vì "HAN")
+  const cityToCode: Record<string, string> = {
+    'HÀ NỘI': 'HAN', 'HA NOI': 'HAN',
+    'HỒ CHÍ MINH': 'SGN', 'TP HCM': 'SGN', 'SAI GON': 'SGN',
+    'ĐÀ NẴNG': 'DAD', 'DA NANG': 'DAD',
+    'PHÚ QUỐC': 'PQC', 'PHU QUOC': 'PQC',
+    'ĐÀ LẠT': 'DLI', 'DA LAT': 'DLI',
+    'NHA TRANG': 'CXR',
+    // Thêm các thành phố khác nếu cần
+  };
+
+  const matchedCode = cityToCode[cleanInput];
+  if (matchedCode && AIRPORT_IMAGES[matchedCode]) {
+    return AIRPORT_IMAGES[matchedCode];
+  }
+
+  // 3. Nếu vẫn không có, trả về ảnh ngẫu nhiên từ Picsum (hoạt động tốt)
+  // Tính tổng mã ASCII của chữ để làm seed (giúp 1 thành phố luôn ra 1 ảnh giống nhau)
+  let seedId = 100;
+  for (let i = 0; i < cleanInput.length; i++) {
+    seedId += cleanInput.charCodeAt(i);
+  }
+  
+  // Dùng id từ 100-300 của picsum để đảm bảo có ảnh
+  const finalId = seedId % 200 + 100; 
+  return `https://picsum.photos/id/${finalId}/800/600`;
 };

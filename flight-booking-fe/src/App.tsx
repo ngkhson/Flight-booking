@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 // Layouts
 import AdminLayout from './layout/AdminLayout';
 import { CustomerLayout } from './layout/CustomerLayout';
+import { ScrollToTop } from './components/customer/ScrollToTop';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -22,6 +23,9 @@ import { ProfilePage } from "@/features/customer/profile/ProfilePage";
 import { PaymentResultPage } from './pages/customer/PaymentResultPage';
 import { VerifyPaymentPage } from './pages/customer/VerifyPaymentPage';
 import { PromotionsPage } from './pages/customer/PromotionsPage';
+import { AboutPage } from './pages/customer/AboutPage';
+import { FAQPage } from './pages/customer/FAQPage';
+import { InformationPage } from './pages/customer/InformationPage';
 
 // Auth Pages
 // import LoginPage from './pages/auth/LoginPage'; // Admin Login
@@ -36,6 +40,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         {/* ==========================================
             1. PHÂN HỆ KHÁCH HÀNG (Dùng CustomerLayout) 
@@ -47,6 +52,9 @@ function App() {
           <Route path="my-bookings" element={<MyBookingsPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="promotions" element={<PromotionsPage />} />
+          <Route path="/gioi-thieu" element={<AboutPage />} />
+          <Route path="/cau-hoi-thuong-gap" element={<FAQPage />} />
+          <Route path="/info/:slug" element={<InformationPage />} />
 
           {/* Auth Khách hàng */}
           <Route path="login" element={<LoginClient />} />

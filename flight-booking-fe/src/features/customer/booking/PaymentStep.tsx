@@ -16,29 +16,29 @@ interface PaymentStepProps {
 
 export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAmount }: PaymentStepProps) => {
   const { searchConfigs, contactInfo, passengers, addons } = useSelector((state: RootState) => state.booking);
-  
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // 👇 HÀM BÓC TÁCH DỮ LIỆU ĐỒNG NHẤT VỚI SIDEBAR 👇
   const extractFlightInfo = (flight: any, fallbackDate: string | undefined, isReturn: boolean = false) => {
     // Ưu tiên lấy origin/dest từ searchConfigs để chống sai lệch, nếu không có mới lấy từ flight
-    const origin = isReturn 
+    const origin = isReturn
       ? ((searchConfigs as any)?.destination || flight?.origin || flight?.departureAirport || '---')
       : ((searchConfigs as any)?.origin || flight?.origin || flight?.departureAirport || '---');
-      
-    const dest = isReturn 
+
+    const dest = isReturn
       ? ((searchConfigs as any)?.origin || flight?.destination || flight?.arrivalAirport || '---')
       : ((searchConfigs as any)?.destination || flight?.destination || flight?.arrivalAirport || '---');
-    
+
     const code = flight?.flightCode || flight?.flightNumber || flight?.flight?.flightNumber || '---';
     const cls = flight?.selectedClassName || flight?.selectedClassInfo?.className || flight?.classType || 'ECONOMY';
-    
+
     // Tách Giờ và Ngày
     const rawTime = flight?.departureTime || flight?.flight?.departureTime || fallbackDate;
     let time = '--:--';
     let date = '--/--/----';
-    
+
     if (rawTime && typeof rawTime === 'string') {
       if (rawTime.includes('T')) {
         const [d, t] = rawTime.split('T');
@@ -71,52 +71,72 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
     setIsProcessing(true);
     setErrorMsg(null);
 
+    // Hàm tính tuổi để phân loại ADULT, CHILD, INFANT
+    const getPassengerType = (dobString: string) => {
+      if (!dobString) return "ADULT"; // Fallback an toàn
+      const dob = new Date(dobString);
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const m = today.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+
+      if (age < 2) return "INFANT";
+      if (age >= 2 && age < 12) return "CHILD";
+      return "ADULT";
+    };
+
     try {
+      // Bóc tách và gán ĐÚNG TYPE cho từng hành khách
       const mappedPassengers = passengers.map((p: any) => ({
         firstName: p.fullName?.split(' ').slice(0, -1).join(' ') || p.fullName || "Nguyễn",
         lastName: p.fullName?.split(' ').slice(-1).join(' ') || p.fullName || "A",
         dateOfBirth: p.dob || "2000-01-01",
         gender: p.gender === "Nam" ? "MALE" : "FEMALE",
-        type: "ADULT"
+        type: getPassengerType(p.dob) // 👇 Gán type linh hoạt dựa trên ngày sinh
       }));
 
+      // Map Ancillaries (Dịch vụ bổ sung)
       const mappedAncillaries = addons.map((a: any) => ({
         catalogId: a.service.id,
-        passengerIndex: a.passengerIndex,
-        segmentNo: a.segmentNo || 1 
+        passengerIndex: a.passengerIndex || 0,
+        flightId: outboundFlight.id || outboundFlight.flightId,
+        segmentNo: a.segmentNo || 1
       }));
 
+      // Đóng gói mảng chuyến bay (Lấy ĐÚNG flightClassId)
       const flightList = [];
-      
       if (outboundFlight) {
         flightList.push({
           flightId: outboundFlight.id || outboundFlight.flightId || "",
-          flightClassId: outboundFlight.selectedClassInfo?.id || outboundFlight.classId || ""
+          flightClassId: outboundFlight.selectedClassInfo?.id || ""
         });
       }
 
       if (isRoundTrip && returnFlight) {
         flightList.push({
           flightId: returnFlight.id || returnFlight.flightId || "",
-          flightClassId: returnFlight.selectedClassInfo?.id || returnFlight.classId || ""
+          flightClassId: returnFlight.selectedClassInfo?.id || ""
         });
       }
 
+      // Đóng gói toàn bộ Payload
       const bookingPayload = {
         contactName: contactInfo?.fullName || contactInfo?.contactName || passengers[0]?.fullName || "Khách hàng",
         contactPhone: contactInfo?.phone || contactInfo?.contactPhone || "0999999999",
         contactEmail: contactInfo?.email || contactInfo?.contactEmail || "email@example.com",
         currency: "VND",
-        promotionCode: "", 
-        flights: flightList, 
-        passengers: mappedPassengers,
+        promotionCode: "",
+        flights: flightList,
+        passengers: mappedPassengers, // Gửi danh sách hành khách đã được phân loại lên Backend
         bookingAncillaries: mappedAncillaries
       };
 
-      console.log("👉 Đang tạo Đơn đặt vé (1 PNR chung)...", bookingPayload);
-      
+      console.log("👉 Payload gửi lên API:", JSON.stringify(bookingPayload, null, 2));
+
       const response: any = await bookingApi.createBooking(bookingPayload);
-      
+
       const mainBookingId = response?.result?.id || response?.id;
       const pnrCode = response?.result?.pnrCode || response?.pnrCode;
 
@@ -127,7 +147,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
       console.log(`👉 Đang tạo link thanh toán VNPay cho PNR: ${pnrCode}`);
       const vnpayRes: any = await axiosClient.get('/payments/create-url', {
         params: {
-          bookingId: mainBookingId 
+          bookingId: mainBookingId
         }
       });
 
@@ -161,7 +181,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
         <h2 className="text-xl font-bold mb-1">Xác nhận thanh toán</h2>
         <p className="text-slate-300 text-sm">Vui lòng kiểm tra kỹ thông tin trước khi thanh toán</p>
       </div>
-      
+
       <div className="p-6">
         {errorMsg && (
           <div className="p-4 mb-6 bg-red-50 text-red-600 border border-red-200 rounded-xl text-sm flex gap-3 items-center">
@@ -191,7 +211,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
           <h3 className="font-bold text-slate-800 mb-4 border-b border-slate-200 pb-3 flex items-center gap-2">
             <Ticket className="text-blue-500 w-5 h-5" /> Tóm tắt hành trình
           </h3>
-          
+
           {/* LƯỢT ĐI */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
@@ -203,14 +223,14 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
               </div>
               {isRoundTrip && <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded">LƯỢT ĐI</span>}
             </div>
-            
+
             <div className="bg-white p-3 rounded-lg border border-slate-100 flex justify-between items-center ml-6">
               <div>
                 <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">Chuyến bay</p>
                 <p className="text-sm font-bold text-slate-700">{outInfo.code} <span className="text-[10px] font-normal ml-1">({outInfo.cls})</span></p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5 flex items-center justify-end gap-1"><Calendar size={12}/> Khởi hành</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5 flex items-center justify-end gap-1"><Calendar size={12} /> Khởi hành</p>
                 <p className="text-sm font-bold text-blue-600">
                   {outInfo.time} | {outInfo.date}
                 </p>
@@ -237,7 +257,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
                   <p className="text-sm font-bold text-slate-700">{retInfo.code} <span className="text-[10px] font-normal ml-1">({retInfo.cls})</span></p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5 flex items-center justify-end gap-1"><Calendar size={12}/> Khởi hành</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5 flex items-center justify-end gap-1"><Calendar size={12} /> Khởi hành</p>
                   <p className="text-sm font-bold text-orange-600">
                     {retInfo.time} | {retInfo.date}
                   </p>
@@ -254,7 +274,7 @@ export const PaymentStep = ({ outboundFlight, returnFlight, isRoundTrip, finalAm
           </div>
         </div>
 
-        <Button 
+        <Button
           onClick={handleCreateBookingAndPay}
           disabled={isProcessing}
           className="w-full h-14 bg-orange-500 hover:bg-orange-600 text-lg font-bold rounded-xl shadow-lg transition-transform active:scale-95"

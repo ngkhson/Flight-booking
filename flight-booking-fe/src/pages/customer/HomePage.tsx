@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import {
   ShieldCheck, HeadphonesIcon, CreditCard, Zap,
-  MapPin, Calendar, ArrowRight, Mail, Phone, Facebook, Instagram, Twitter, PlaneTakeoff, Loader2
+  MapPin, Calendar, ArrowRight, Mail, Phone, Facebook, Instagram, Twitter, PlaneTakeoff, Loader2, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { flightApi } from '@/api/flightApi';
@@ -21,16 +21,93 @@ import { getAirportImage } from '@/constants/airportImages';
 // ];
 
 const MOCK_DESTINATIONS = [
-  { id: 1, name: "Đà Nẵng", price: "Từ 599.000đ", image: "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=600&q=80", colSpan: "md:col-span-2 md:row-span-2" },
-  { id: 2, name: "Phú Quốc", price: "Từ 799.000đ", image: "https://images.unsplash.com/photo-1576485290814-1c72aa4faa8e?auto=format&fit=crop&w=600&q=80", colSpan: "md:col-span-1 md:row-span-1" },
-  { id: 3, name: "Vịnh Hạ Long", price: "Từ 899.000đ", image: "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=600&q=80", colSpan: "md:col-span-1 md:row-span-1" },
-  { id: 4, name: "Bangkok", price: "Từ 1.299.000đ", image: "https://images.unsplash.com/photo-1508009603885-247a505b822d?auto=format&fit=crop&w=600&q=80", colSpan: "md:col-span-2 md:row-span-1" },
+  { 
+    id: '1', 
+    name: "Đà Nẵng, Việt Nam", 
+    price: "Vé chỉ từ 599.000 đ", 
+    image: "https://tourism.danang.vn/wp-content/uploads/2023/02/tour-du-lich-da-nang-1.jpg" 
+  },
+  { 
+    id: '2', 
+    name: "Phú Quốc, Việt Nam", 
+    price: "Vé chỉ từ 799.000 đ", 
+    image: "https://thoibaotaichinhvietnam.vn/stores/news_dataimages/2024/102024/18/14/phu-quoc20241018144932.1152350.jpg" 
+  },
+  { 
+    id: '3', 
+    name: "Vịnh Hạ Long, Việt Nam", 
+    price: "Vé chỉ từ 899.000 đ", 
+    image: "https://nhandan.vn/special/30-nam-mot-chang-duong-di-san-Vinh-Ha-Long/assets/HLCklusX0n/things-to-do-in-ha-long-bay-banner-1-1920x1080.jpg" 
+  },
+  {
+    id: '4',
+    name: 'Hà Nội, Việt Nam',
+    price: 'Vé chỉ từ 499.000 đ',
+    image: 'https://suckhoedoisong.qltns.mediacdn.vn/Images/thanhloan/2020/11/28/Nam-2030-du-lich-ha-noi-phan-dau-tro-thanh-nganh-kinh-te-mui-nhon-cua-thu-do-19.jpg', // Hình đường phố cổ/lồng đèn
+  },
+  {
+    id: '5',
+    name: 'Hồ Chí Minh, Việt Nam',
+    price: 'Vé chỉ từ 699.000 đ',
+    image: 'https://travel-bus-files.s3.ap-southeast-1.amazonaws.com/images/3601bd2d-4e5c-4a33-bce8-748e684046f3.jpeg', // Hình Landmark 81 / Cảnh đêm
+  },
+  {
+    id: '6',
+    name: 'Bali, Indonesia',
+    price: 'Vé chỉ từ 3.500.000 đ',
+    image: 'https://dulichdaiviet.vn/uploaded/anh-cam-nang-dl/cam-nang-dl-bali/7ngoidenlinhthiengnoitiengnhatbali1.jpg',
+  },
+  {
+    id: '7',
+    name: 'Bangkok, Thái Lan',
+    price: 'Vé chỉ từ 1.800.000 đ',
+    image: 'https://vietlandtravel.vn/upload/images/bangkok-ve-dem.jpg',
+  },
+  {
+    id: '8',
+    name: 'Singapore',
+    price: 'Vé chỉ từ 2.100.000 đ',
+    image: 'https://images.trvl-media.com/place/6047873/15d3ae30-ef33-406e-971f-9520c03f1089.jpg', // Marina Bay Sands
+  },
+  {
+    id: '9',
+    name: 'Kuala Lumpur, Malaysia',
+    price: 'Vé chỉ từ 1.500.000 đ',
+    image: 'https://res.klook.com/image/upload/fl_lossy.progressive,q_60/Mobile/City/o52yyykrizo0b4th1uuk.jpg', // Tháp đôi Petronas
+  },
+  {
+    id: '10',
+    name: 'Tokyo, Nhật Bản',
+    price: 'Vé chỉ từ 6.500.000 đ',
+    image: 'https://ik.imagekit.io/tvlk/blog/2022/06/shutterstock_1396013432.jpg',
+  }
 ];
 
 const MOCK_ARTICLES = [
-  { id: 1, title: "Bí kíp xếp hành lý siêu gọn cho chuyến đi 5 ngày", date: "24/03/2026", category: "Cẩm nang", image: "https://images.unsplash.com/photo-1551524164-687a54483750?auto=format&fit=crop&w=600&q=80" },
-  { id: 2, title: "Top 10 bãi biển hoang sơ đẹp nhất Châu Á 2026", date: "20/03/2026", category: "Điểm đến", image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80" },
-  { id: 3, title: "Ăn gì ở Đà Lạt? Bản đồ ẩm thực mới nhất", date: "15/03/2026", category: "Ẩm thực", image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=80" }
+  {
+    id: '1',
+    title: 'Cẩm nang du lịch Phú Quốc: Chơi gì, ăn gì, ở đâu?',
+    category: 'Kinh Nghiệm',
+    date: 'Cập nhật mới nhất',
+    image: 'https://cdn.media.dulich24.com.vn/diemden/ao-phu-quoc-3506/phu-quoc.jpg',
+    url: 'https://dulichkhampha24.com/kinh-nghiem-du-lich-phu-quoc.html', // Link thật VnExpress
+  },
+  {
+    id: '2',
+    title: 'Bản đồ ẩm thực và cẩm nang khám phá thủ đô Hà Nội',
+    category: 'Điểm Đến',
+    date: 'Cập nhật mới nhất',
+    image: 'https://banhtombaloc.vn/medias/2024/05/5.jpg',
+    url: 'https://vietnammedia.com.vn/ban-do-food-tour-ha-noi-cam-nang-du-lich-am-thuc-ha-noi', // Link thật VnExpress
+  },
+  {
+    id: '3',
+    title: 'Kinh nghiệm du lịch tự túc Bangkok, Thái Lan',
+    category: 'Quốc Tế',
+    date: 'Cập nhật mới nhất',
+    image: 'https://file.hstatic.net/200000561069/article/bangkok-tl_3619350a59554298be1b892c3592c023.jpg',
+    url: 'https://phuotvivu.com/blog/kinh-nghiem-du-lich/thai-lan/bangkok/', // Link thật VnExpress
+  }
 ];
 
 const DESTINATION_IMAGES: Record<string, string> = {
@@ -130,6 +207,25 @@ export const HomePage = () => {
     navigate('/search', { state: searchParams });
   };
 
+  // --- LOGIC CHO CAROUSEL ĐIỂM ĐẾN ---
+  const [currentDestIndex, setCurrentDestIndex] = useState(0);
+
+  // Tự động chuyển ảnh sau mỗi 5 giây
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDestIndex((prev) => (prev === MOCK_DESTINATIONS.length - 1 ? 0 : prev + 1));
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const nextDestSlide = () => {
+    setCurrentDestIndex((prev) => (prev === MOCK_DESTINATIONS.length - 1 ? 0 : prev + 1));
+  };
+
+  const prevDestSlide = () => {
+    setCurrentDestIndex((prev) => (prev === 0 ? MOCK_DESTINATIONS.length - 1 : prev - 1));
+  };
+
   return (
     <div className="bg-white">
       {/* 1. HERO SECTION (Khu vực trung tâm) */}
@@ -191,39 +287,80 @@ export const HomePage = () => {
         </div>
       </section>
 
-      {/* 3. ĐIỂM ĐẾN PHỔ BIẾN */}
-      <section className="bg-slate-50 py-20">
+      {/* 3. ĐIỂM ĐẾN PHỔ BIẾN (CAROUSEL) */}
+      <section className="bg-slate-50 py-16">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-end mb-10">
-            <div>
-              <h3 className="text-3xl font-extrabold text-slate-800">Điểm Đến Yêu Thích</h3>
-              <p className="text-slate-500 mt-3 text-lg">Cảm hứng cho chuyến đi tiếp theo của bạn</p>
-            </div>
-            <Button variant="link" className="text-blue-600 font-bold hidden md:flex hover:text-blue-800">
+          
+          {/* TIÊU ĐỀ VÀ NÚT ĐƯỢC CĂN GIỮA TOÀN BỘ */}
+          <div className="flex flex-col items-center text-center mb-10">
+            <h3 className="text-3xl md:text-4xl font-extrabold text-slate-800">
+              Điểm Đến Yêu Thích
+            </h3>
+            <p className="text-slate-500 mt-3 text-lg">
+              Cảm hứng cho chuyến đi tiếp theo của bạn
+            </p>
+            {/* <Button variant="link" className="text-blue-600 font-bold hover:text-blue-800 mt-2 flex">
               Khám phá thêm <ArrowRight className="ml-1 w-4 h-4" />
-            </Button>
+            </Button> */}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-auto md:h-[500px]">
-            {MOCK_DESTINATIONS.map((dest) => (
+          {/* KHUNG SLIDER NHỎ LẠI: 
+              - max-w-4xl: Giới hạn chiều rộng tối đa (khoảng 896px)
+              - mx-auto: Canh giữa toàn bộ slider
+              - h-[350px] md:h-[450px]: Giảm chiều cao so với bản cũ
+          */}
+          <div className="relative w-full max-w-6xl mx-auto h-[350px] md:h-[450px] rounded-3xl overflow-hidden group shadow-2xl">
+            {/* Các lớp ảnh mờ dần */}
+            {MOCK_DESTINATIONS.map((dest, index) => (
               <div
                 key={dest.id}
-                className={`relative rounded-2xl overflow-hidden cursor-pointer group shadow-md ${dest.colSpan}`}
+                className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                  index === currentDestIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                }`}
               >
                 <img
                   src={dest.image}
                   alt={dest.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                <div className="absolute bottom-0 left-0 p-6">
-                  <h4 className="text-white text-2xl font-bold flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-orange-400" /> {dest.name}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
+                
+                {/* Nội dung trên ảnh được canh giữa */}
+                <div className="absolute bottom-0 left-0 w-full p-6 pb-12 md:pb-16 flex flex-col items-center">
+                  <h4 className="text-white text-3xl md:text-4xl font-black flex items-center justify-center gap-2 mb-2 tracking-tight drop-shadow-lg text-center">
+                    <MapPin className="w-8 h-8 text-orange-500" /> {dest.name}
                   </h4>
-                  <p className="text-white/80 font-medium mt-1">{dest.price}</p>
                 </div>
               </div>
             ))}
+
+            {/* MŨI TÊN CHUYỂN SLIDE MỜ Ở 2 BÊN */}
+            <button
+              onClick={prevDestSlide}
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-white/20 text-white backdrop-blur-md hover:bg-white/40 transition-all opacity-0 group-hover:opacity-100"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <button
+              onClick={nextDestSlide}
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-white/20 text-white backdrop-blur-md hover:bg-white/40 transition-all opacity-0 group-hover:opacity-100"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+
+            {/* DẤU CHẤM TRÒN CHỈ THỊ (DOTS INDICATOR) - ĐƯA RA GIỮA */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+              {MOCK_DESTINATIONS.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentDestIndex(index)}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    index === currentDestIndex ? 'bg-orange-500 w-6' : 'bg-white/50 w-2 hover:bg-white'
+                  }`}
+                  aria-label={`Go to slide ${index + 1}`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -280,94 +417,39 @@ export const HomePage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {MOCK_ARTICLES.map(article => (
-              <div key={article.id} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow border border-slate-100 group cursor-pointer">
+              // 👇 Thay div bằng thẻ a, thêm href và target="_blank" để mở tab mới
+              <a 
+                key={article.id} 
+                href={article.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-slate-100 group cursor-pointer block"
+              >
                 <div className="relative h-48 overflow-hidden">
-                  <img src={article.image} alt={article.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                  <span className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-blue-700 text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wide">
+                  <img 
+                    src={article.image} 
+                    alt={article.title} 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                  />
+                  <span className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-blue-700 text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wide shadow-sm">
                     {article.category}
                   </span>
                 </div>
                 <div className="p-6">
-                  <p className="text-slate-400 text-sm flex items-center gap-2 mb-3">
+                  <p className="text-slate-400 text-sm flex items-center gap-2 mb-3 font-medium">
                     <Calendar className="w-4 h-4" /> {article.date}
                   </p>
                   <h4 className="text-xl font-bold text-slate-800 leading-snug group-hover:text-blue-600 transition-colors">
                     {article.title}
                   </h4>
                 </div>
-              </div>
+              </a>
             ))}
           </div>
         </div>
       </section>
 
-      {/* 8. FOOTER (Chân trang) */}
-      <footer className="bg-slate-900 text-slate-300 pt-16 pb-8">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 border-b border-slate-800 pb-12 mb-8">
-
-            {/* Cột 1: Thông tin */}
-            <div>
-              <h2 className="text-2xl font-black text-white mb-6 flex items-center gap-2">
-                <PlaneTakeoff className="text-orange-500" /> BookingFlight
-              </h2>
-              <p className="text-slate-400 leading-relaxed mb-6">
-                Nền tảng đặt vé máy bay trực tuyến hàng đầu Việt Nam. Mang thế giới đến gần bạn hơn bằng những chuyến bay an toàn và tiết kiệm.
-              </p>
-              <div className="flex gap-4">
-                <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-colors"><Facebook size={18} /></a>
-                <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-pink-600 hover:text-white transition-colors"><Instagram size={18} /></a>
-                <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-blue-400 hover:text-white transition-colors"><Twitter size={18} /></a>
-              </div>
-            </div>
-
-            {/* Cột 2: Về chúng tôi */}
-            <div>
-              <h4 className="text-white font-bold text-lg mb-6">Về chúng tôi</h4>
-              <ul className="space-y-4">
-                <li><a href="#" className="hover:text-white transition-colors">Giới thiệu công ty</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Cơ hội việc làm</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Chính sách bảo mật</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Điều khoản sử dụng</a></li>
-              </ul>
-            </div>
-
-            {/* Cột 3: Hỗ trợ */}
-            <div>
-              <h4 className="text-white font-bold text-lg mb-6">Hỗ trợ khách hàng</h4>
-              <ul className="space-y-4">
-                <li><a href="#" className="hover:text-white transition-colors">Hướng dẫn đặt vé</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Câu hỏi thường gặp (FAQ)</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Quy định hành lý</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Gửi yêu cầu hỗ trợ</a></li>
-              </ul>
-            </div>
-
-            {/* Cột 4: Liên hệ */}
-            <div>
-              <h4 className="text-white font-bold text-lg mb-6">Liên hệ</h4>
-              <ul className="space-y-4">
-                <li className="flex items-start gap-3">
-                  <MapPin className="w-5 h-5 text-slate-500 shrink-0 mt-0.5" />
-                  <span>Tầng 12, Tòa nhà Landmark, 72 Tôn Thất Thuyết, Cầu Giấy, Hà Nội</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <Phone className="w-5 h-5 text-slate-500 shrink-0" />
-                  <span>1900 1234 (24/7)</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-slate-500 shrink-0" />
-                  <span>support@bookingflight.vn</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="text-center text-slate-500 text-sm">
-            <p>&copy; {new Date().getFullYear()} BookingFlight. Tất cả các quyền được bảo lưu.</p>
-          </div>
-        </div>
-      </footer>
+      
 
     </div>
   );
