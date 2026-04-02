@@ -352,18 +352,20 @@ export default function UserManagement() {
                     </table>
                 </div>
 
+                {/* ─── PHÂN TRANG (PAGINATION) ────────────────────────────────────── */}
                 {!isLoading && visible.length > 0 && (
                     <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-b-2xl">
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
                             Hiển thị <span className="font-bold text-gray-700">{(currentPage - 1) * itemsPerPage + 1}</span> đến <span className="font-bold text-gray-700">{Math.min(currentPage * itemsPerPage, visible.length)}</span> trong số <span className="font-bold text-gray-700">{visible.length}</span> tài khoản
                         </span>
 
-                        <div className="flex items-center gap-4">
-                            <button onClick={loadUsers} className="text-indigo-600 hover:text-indigo-800 transition text-xs font-bold flex items-center gap-1">
+                        <div className="flex flex-wrap items-center justify-end gap-4 w-full">
+                            <button onClick={loadUsers} className="text-indigo-600 hover:text-indigo-800 transition text-xs font-bold flex items-center gap-1 hidden sm:flex">
                                 🔄 Làm mới
                             </button>
 
-                            <div className="flex gap-1">
+                            {/* Bộ nút phân trang */}
+                            <div className="flex flex-wrap gap-1">
                                 <button
                                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                     disabled={currentPage === 1}
@@ -372,15 +374,62 @@ export default function UserManagement() {
                                     Trước
                                 </button>
 
-                                {Array.from({ length: totalPages }).map((_, i) => (
-                                    <button
-                                        key={i}
-                                        onClick={() => setCurrentPage(i + 1)}
-                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition shadow-sm ${currentPage === i + 1 ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
-                                    >
-                                        {i + 1}
-                                    </button>
-                                ))}
+                                {/* Logic render nút có dấu ... */}
+                                {(() => {
+                                    const pages = [];
+                                    const maxVisible = 5; // Số trang tối đa hiển thị xung quanh trang hiện tại
+
+                                    if (totalPages <= maxVisible + 2) {
+                                        // Nếu ít trang thì hiện hết
+                                        for (let i = 1; i <= totalPages; i++) {
+                                            pages.push(
+                                                <button
+                                                    key={i}
+                                                    onClick={() => setCurrentPage(i)}
+                                                    className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition shadow-sm min-w-[32px] ${currentPage === i ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                                                >
+                                                    {i}
+                                                </button>
+                                            );
+                                        }
+                                    } else {
+                                        // Nếu nhiều trang thì dùng dấu ...
+                                        pages.push(
+                                            <button key={1} onClick={() => setCurrentPage(1)} className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition shadow-sm min-w-[32px] ${currentPage === 1 ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>1</button>
+                                        );
+
+                                        if (currentPage > 3) {
+                                            pages.push(<span key="dots-1" className="px-2 py-1.5 text-gray-400 font-bold">...</span>);
+                                        }
+
+                                        let startPage = Math.max(2, currentPage - 1);
+                                        let endPage = Math.min(totalPages - 1, currentPage + 1);
+
+                                        if (currentPage === 1) endPage = 3;
+                                        if (currentPage === totalPages) startPage = totalPages - 2;
+
+                                        for (let i = startPage; i <= endPage; i++) {
+                                            pages.push(
+                                                <button
+                                                    key={i}
+                                                    onClick={() => setCurrentPage(i)}
+                                                    className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition shadow-sm min-w-[32px] ${currentPage === i ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                                                >
+                                                    {i}
+                                                </button>
+                                            );
+                                        }
+
+                                        if (currentPage < totalPages - 2) {
+                                            pages.push(<span key="dots-2" className="px-2 py-1.5 text-gray-400 font-bold">...</span>);
+                                        }
+
+                                        pages.push(
+                                            <button key={totalPages} onClick={() => setCurrentPage(totalPages)} className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition shadow-sm min-w-[32px] ${currentPage === totalPages ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>{totalPages}</button>
+                                        );
+                                    }
+                                    return pages;
+                                })()}
 
                                 <button
                                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
@@ -390,6 +439,26 @@ export default function UserManagement() {
                                     Sau
                                 </button>
                             </div>
+
+                            {/* Ô nhập số trang nhảy tới */}
+                            <div className="flex items-center gap-2 border-l border-gray-200 pl-4 ml-2">
+                                <span className="text-xs text-gray-500 font-medium">Đến trang:</span>
+                                <input 
+                                    type="number" 
+                                    min="1" 
+                                    max={totalPages} 
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            const val = parseInt(e.currentTarget.value);
+                                            if (val >= 1 && val <= totalPages) setCurrentPage(val);
+                                            e.currentTarget.value = ''; // Xóa ô sau khi Enter
+                                        }
+                                    }}
+                                    placeholder="#"
+                                    className="w-12 px-2 py-1 text-xs font-bold text-center border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 hide-arrows"
+                                />
+                            </div>
+
                         </div>
                     </div>
                 )}
