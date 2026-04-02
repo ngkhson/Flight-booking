@@ -357,13 +357,13 @@ export const MyBookingsPage = () => {
                                 "Thanh toán ngay"
                               )}
                             </Button>
-                            <Button 
+                            {/* <Button 
                               variant="ghost"
                               onClick={() => navigate(`/verify-payment?pnr=${booking.pnrCode}`)} 
                               className="w-full text-slate-500 hover:bg-slate-50"
                             >
                               Kiểm tra trạng thái
-                            </Button>
+                            </Button> */}
                           </>
                         ) : (
                           <Button 

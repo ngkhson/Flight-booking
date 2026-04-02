@@ -37,6 +37,7 @@ export const PromotionsPage = () => {
               : item.destination;
 
             return {
+              ...item,
               id: item.id,
               origin: item.origin,
               destination: item.destination,
@@ -46,7 +47,8 @@ export const PromotionsPage = () => {
               airline: item.airlineName,
               // 👇 THAY THẾ TOÀN BỘ LOGIC LẤY ẢNH TẠI ĐÂY
               // imageUrl: getAirportImage(item.destination)
-              imageUrl: getAirportImage(destinationCode)
+              imageUrl: getAirportImage(destinationCode),
+              classes: item.classes
             };
           });
 

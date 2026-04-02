@@ -164,14 +164,14 @@ export const BookingPage = () => {
                       <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-black uppercase">
                         {seatClass.replace('_', ' ')}
                       </span>
-                      <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                      {/* <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
                         <Clock size={12} /> {formatTime(currentConfigs.date)}
-                      </span>
+                      </span> */}
                     </div>
                   </div>
-                  <div className="text-right">
+                  {/* <div className="text-right">
                     <p className="text-sm font-black text-slate-800 uppercase">{primaryFlight.origin} → {primaryFlight.destination}</p>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
@@ -191,7 +191,7 @@ export const BookingPage = () => {
                         {(returnFlight.selectedClassName || 'ECONOMY').replace('_', ' ')}
                       </span>
                     </div>
-                    <div className="text-right text-sm font-black text-slate-800 uppercase">{returnFlight.origin} → {returnFlight.destination}</div>
+                    {/* <div className="text-right text-sm font-black text-slate-800 uppercase">{returnFlight.origin} → {returnFlight.destination}</div> */}
                   </div>
                 </div>
               )}

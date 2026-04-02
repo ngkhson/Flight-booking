@@ -36,6 +36,7 @@ import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 // Protections & Errors
 import ProtectedRoute from './features/auth/ProtectedRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import { PaymentReturnPage } from './pages/customer/PaymentReturnPage';
 
 function App() {
   return (
@@ -66,6 +67,7 @@ function App() {
           <Route path="payment-failed" element={<PaymentResultPage />} />
           <Route path="payment-error" element={<PaymentResultPage />} />
           <Route path="verify-payment" element={<VerifyPaymentPage />} />
+          <Route path="/payment-return" element={<PaymentReturnPage />} />
         </Route>
 
 
