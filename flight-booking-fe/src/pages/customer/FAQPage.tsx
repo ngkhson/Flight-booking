@@ -115,7 +115,7 @@ export const FAQPage = () => {
             {/* Khối Box liên hệ hỗ trợ giống InformationPage */}
             <div className="mt-12 pt-8 border-t border-slate-100 bg-blue-50 p-6 rounded-2xl">
               <p className="text-sm text-blue-800 font-medium">
-                Bạn không tìm thấy câu trả lời? Vui lòng liên hệ tổng đài CSKH 24/7 của chúng tôi qua hotline <strong className="text-blue-900 font-black">1900 1234</strong> hoặc email <strong className="text-blue-900 font-black">support@bookingflight.vn</strong>.
+                Bạn không tìm thấy câu trả lời? Vui lòng liên hệ tổng đài CSKH 24/7 của chúng tôi qua hotline <strong className="text-blue-900 font-black">0335 805 021</strong> hoặc email <strong className="text-blue-900 font-black">support@stingair.vn</strong>.
               </p>
             </div>
             

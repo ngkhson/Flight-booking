@@ -19,7 +19,7 @@ export const AboutPage = () => {
           className="absolute inset-0 w-full h-full object-cover opacity-30"
         />
         <div className="relative z-10 text-center px-4">
-          <h1 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">Về BookingFlight</h1>
+          <h1 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">Về STINGAIR</h1>
           <p className="text-lg text-slate-300 max-w-2xl mx-auto">
             Nền tảng đặt vé máy bay trực tuyến hàng đầu Việt Nam. Chúng tôi mang thế giới đến gần bạn hơn bằng những chuyến bay an toàn và tiết kiệm.
           </p>
@@ -35,7 +35,7 @@ export const AboutPage = () => {
             </div>
             <h2 className="text-2xl font-black text-slate-800 mb-4">Sứ mệnh</h2>
             <p className="text-slate-600 leading-relaxed">
-              BookingFlight ra đời với sứ mệnh đơn giản hóa quá trình di chuyển của con người. Chúng tôi ứng dụng công nghệ hiện đại nhất để giúp hàng triệu khách hàng tìm kiếm, so sánh và đặt vé máy bay với mức giá tốt nhất, minh bạch nhất.
+              STINGAIR ra đời với sứ mệnh đơn giản hóa quá trình di chuyển của con người. Chúng tôi ứng dụng công nghệ hiện đại nhất để giúp hàng triệu khách hàng tìm kiếm, so sánh và đặt vé máy bay với mức giá tốt nhất, minh bạch nhất.
             </p>
           </div>
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-start hover:shadow-md transition-shadow">

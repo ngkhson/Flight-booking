@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useDispatch } from 'react-redux';
 import { clearBooking } from '@/store/bookingSlice'; 
 import axiosClient from '@/api/axiosClient';
-import { bookingApi } from '@/api/bookingApi'; // 👈 Thêm import này
+import { bookingApi } from '@/api/bookingApi';
 
 export const PaymentResultPage = () => {
   const [searchParams] = useSearchParams();
@@ -24,8 +24,9 @@ export const PaymentResultPage = () => {
   const transactionNo = searchParams.get('vnp_TransactionNo');
   const orderInfo = searchParams.get('vnp_OrderInfo');
   
-  // 👉 CHÌA KHÓA: Lấy PNR từ URL
-  const pnrCode = searchParams.get('pnr');
+  // 👉 CHÌA KHÓA ĐÃ SỬA: Lấy PNR từ vnp_TxnRef (do VNPay trả về) hoặc pnr (do code tự truyền)
+  const rawPnr = searchParams.get('vnp_TxnRef') || searchParams.get('pnr');
+  const pnrCode = rawPnr ? rawPnr.split('_')[0] : null;
   const errorMessage = searchParams.get('message');
 
   useEffect(() => {
@@ -34,46 +35,49 @@ export const PaymentResultPage = () => {
     }
   }, [isSuccess, dispatch]);
 
-  // 👇 HÀM XỬ LÝ THANH TOÁN LẠI TỪ MÃ PNR 👇
+  // 👇 HÀM XỬ LÝ THANH TOÁN LẠI 👇
   const handleRepay = async () => {
     if (!pnrCode) {
-      alert("Không tìm thấy mã đặt chỗ (PNR) để thanh toán lại!");
+      alert("Không tìm thấy mã đặt chỗ (PNR) để thực hiện thanh toán lại.");
       return;
     }
 
     try {
       setIsProcessing(true);
 
-      // BƯỚC 1: Tìm bookingId từ mã PNR
-      // Gọi danh sách vé của user hiện tại
+      // Bước 1: Lấy danh sách vé (Tăng size lên 50 cho chắc chắn)
       const response: any = await bookingApi.getMyBookings(1, 50);
-      const content = response?.result?.content || response?.data?.result?.content || [];
       
-      // Quét tìm vé có mã PNR khớp với URL
-      const targetBooking = content.find((b: any) => b.pnrCode === pnrCode);
+      // Quét tất cả các định dạng mảng phổ biến của Spring Boot / Backend
+      const bookings = response?.result?.content 
+                    || response?.result?.data
+                    || response?.data?.result?.content 
+                    || response?.data 
+                    || [];
+      
+      // Tìm vé có PNR khớp với PNR đã được "gọt" sạch sẽ
+      const targetBooking = bookings.find((b: any) => b.pnrCode === pnrCode);
 
       if (!targetBooking || !targetBooking.id) {
-        alert("Không tìm thấy thông tin đơn hàng trong hệ thống!");
+        alert(`Hệ thống không tìm thấy đơn hàng mang mã ${pnrCode}. Vui lòng kiểm tra lại trong 'Vé của tôi'.`);
         setIsProcessing(false);
         return;
       }
 
-      const bookingId = targetBooking.id;
-      console.log(`👉 Đã tìm thấy ID: ${bookingId} cho PNR: ${pnrCode}. Đang gọi VNPay...`);
-
-      // BƯỚC 2: Gọi API VNPay bằng bookingId vừa tìm được
+      // Bước 2: Gọi API VNPay bằng bookingId
       const vnpayRes: any = await axiosClient.get('/payments/create-url', {
-        params: { bookingId }
+        params: { bookingId: targetBooking.id }
       });
 
       if (vnpayRes.result) {
         window.location.href = vnpayRes.result;
       } else {
-        alert("Không thể tạo link thanh toán lúc này. Vui lòng thử lại sau.");
+        throw new Error("Không nhận được liên kết thanh toán từ máy chủ.");
       }
+
     } catch (error: any) {
-      console.error("Lỗi gọi thanh toán:", error);
-      alert(error.response?.data?.message || "Đã xảy ra lỗi kết nối với cổng thanh toán!");
+      console.error("Lỗi thanh toán lại:", error);
+      alert(error.response?.data?.message || "Đã xảy ra lỗi khi kết nối với cổng thanh toán.");
     } finally {
       setIsProcessing(false);
     }
@@ -148,11 +152,11 @@ export const PaymentResultPage = () => {
               <Calendar className="mr-2 h-5 w-5" /> Quản lý vé của tôi
             </Button>
           ) : (
-            // 👇 NÚT THANH TOÁN LẠI ĐÃ ĐƯỢC TÍCH HỢP 👇
+            // 👇 NÚT THANH TOÁN LẠI ĐÃ ĐƯỢC MỞ KHÓA VÀ HOẠT ĐỘNG MƯỢT MÀ 👇
             <Button 
               onClick={handleRepay} 
               disabled={isProcessing || !pnrCode}
-              className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-md font-bold rounded-xl shadow-md transition-all"
+              className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-white text-md font-bold rounded-xl shadow-md transition-all flex items-center justify-center"
             >
               {isProcessing ? (
                 <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang kết nối VNPay...</>

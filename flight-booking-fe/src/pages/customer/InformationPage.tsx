@@ -11,7 +11,7 @@ const PAGE_CONTENT: Record<string, any> = {
     sections: [
       {
         h: '1. Mục đích thu thập thông tin',
-        p: 'BookingFlight thu thập thông tin cá nhân của bạn (Họ tên, Email, Số điện thoại, CCCD/Hộ chiếu) nhằm mục đích xử lý việc đặt vé máy bay, liên hệ hỗ trợ khi có thay đổi về chuyến bay và cải thiện chất lượng dịch vụ.'
+        p: 'STINGAIR thu thập thông tin cá nhân của bạn (Họ tên, Email, Số điện thoại, CCCD/Hộ chiếu) nhằm mục đích xử lý việc đặt vé máy bay, liên hệ hỗ trợ khi có thay đổi về chuyến bay và cải thiện chất lượng dịch vụ.'
       },
       {
         h: '2. Bảo mật dữ liệu',
@@ -30,7 +30,7 @@ const PAGE_CONTENT: Record<string, any> = {
     sections: [
       {
         h: '1. Chấp thuận điều khoản',
-        p: 'Bằng việc truy cập và sử dụng nền tảng BookingFlight, bạn đồng ý tuân thủ các điều khoản và điều kiện được quy định tại đây. Nếu không đồng ý, vui lòng ngừng sử dụng dịch vụ.'
+        p: 'Bằng việc truy cập và sử dụng nền tảng STINGAIR, bạn đồng ý tuân thủ các điều khoản và điều kiện được quy định tại đây. Nếu không đồng ý, vui lòng ngừng sử dụng dịch vụ.'
       },
       {
         h: '2. Trách nhiệm của người dùng',
@@ -130,7 +130,7 @@ export const InformationPage = () => {
 
           <div className="mt-12 pt-8 border-t border-slate-100 bg-blue-50 p-6 rounded-2xl">
             <p className="text-sm text-blue-800 font-medium">
-              Bạn cần hỗ trợ thêm? Vui lòng liên hệ tổng đài CSKH 24/7 của chúng tôi qua hotline <strong className="text-blue-900 font-black">1900 1234</strong> hoặc email <strong className="text-blue-900 font-black">support@bookingflight.vn</strong>.
+              Bạn cần hỗ trợ thêm? Vui lòng liên hệ tổng đài CSKH 24/7 của chúng tôi qua hotline <strong className="text-blue-900 font-black">0335 805 021</strong> hoặc email <strong className="text-blue-900 font-black">support@stingair.vn</strong>.
             </p>
           </div>
         </div>

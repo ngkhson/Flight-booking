@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plane, Calendar, Clock, CreditCard, RefreshCw, AlertCircle, 
-  CheckCircle, Ticket, ChevronRight, X, User, QrCode, Loader2, ChevronDown, Search 
+  CheckCircle, Ticket, ChevronRight, X, User, QrCode, Loader2, ChevronDown, Search, Users, Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { bookingApi } from '@/api/bookingApi'; 
@@ -18,7 +18,7 @@ const STATUS_CONFIG: Record<string, { label: string, color: string, icon: any }>
   // REFUNDED: { label: 'Đã hoàn tiền', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: RefreshCw },
 };
 
-const fmtVND = (amount: number) => amount ? amount.toLocaleString('vi-VN') + ' ₫' : '--- ₫';
+const fmtVND = (amount: number) => amount ? Math.floor(amount).toLocaleString('vi-VN') + ' ₫' : '--- ₫';
 const fmtTimeOnly = (isoString: string) => {
   if (!isoString) return '--:--';
   const d = new Date(isoString);
@@ -340,7 +340,7 @@ export const MyBookingsPage = () => {
                     <div className="p-6 md:w-64 bg-white flex flex-col justify-center items-center">
                       <div className="mb-2 text-sm text-slate-500 font-medium">Tổng thanh toán</div>
                       <div className="text-[28px] font-black text-slate-800 mb-8 border-b-2 border-slate-800 inline-block pb-0.5">
-                        {booking.totalAmount?.toLocaleString('vi-VN')} <span className="underline decoration-2">đ</span>
+                        {Math.floor(booking.totalAmount || 0).toLocaleString('vi-VN')} <span className="underline decoration-2">đ</span>
                       </div>
 
                       <div className="w-full mt-auto">
@@ -413,6 +413,9 @@ export const MyBookingsPage = () => {
             </div>
 
             <div className="overflow-y-auto shrink p-6 pb-4">
+              {/* =========================================
+                  PHẦN 1: THÔNG TIN CHUYẾN BAY (Giữ nguyên)
+                  ========================================= */}
               {modalFlights.map((flight: any, idx: number) => (
                 <div key={idx}>
                   {modalFlights.length > 1 && (
@@ -472,11 +475,84 @@ export const MyBookingsPage = () => {
                     </div>
                   </div>
 
+                  {/* Nét đứt phân cách giữa các chặng bay */}
                   {idx === 0 && modalFlights.length > 1 && (
                     <div className="border-b-2 border-slate-100 my-6"></div>
                   )}
                 </div>
               ))}
+
+              {/* =========================================
+                  PHẦN 2: THÔNG TIN HÀNH KHÁCH & CHI TIẾT GIÁ
+                  ========================================= */}
+              {selectedTicket.passengers && selectedTicket.passengers.length > 0 && (
+                <div className="mt-8 border-t-2 border-slate-100 pt-6">
+                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
+                    <Users className="w-5 h-5 text-blue-600" /> Hành khách & Chi tiết giá vé
+                  </h4>
+                  
+                  <div className="space-y-3">
+                    {selectedTicket.passengers.map((passenger: any, pIdx: number) => (
+                      <div key={pIdx} className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm">
+                        
+                        {/* Tên & Loại hành khách */}
+                        <div className="flex justify-between items-center mb-3 pb-3 border-b border-slate-200">
+                          <p className="font-black text-slate-800 uppercase tracking-wide">
+                            {passenger.lastName} {passenger.firstName}
+                          </p>
+                          <span className="text-[10px] uppercase font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                            {passenger.type === 'ADULT' ? 'Người lớn' : passenger.type === 'CHILD' ? 'Trẻ em' : 'Em bé'}
+                          </span>
+                        </div>
+
+                        {/* Danh sách dịch vụ & Giá theo từng chặng (Vé) */}
+                        {passenger.tickets && passenger.tickets.map((ticket: any, tIdx: number) => (
+                          <div key={tIdx} className={`text-xs ${tIdx > 0 ? 'mt-4 pt-4 border-t border-slate-200 border-dashed' : ''}`}>
+                            
+                            {/* Tiêu đề chặng & Giá vé */}
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex flex-col gap-1">
+                                <span className="font-bold text-slate-700 text-sm">Chuyến bay: {ticket.flightNumber}</span>
+                                <span className="text-slate-500">Hạng: <strong className="text-slate-700">{ticket.classType.replace('_', ' ')}</strong></span>
+                              </div>
+                              
+                              {/* 👇 HIỂN THỊ TỔNG TIỀN VÉ CỦA CHẶNG NÀY 👇 */}
+                              <div className="text-right">
+                                <span className="text-[10px] text-slate-400 block mb-0.5 font-medium">Giá vé chặng này</span>
+                                <span className="font-black text-blue-600 text-sm">
+                                  {fmtVND(ticket.totalAmount)}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Hiển thị dịch vụ bổ sung & Giá dịch vụ */}
+                            {ticket.ancillaries && ticket.ancillaries.length > 0 ? (
+                              <div className="flex flex-col gap-1.5 mt-2.5">
+                                {ticket.ancillaries.map((anc: any, aIdx: number) => (
+                                  <div key={aIdx} className="flex justify-between items-center bg-white border border-slate-100 px-2.5 py-1.5 rounded-md shadow-sm">
+                                    <div className="flex items-center gap-1.5 text-slate-600">
+                                      <Tag className="w-3 h-3 text-orange-500" />
+                                      <span className="font-medium text-[11px]">{anc.catalogName}</span>
+                                    </div>
+                                    {/* 👇 HIỂN THỊ GIÁ DỊCH VỤ 👇 */}
+                                    <span className="font-bold text-[10px] text-orange-500">
+                                      +{fmtVND(anc.amount)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-slate-400 italic text-[10px] mt-1.5">Không có dịch vụ bổ sung</p>
+                            )}
+                            
+                          </div>
+                        ))}
+
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="relative flex items-center px-4 shrink-0">
@@ -490,9 +566,6 @@ export const MyBookingsPage = () => {
                 <p className="text-xs text-slate-500 font-medium mb-1">Tổng tiền thanh toán</p>
                 <p className="text-lg font-black text-orange-600 tracking-widest">{fmtVND(selectedTicket.totalAmount)}</p>
                 <p className="text-[10px] text-slate-400 mt-2">Ngày đặt: {fmtDateOnly(selectedTicket.createdAt)}</p>
-              </div>
-              <div className="w-16 h-16 bg-white border border-slate-200 rounded-lg flex items-center justify-center shadow-sm">
-                <QrCode className="w-10 h-10 text-slate-800" />
               </div>
             </div>
 

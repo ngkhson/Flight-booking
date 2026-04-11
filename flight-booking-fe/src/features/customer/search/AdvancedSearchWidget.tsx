@@ -18,8 +18,8 @@ interface Props {
 export const AdvancedSearchWidget = ({ onSearch, loading }: Props) => {
   const location = useLocation();
   const [tripType, setTripType] = useState<'one-way' | 'round-trip'>('one-way');
-  const [origin, setOrigin] = useState("HKT");
-  const [destination, setDestination] = useState("KUL");
+  const [origin, setOrigin] = useState("BNE");
+  const [destination, setDestination] = useState("SYD");
   
   const [departureDate, setDepartureDate] = useState<Date | undefined>(new Date());
   const [returnDate, setReturnDate] = useState<Date | undefined>(); // 👈 1. Thêm state quản lý ngày về
@@ -93,78 +93,6 @@ export const AdvancedSearchWidget = ({ onSearch, loading }: Props) => {
     }
   };
 
-  // return (
-  //   <div className="bg-white p-5 rounded-xl shadow-2xl border border-slate-200 w-full max-w-6xl mx-auto text-left transform translate-y-8">
-  //     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-4 border-b border-slate-100 gap-4">
-  //       <div className="flex gap-6">
-  //         <label className="flex items-center gap-2 cursor-pointer text-slate-700 font-medium">
-  //           <input 
-  //             type="radio" 
-  //             checked={tripType === 'one-way'} 
-  //             onChange={() => handleTripTypeChange('one-way')} 
-  //             className="w-4 h-4" 
-  //           />
-  //           Một chiều
-  //         </label>
-  //         <label className="flex items-center gap-2 cursor-pointer text-slate-700 font-medium">
-  //           <input 
-  //             type="radio" 
-  //             checked={tripType === 'round-trip'} 
-  //             onChange={() => handleTripTypeChange('round-trip')} 
-  //             className="w-4 h-4" 
-  //           />
-  //           Khứ hồi
-  //         </label>
-  //       </div>
-  //     </div>
-
-  //     <div className="flex flex-col lg:flex-row gap-3 items-end">
-  //       <div className="flex flex-col md:flex-row flex-1 gap-2 w-full">
-  //         <div className="flex-1">
-  //           <label className="text-xs font-semibold text-slate-500 uppercase ml-1">Điểm đi</label>
-  //           {/* 👇 Thay Input bằng AirportSelector 👇 */}
-  //           <AirportSelector 
-  //             value={origin} 
-  //             onChange={setOrigin} 
-  //             placeholder="Chọn điểm khởi hành"
-  //           />
-  //         </div>
-  //         <div className="flex-1">
-  //           <label className="text-xs font-semibold text-slate-500 uppercase ml-1">Điểm đến</label>
-  //           {/* 👇 Thay Input bằng AirportSelector 👇 */}
-  //           <AirportSelector 
-  //             value={destination} 
-  //             onChange={setDestination} 
-  //             placeholder="Chọn điểm đến"
-  //           />
-  //         </div>
-  //       </div>
-
-  //       <div className="flex flex-1 gap-2 w-full">
-  //         <FlightDatePicker 
-  //           label="Ngày đi" 
-  //           value={departureDate} 
-  //           onChange={setDepartureDate} 
-  //         />
-  //         {/* 👈 4. Gắn state returnDate vào Component Picker */}
-  //         <FlightDatePicker 
-  //           label="Ngày về" 
-  //           disabledState={tripType === 'one-way'} 
-  //           value={returnDate} 
-  //           onChange={setReturnDate} 
-  //         />
-  //       </div>
-
-  //       <div className="w-full lg:w-56">
-  //         <PassengerSelector value={passengers} onChange={setPassengers} />
-  //       </div>
-
-  //       <Button onClick={handleSearch} disabled={loading} className="w-full lg:w-auto h-12 px-8 bg-orange-500 hover:bg-orange-600 font-bold">
-  //         {loading ? "Đang tìm..." : "Tìm Chuyến"}
-  //       </Button>
-  //     </div>
-  //   </div>
-  // );
   return (
     <div className="bg-white p-5 rounded-xl shadow-2xl border border-slate-200 w-full max-w-[1200px] mx-auto text-left transform translate-y-8">
       {/* KHỐI RADIO BUTTON (MỘT CHIỀU / KHỨ HỒI) */}

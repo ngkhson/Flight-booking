@@ -61,7 +61,7 @@ const bookingSlice = createSlice({
       const basePrice = action.payload.finalPrice;
       const totalPaxPrice = (basePrice * adults) + (basePrice * 0.75 * children) + (basePrice * 0.1 * infants);
 
-      state.totalAmount = totalPaxPrice * 1.1; 
+      state.totalAmount = Math.floor(totalPaxPrice * 1.1); 
       
       // Chuyển sang bước 1 (Nhập thông tin)
       state.currentStep = 1;
@@ -78,7 +78,7 @@ const bookingSlice = createSlice({
       const childTotal = (basePrice * 0.75) * state.searchConfigs.children; // Trẻ em 75%
       const infantTotal = (basePrice * 0.1) * state.searchConfigs.infants; // Em bé 10%
 
-      state.totalAmount = (adultTotal + childTotal + infantTotal) * 1.1;
+      state.totalAmount = Math.floor((adultTotal + childTotal + infantTotal) * 1.1);
       state.currentStep = 2;
     },
     saveAddons: (state, action: PayloadAction<any[]>) => {
@@ -92,7 +92,7 @@ const bookingSlice = createSlice({
         (basePrice * 0.75 * state.searchConfigs.children) +
         (basePrice * 0.1 * state.searchConfigs.infants);
 
-      state.totalAmount = ticketTotal * 1.1 + addonsTotal;
+      state.totalAmount = Math.floor(ticketTotal * 1.1 + addonsTotal);
       // state.currentStep = 3;
     },
     setTotalAmount: (state, action: PayloadAction<number>) => {

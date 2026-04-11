@@ -47,8 +47,12 @@ export const CustomerLayout = () => {
     <div className="min-h-screen flex flex-col font-sans text-slate-900">
       <header className="bg-blue-600 text-white p-4 shadow-md sticky top-0 z-50">
         <div className="container mx-auto flex justify-between items-center">
-          <Link to="/" className="text-2xl font-bold tracking-tight hover:opacity-90 flex items-center gap-2">
+          {/* <Link to="/" className="text-2xl font-bold tracking-tight hover:opacity-90 flex items-center gap-2">
             ✈️ FlightBooking
+          </Link> */}
+
+          <Link to="/" className="text-2xl font-bold tracking-tight hover:opacity-90 flex items-center gap-2">
+            ✈️ STINGAIR
           </Link>
 
           <nav className="space-x-6 flex items-center">
@@ -111,7 +115,7 @@ export const CustomerLayout = () => {
             {/* Cột 1: Thông tin */}
             <div>
               <h2 className="text-2xl font-black text-white mb-6 flex items-center gap-2">
-                <PlaneTakeoff className="text-orange-500" /> BookingFlight
+                <PlaneTakeoff className="text-orange-500" /> STINGAIR
               </h2>
               <p className="text-slate-400 leading-relaxed mb-6">
                 Nền tảng đặt vé máy bay trực tuyến hàng đầu Việt Nam. Mang thế giới đến gần bạn hơn bằng những chuyến bay an toàn và tiết kiệm.
@@ -151,22 +155,22 @@ export const CustomerLayout = () => {
               <ul className="space-y-4">
                 <li className="flex items-start gap-3">
                   <MapPin className="w-5 h-5 text-slate-500 shrink-0 mt-0.5" />
-                  <span>Tầng 12, Tòa nhà Landmark, 72 Tôn Thất Thuyết, Cầu Giấy, Hà Nội</span>
+                  <span>Số 3 Cầu Giấy, Phường Láng, TP. Hà Nội</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Phone className="w-5 h-5 text-slate-500 shrink-0" />
-                  <span>1900 1234 (24/7)</span>
+                  <span>0335 805 021 (24/7)</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Mail className="w-5 h-5 text-slate-500 shrink-0" />
-                  <span>support@bookingflight.vn</span>
+                  <span>support@stingair.vn</span>
                 </li>
               </ul>
             </div>
           </div>
 
           <div className="text-center text-slate-500 text-sm">
-            <p>&copy; {new Date().getFullYear()} BookingFlight. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} STRINGAIR. All rights reserved.</p>
           </div>
         </div>
       </footer>

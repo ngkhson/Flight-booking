@@ -210,7 +210,7 @@ export const HomePage = () => {
   // --- LOGIC CHO CAROUSEL ĐIỂM ĐẾN ---
   const [currentDestIndex, setCurrentDestIndex] = useState(0);
 
-  // Tự động chuyển ảnh sau mỗi 5 giây
+  // Tự động chuyển ảnh sau mỗi 10 giây
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentDestIndex((prev) => (prev === MOCK_DESTINATIONS.length - 1 ? 0 : prev + 1));
@@ -368,7 +368,7 @@ export const HomePage = () => {
       {/* 5. TẠI SAO CHỌN CHÚNG TÔI (USPs) */}
       <section className="container mx-auto px-4 py-20">
         <div className="text-center mb-16">
-          <h3 className="text-3xl font-extrabold text-slate-800">Tại sao chọn BookingFlight?</h3>
+          <h3 className="text-3xl font-extrabold text-slate-800">Tại sao chọn STINGAIR?</h3>
           <p className="text-slate-500 mt-3 text-lg">Những lý do khiến hàng triệu khách hàng tin tưởng chúng tôi</p>
         </div>
 

@@ -67,7 +67,6 @@ function App() {
           <Route path="payment-failed" element={<PaymentResultPage />} />
           <Route path="payment-error" element={<PaymentResultPage />} />
           <Route path="verify-payment" element={<VerifyPaymentPage />} />
-          <Route path="/payment-return" element={<PaymentReturnPage />} />
         </Route>
 
 

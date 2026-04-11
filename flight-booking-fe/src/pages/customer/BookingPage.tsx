@@ -42,13 +42,29 @@ export const BookingPage = () => {
   const calcFlightPrice = (flight: any) => {
     if (!flight) return 0;
     const basePrice = flight.selectedClassInfo?.basePrice || flight.finalPrice || flight.price || 0;
-    return (basePrice * adults) + (basePrice * 0.75 * children) + (basePrice * 0.1 * infants);
+    // Bọc Math.floor() ngay từ lúc tính giá từng chuyến bay
+    return Math.floor((basePrice * adults) + (basePrice * 0.75 * children) + (basePrice * 0.1 * infants));
   };
 
   const ticketTotal = calcFlightPrice(primaryFlight) + calcFlightPrice(returnFlight);
   const addonsTotal = addons.reduce((sum, a) => sum + a.service.price, 0); 
-  const taxAndFee = ticketTotal * 0.1; // Thuế phí 10%
+  
+  // 👇 ĐÂY LÀ CHỖ GÂY RA SỐ LẺ (,5 đ), PHẢI ROUND LẠI 👇
+  const taxAndFee = Math.floor(ticketTotal * 0.1); 
+  
+  // Mọi thứ đã làm tròn, giờ cộng lại sẽ ra số đẹp
   const grandTotal = ticketTotal + addonsTotal + taxAndFee;
+
+  // Bắt mọi trường hợp lưu trữ hạng vé của Lượt đi
+  const outboundClass = primaryFlight?.selectedClassName 
+                     || primaryFlight?.selectedClassInfo?.className 
+                     || seatClass 
+                     || 'ECONOMY';
+
+  // Bắt mọi trường hợp lưu trữ hạng vé của Lượt về (nếu có)
+  const returnClass = returnFlight?.selectedClassName 
+                   || returnFlight?.selectedClassInfo?.className 
+                   || 'ECONOMY';
 
   // Helper định dạng ngày giờ
   const formatDate = (dateStr: string) => {
@@ -95,7 +111,7 @@ export const BookingPage = () => {
 
           <div className="hidden lg:block text-right">
             <span className="text-[10px] text-slate-400 uppercase font-black block leading-none mb-1">Tổng thanh toán</span>
-            <span className="text-2xl font-black text-orange-500">{grandTotal.toLocaleString('vi-VN')} đ</span>
+            <span className="text-2xl font-black text-orange-500">{Math.floor(grandTotal).toLocaleString('vi-VN')} đ</span>
           </div>
         </div>
       </div>
@@ -162,7 +178,7 @@ export const BookingPage = () => {
                     <p className="font-black text-2xl text-slate-800 uppercase">{primaryFlight.flightCode || primaryFlight.flightNumber}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-black uppercase">
-                        {seatClass.replace('_', ' ')}
+                        {outboundClass.replace('_', ' ')}
                       </span>
                       {/* <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
                         <Clock size={12} /> {formatTime(currentConfigs.date)}
@@ -188,7 +204,7 @@ export const BookingPage = () => {
                     <div>
                       <p className="font-black text-2xl text-slate-800 uppercase">{returnFlight.flightCode || returnFlight.flightNumber}</p>
                       <span className="text-[10px] bg-orange-500 text-white px-2 py-0.5 rounded-full font-black uppercase inline-block mt-1">
-                        {(returnFlight.selectedClassName || 'ECONOMY').replace('_', ' ')}
+                        {returnClass.replace('_', ' ')}
                       </span>
                     </div>
                     {/* <div className="text-right text-sm font-black text-slate-800 uppercase">{returnFlight.origin} → {returnFlight.destination}</div> */}
@@ -202,7 +218,7 @@ export const BookingPage = () => {
 
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500 font-medium">Tiền vé ({adults} NL, {children} TE, {infants} EB)</span>
-                  <span className="font-bold text-slate-800">{ticketTotal.toLocaleString('vi-VN')} đ</span>
+                  <span className="font-bold text-slate-800">{Math.floor(ticketTotal).toLocaleString('vi-VN')} đ</span>
                 </div>
 
                 {/* 👇 KHU VỰC HIỂN THỊ DỊCH VỤ BỔ SUNG ĐƯỢC BỔ SUNG VÀO ĐÂY 👇 */}
@@ -221,7 +237,7 @@ export const BookingPage = () => {
                     
                     {addons.some((a: any) => a.type === 'MEAL') && (
                       <div className="flex justify-between text-sm text-slate-600">
-                        <span>Suất ăn trên mây</span>
+                        <span>Suất ăn</span>
                         <span className="font-semibold text-slate-800">
                           {addons.filter((a: any) => a.type === 'MEAL').reduce((s: number, a: any) => s + a.service.price, 0).toLocaleString('vi-VN')} đ
                         </span>
@@ -233,7 +249,7 @@ export const BookingPage = () => {
 
                 <div className="flex justify-between text-sm text-slate-500 border-t border-slate-100 pt-2 mt-2">
                   <span>Thuế & phí (10%)</span>
-                  <span className="font-bold text-slate-800">{taxAndFee.toLocaleString('vi-VN')} đ</span>
+                  <span className="font-bold text-slate-800">{Math.floor(taxAndFee).toLocaleString('vi-VN')} đ</span>
                 </div>
 
                 <div className="pt-4 border-t-2 border-slate-900 mt-4">
@@ -241,7 +257,7 @@ export const BookingPage = () => {
                     <span className="font-black text-slate-800 uppercase text-sm">Tổng cộng</span>
                     <div className="text-right">
                       <p className="font-black text-2xl text-orange-500 leading-none">
-                        {grandTotal.toLocaleString('vi-VN')} đ
+                        {Math.floor(grandTotal).toLocaleString('vi-VN')} đ
                       </p>
                       <p className="text-[10px] text-slate-400 italic mt-1 font-bold">Giá cuối cùng (đã gồm VAT)</p>
                     </div>

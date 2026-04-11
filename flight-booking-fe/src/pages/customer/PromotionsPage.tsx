@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { flightApi } from '@/api/flightApi';
 import { PromoFlightCard, type PromoFlight } from '@/features/customer/landing/PromoFlightCard';
 import { Loader2, Tag, ChevronDown, Plane } from 'lucide-react';
-// 👇 SỬ DỤNG HÀM NÀY ĐỂ LẤY ẢNH CHUẨN
 import { getAirportImage } from '@/constants/airportImages';
 
 export const PromotionsPage = () => {
@@ -12,22 +11,48 @@ export const PromotionsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchFlights = async (page: number, isLoadMore = false) => {
-    if (isLoadMore) setLoadingMore(true);
-    else setLoading(true);
+  // Thêm mảng accumulatedFlights để gom vé qua nhiều trang
+  const fetchFlights = async (page: number, isLoadMore = false, accumulatedFlights: any[] = []) => {
+    if (isLoadMore && accumulatedFlights.length === 0) setLoadingMore(true);
+    else if (accumulatedFlights.length === 0) setLoading(true);
 
     try {
       const res: any = await flightApi.getAllFlights(page, 12);
 
       if (res.code === 1000 && res.result) {
-        if (res.result.totalPages) setTotalPages(res.result.totalPages);
+        const totalPagesData = res.result.totalPages || 1;
+        setTotalPages(totalPagesData);
 
-        const flightArray = Array.isArray(res.result.data)
+        let flightArray = Array.isArray(res.result.data)
           ? res.result.data
           : (Array.isArray(res.result) ? res.result : []);
 
         if (flightArray.length > 0) {
-          const mappedData = flightArray.map((item: any) => {
+          
+          // 1. LỌC CHUYẾN BAY TƯƠNG LAI
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const validFlights = flightArray.filter((item: any) => {
+            if (!item.departureTime) return false;
+            return new Date(item.departureTime) >= today;
+          });
+
+          // 2. GỘP VÉ HỢP LỆ VÀO GIỎ
+          const newAccumulated = [...accumulatedFlights, ...validFlights];
+
+          // 3. NẾU CHƯA ĐỦ 12 VÉ VÀ VẪN CÒN TRANG -> ÉP GỌI TIẾP TRANG SAU!
+          if (newAccumulated.length < 12 && page < totalPagesData) {
+            console.log(`Mới gom được ${newAccumulated.length} vé. Đang âm thầm quét tiếp trang ${page + 1}...`);
+            setCurrentPage(page + 1);
+            return fetchFlights(page + 1, isLoadMore, newAccumulated); 
+          }
+
+          // 4. KHI ĐÃ ĐỦ VÉ (HOẶC HẾT TRANG) -> BẮT ĐẦU HIỂN THỊ
+          // Lưu ý: Có thể cắt bớt nếu vượt quá 12 vé để UI luôn đẹp (tuỳ chọn)
+          const flightsToShow = newAccumulated.slice(0, 12); 
+
+          const mappedData = flightsToShow.map((item: any) => {
             const minPrice = item.classes && item.classes.length > 0
               ? Math.min(...item.classes.map((c: any) => c.basePrice))
               : 0;
@@ -45,8 +70,6 @@ export const PromotionsPage = () => {
               price: minPrice,
               originalPrice: minPrice + (minPrice * 0.2),
               airline: item.airlineName,
-              // 👇 THAY THẾ TOÀN BỘ LOGIC LẤY ẢNH TẠI ĐÂY
-              // imageUrl: getAirportImage(item.destination)
               imageUrl: getAirportImage(destinationCode),
               classes: item.classes
             };
@@ -57,6 +80,10 @@ export const PromotionsPage = () => {
           } else {
             setPromoFlights(mappedData);
           }
+        } else if (page < totalPagesData) {
+            // Đề phòng API trả mảng rỗng nhưng vẫn báo còn trang
+            setCurrentPage(page + 1);
+            return fetchFlights(page + 1, isLoadMore, accumulatedFlights);
         }
       }
     } catch (error) {
@@ -101,7 +128,7 @@ export const PromotionsPage = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-4" />
-            <p className="text-slate-500 font-medium text-lg">Đang tải dữ liệu chuyến bay...</p>
+            <p className="text-slate-500 font-medium text-lg">Đang tìm kiếm chuyến bay phù hợp...</p>
           </div>
         ) : promoFlights.length > 0 ? (
           <>
@@ -123,7 +150,8 @@ export const PromotionsPage = () => {
                   ) : (
                     <ChevronDown className="w-5 h-5 group-hover:translate-y-1 transition-transform" />
                   )}
-                  {loadingMore ? 'Đang tải thêm...' : `Xem thêm chuyến bay (Trang ${currentPage}/${totalPages})`}
+                  {/* {loadingMore ? 'Đang tải thêm...' : `Xem thêm chuyến bay (Trang ${currentPage}/${totalPages})`} */}
+                  {loadingMore ? 'Đang tải thêm...' : `Xem thêm chuyến bay`}
                 </button>
               </div>
             )}
@@ -133,7 +161,7 @@ export const PromotionsPage = () => {
             <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Plane className="w-10 h-10 text-slate-400" />
             </div>
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Chưa có chuyến bay nào</h3>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Chưa có chuyến bay nào sắp tới</h3>
             <p className="text-slate-500">Hệ thống đang cập nhật lịch bay mới. Vui lòng quay lại sau nhé!</p>
           </div>
         )}
