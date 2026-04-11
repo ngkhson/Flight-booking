@@ -2,9 +2,9 @@ import apiClient from '../../services/apiClient';
 
 export const flightApi = {
   // Hàm tìm kiếm chuyến bay
-  searchFlights: (origin: string, destination: string, date: string) => {
+  searchFlights: (params: { origin: string; destination: string; date: string; passengers?: number }) => {
     return apiClient.get('/flights/search', {
-      params: { origin, destination, date }
+      params
     });
   },
 

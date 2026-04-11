@@ -2,7 +2,8 @@ import axios from 'axios';
 
 // 1. Tạo instance (bản sao) của axios với cấu hình mặc định
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api', // Đường dẫn API của Backend (Spring Boot)
+  // Use VITE_API_BASE_URL from .env, fallback to localhost:8080/api if missing
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -12,8 +13,9 @@ const apiClient = axios.create({
 // 2. Cấu hình Interceptor (Bộ chặn) - Tự động gắn Token
 apiClient.interceptors.request.use(
   (config) => {
-    // Lấy token từ localStorage (nếu có)
+    // [SỬA Ở ĐÂY]: Đổi 'token' thành 'accessToken' để đồng bộ với trang Login
     const token = localStorage.getItem('accessToken');
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`; // Gắn token vào Header
     }
@@ -30,10 +32,19 @@ apiClient.interceptors.response.use(
     return response.data; // Chỉ lấy phần data, bỏ qua mấy cái header rườm rà
   },
   (error) => {
-    // Ví dụ: Nếu lỗi 401 (Hết hạn token) -> Đá về trang login
+    // Nếu lỗi 401 (Hết hạn token hoặc không hợp lệ) -> Đá về trang login
     if (error.response?.status === 401) {
       console.log('Hết phiên đăng nhập, vui lòng login lại!');
-      // window.location.href = '/login';
+
+      // [SỬA Ở ĐÂY]: Xóa đúng key 'accessToken'
+      localStorage.removeItem('accessToken');
+
+      // [SỬA Ở ĐÂY]: Điều hướng thông minh phân biệt Admin và Khách hàng
+      if (window.location.pathname.startsWith('/admin')) {
+        window.location.href = '/admin/login';
+      } else {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

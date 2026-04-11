@@ -1,0 +1,177 @@
+import { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { CheckCircle, XCircle, AlertTriangle, Home, Calendar, Loader2, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useDispatch } from 'react-redux';
+import { clearBooking } from '@/store/bookingSlice'; 
+import axiosClient from '@/api/axiosClient';
+import { bookingApi } from '@/api/bookingApi';
+
+export const PaymentResultPage = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useDispatch();
+
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const isSuccess = location.pathname.includes('/payment-success');
+  const isFailed = location.pathname.includes('/payment-failed');
+  const isError = location.pathname.includes('/payment-error');
+
+  const amountStr = searchParams.get('vnp_Amount');
+  const amount = amountStr ? (parseInt(amountStr) / 100) : 0;
+  const transactionNo = searchParams.get('vnp_TransactionNo');
+  const orderInfo = searchParams.get('vnp_OrderInfo');
+  
+  // 👉 CHÌA KHÓA ĐÃ SỬA: Lấy PNR từ vnp_TxnRef (do VNPay trả về) hoặc pnr (do code tự truyền)
+  const rawPnr = searchParams.get('vnp_TxnRef') || searchParams.get('pnr');
+  const pnrCode = rawPnr ? rawPnr.split('_')[0] : null;
+  const errorMessage = searchParams.get('message');
+
+  useEffect(() => {
+    if (isSuccess) {
+      dispatch(clearBooking());
+    }
+  }, [isSuccess, dispatch]);
+
+  // 👇 HÀM XỬ LÝ THANH TOÁN LẠI 👇
+  const handleRepay = async () => {
+    if (!pnrCode) {
+      alert("Không tìm thấy mã đặt chỗ (PNR) để thực hiện thanh toán lại.");
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+
+      // Bước 1: Lấy danh sách vé (Tăng size lên 50 cho chắc chắn)
+      const response: any = await bookingApi.getMyBookings(1, 50);
+      
+      // Quét tất cả các định dạng mảng phổ biến của Spring Boot / Backend
+      const bookings = response?.result?.content 
+                    || response?.result?.data
+                    || response?.data?.result?.content 
+                    || response?.data 
+                    || [];
+      
+      // Tìm vé có PNR khớp với PNR đã được "gọt" sạch sẽ
+      const targetBooking = bookings.find((b: any) => b.pnrCode === pnrCode);
+
+      if (!targetBooking || !targetBooking.id) {
+        alert(`Hệ thống không tìm thấy đơn hàng mang mã ${pnrCode}. Vui lòng kiểm tra lại trong 'Vé của tôi'.`);
+        setIsProcessing(false);
+        return;
+      }
+
+      // Bước 2: Gọi API VNPay bằng bookingId
+      const vnpayRes: any = await axiosClient.get('/payments/create-url', {
+        params: { bookingId: targetBooking.id }
+      });
+
+      if (vnpayRes.result) {
+        window.location.href = vnpayRes.result;
+      } else {
+        throw new Error("Không nhận được liên kết thanh toán từ máy chủ.");
+      }
+
+    } catch (error: any) {
+      console.error("Lỗi thanh toán lại:", error);
+      alert(error.response?.data?.message || "Đã xảy ra lỗi khi kết nối với cổng thanh toán.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="bg-white p-8 md:p-10 rounded-3xl shadow-lg max-w-lg w-full text-center border border-slate-100">
+        
+        {/* ICON TRẠNG THÁI */}
+        <div className="flex justify-center mb-6">
+          {isSuccess && (
+            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center border-4 border-white shadow-sm">
+              <CheckCircle className="text-green-500 w-12 h-12" />
+            </div>
+          )}
+          {isFailed && (
+            <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center border-4 border-white shadow-sm">
+              <XCircle className="text-red-500 w-12 h-12" />
+            </div>
+          )}
+          {isError && (
+            <div className="w-24 h-24 bg-orange-100 rounded-full flex items-center justify-center border-4 border-white shadow-sm">
+              <AlertTriangle className="text-orange-500 w-12 h-12" />
+            </div>
+          )}
+        </div>
+
+        {/* TIÊU ĐỀ & LỜI NHẮN */}
+        <h1 className={`text-3xl font-extrabold mb-2 ${isSuccess ? 'text-green-600' : isFailed ? 'text-red-600' : 'text-orange-600'}`}>
+          {isSuccess ? 'Thanh toán thành công!' : isFailed ? 'Thanh toán thất bại!' : 'Lỗi giao dịch!'}
+        </h1>
+        <p className="text-slate-500 mb-8">
+          {isSuccess && 'Cảm ơn bạn đã tin tưởng. Vé điện tử đã được gửi vào email của bạn.'}
+          {isFailed && 'Giao dịch đã bị hủy hoặc xảy ra lỗi trong quá trình xử lý từ ngân hàng.'}
+          {isError && (errorMessage === 'invalid-signature' ? 'Phát hiện sai lệch chữ ký bảo mật. Giao dịch bị từ chối.' : 'Đã xảy ra lỗi không xác định.')}
+        </p>
+
+        {/* CHI TIẾT GIAO DỊCH (Chỉ hiện khi thành công) */}
+        {isSuccess && (
+          <div className="bg-slate-50 rounded-xl p-5 space-y-3 text-left mb-8 border border-slate-100">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-200">
+              <span className="text-slate-500 text-sm">Số tiền</span>
+              <span className="font-bold text-lg text-slate-800">
+                {amount.toLocaleString('vi-VN')} đ
+              </span>
+            </div>
+            <div className="flex justify-between items-center pb-3 border-b border-slate-200">
+              <span className="text-slate-500 text-sm">Mã giao dịch</span>
+              <span className="font-medium text-slate-700">{transactionNo || 'N/A'}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-500 text-sm">Nội dung</span>
+              <span className="font-medium text-slate-700 truncate max-w-[200px]">
+                {orderInfo || 'Thanh toán vé máy bay'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* MÃ PNR (Chỉ hiện khi thất bại) */}
+        {isFailed && pnrCode && (
+           <div className="bg-red-50 text-red-700 rounded-xl p-4 mb-8 border border-red-100 font-medium flex justify-center items-center gap-2">
+             Mã đặt chỗ (PNR): <span className="font-black text-xl text-red-800 tracking-wider">{pnrCode}</span>
+           </div>
+        )}
+
+        {/* NÚT ĐIỀU HƯỚNG */}
+        <div className="space-y-3">
+          {isSuccess ? (
+            <Button onClick={() => navigate('/my-bookings')} className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-md font-bold rounded-xl shadow-md">
+              <Calendar className="mr-2 h-5 w-5" /> Quản lý vé của tôi
+            </Button>
+          ) : (
+            // 👇 NÚT THANH TOÁN LẠI ĐÃ ĐƯỢC MỞ KHÓA VÀ HOẠT ĐỘNG MƯỢT MÀ 👇
+            <Button 
+              onClick={handleRepay} 
+              disabled={isProcessing || !pnrCode}
+              className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-white text-md font-bold rounded-xl shadow-md transition-all flex items-center justify-center"
+            >
+              {isProcessing ? (
+                <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang kết nối VNPay...</>
+              ) : (
+                <><RefreshCw className="mr-2 h-5 w-5" /> Thử thanh toán lại</>
+              )}
+            </Button>
+          )}
+          
+          <Button onClick={() => navigate('/')} variant="outline" className="w-full h-12 text-md font-bold rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50">
+            <Home className="mr-2 h-5 w-5" /> Về trang chủ
+          </Button>
+        </div>
+
+      </div>
+    </div>
+  );
+};

@@ -1,0 +1,75 @@
+// // File: src/api/bookingApi.ts
+// import axiosClient from './axiosClient';
+
+// export const bookingApi = {
+//     // Lấy danh sách tất cả các lượt đặt vé (Cần token, dùng GET)
+//     getAllBookings: () => {
+//         const url = '/bookings';
+//         return axiosClient.get(url); 
+//         // Không cần truyền token thủ công ở đây nữa!
+//     },
+
+//     // Tạo một booking mới (Cần token, dùng POST)
+//     createBooking: (bookingData: any) => {
+//         const url = '/bookings';
+//         return axiosClient.post(url, bookingData);
+//     },
+    
+//     // Lấy thông tin chuyến bay chi tiết (Ví dụ mở rộng)
+//     getBookingDetails: (id: number) => {
+//         const url = `/bookings/${id}`;
+//         return axiosClient.get(url);
+//     }
+// };
+
+// src/api/bookingApi.ts
+import axiosClient from "./axiosClient";
+
+export interface MyBookingResponse {
+  id: string;
+  pnrCode: string;
+  status: 'PENDING' | 'AWAITING_PAYMENT' | 'PAID' | 'CONFIRMED' | 'CANCELLED' | 'REFUNDED';
+  totalAmount: number;
+  createdAt: string;
+  flightNumber: string;
+  origin: string;
+  destination: string;
+  departureTime: string;
+}
+
+export interface PageResult<T> {
+  currentPage: number;
+  pageSize: number;
+  totalPages: number;
+  totalElements: number;
+  content: T[];
+}
+
+export const bookingApi = {
+  // Lấy danh sách vé (Backend yêu cầu Token)
+  getAllBookings: () => {
+    return axiosClient.get("/bookings");
+  },
+
+  // Tạo mới một lượt đặt vé
+  createBooking: (bookingData: any) => {
+    return axiosClient.post("/bookings", bookingData);
+  },
+
+  // Hủy vé theo ID
+  deleteBooking: (id: string | number) => {
+    return axiosClient.delete(`/bookings/${id}`);
+  },
+
+  getMyBookings: (page: number = 1, size: number = 20) => {
+    return axiosClient.get(`/bookings/my-bookings?page=${page}&size=${size}`);
+  },
+
+  // getMyBookings: (page: number = 1, size: number = 10, filter: string = 'ALL') => {
+  // return axiosClient.get(`/bookings/my-bookings`, {
+  //   params: { page, size, filter } // Backend sẽ nhận được ?page=1&size=10&filter=PAID...
+  // });
+// },
+
+  getBookingById: (id: string) => axiosClient.get(`/bookings/${id}`)
+};
