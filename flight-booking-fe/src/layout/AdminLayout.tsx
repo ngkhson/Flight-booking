@@ -58,7 +58,7 @@ export default function AdminLayout() {
                             <Plane size={16} className="text-white -rotate-45" />
                         </div>
                         <span className="text-lg font-bold text-gray-900 tracking-tight">
-                            Skytix
+                            STINGAIR
                         </span>
                     </div>
                     {/* Nút X chỉ hiện trên mobile */}
@@ -113,7 +113,7 @@ export default function AdminLayout() {
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center">
                             <Plane size={16} className="text-white -rotate-45" />
                         </div>
-                        <span className="text-lg font-bold text-gray-900 tracking-tight">Skytix Admin</span>
+                        <span className="text-lg font-bold text-gray-900 tracking-tight">STINGAIR Admin</span>
                     </div>
                     <button 
                         onClick={() => setIsMobileOpen(true)}
