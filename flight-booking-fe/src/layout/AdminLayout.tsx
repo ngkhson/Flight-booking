@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard, Plane, Ticket, Users, LogOut, CreditCard, PackageOpen, Menu, X
 } from 'lucide-react';
@@ -53,14 +53,14 @@ export default function AdminLayout() {
             `}>
                 {/* Logo & Nút tắt (Mobile) */}
                 <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100">
-                    <div className="flex items-center gap-2.5">
+                    <Link to="/admin/dashboard" className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition">
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center">
                             <Plane size={16} className="text-white -rotate-45" />
                         </div>
                         <span className="text-lg font-bold text-gray-900 tracking-tight">
                             STINGAIR
                         </span>
-                    </div>
+                    </Link>
                     {/* Nút X chỉ hiện trên mobile */}
                     <button 
                         className="md:hidden text-gray-500 hover:text-gray-800"
@@ -109,12 +109,12 @@ export default function AdminLayout() {
                 
                 {/* ── HEADER MOBILE (Chỉ hiện trên điện thoại) ── */}
                 <header className="md:hidden flex items-center justify-between bg-white h-16 px-4 border-b border-gray-200 shadow-sm flex-shrink-0">
-                    <div className="flex items-center gap-2.5">
+                    <Link to="/admin/dashboard" className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition">
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center">
                             <Plane size={16} className="text-white -rotate-45" />
                         </div>
                         <span className="text-lg font-bold text-gray-900 tracking-tight">STINGAIR Admin</span>
-                    </div>
+                    </Link>
                     <button 
                         onClick={() => setIsMobileOpen(true)}
                         className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
