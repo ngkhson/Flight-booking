@@ -224,20 +224,26 @@ export const SearchPage = () => {
       <section className="bg-blue-600 py-24 text-center text-white relative">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-500 to-blue-700 opacity-90"></div>
         
-        <div className="container mx-auto px-4 relative z-10 text-center sm:text-left">
+        <div className="container mx-auto px-4 relative z-10 text-center">
           
-          <div className="mb-6 flex flex-col items-center sm:items-start">
-            <h2 className="text-white text-3xl font-bold flex items-center gap-3">
+          <div className="mb-6 flex flex-col items-center w-full">
+            <h2 className="text-white text-3xl font-bold flex items-center justify-center gap-3 text-center">
               {step === 2 && (
                 <button 
                   onClick={() => { setStep(1); handleFetchFlightsForStep(currentSearchParams, 1); }}
-                  className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition"
+                  className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition shrink-0"
                   title="Quay lại chuyến đi"
                 >
                   <ArrowLeft className="w-5 h-5 text-white" />
                 </button>
               )}
-              {currentOrigin || '...'} ✈ {currentDest || '...'}
+              
+              {/* 👇 KIỂM TRA DỮ LIỆU Ở ĐÂY 👇 */}
+              {currentOrigin && currentDest ? (
+                <span>{currentOrigin} ✈ {currentDest}</span>
+              ) : (
+                <span>Khám phá các điểm đến</span>
+              )}
             </h2>
             
             {currentSearchParams?.tripType === 'round-trip' && (

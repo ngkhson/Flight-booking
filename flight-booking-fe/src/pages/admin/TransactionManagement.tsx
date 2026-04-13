@@ -105,7 +105,7 @@ export default function TransactionManagement() {
     };
 
     return (
-        <div className="min-h-screen bg-[#F8F9FA] pb-10 space-y-6">
+        <div className="min-h-screen bg-[#F8F9FA] pb-10 space-y-6 relative z-20">
             <AdminHeader title="Quản lý giao dịch" />
 
             {/* ─── BỘ LỌC & TÌM KIẾM ────────────────────────────────────────────── */}
