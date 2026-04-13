@@ -180,7 +180,7 @@ export default function AdminDashboard() {
     };
 
     return (
-        <div className="min-h-screen bg-[#F8F9FA] space-y-6 pb-10">
+        <div className="min-h-screen bg-[#F8F9FA] space-y-6 pb-10 relative z-20">
             
             {/* 🚀 NẠP COMPONENT HEADER MỚI VÀO ĐÂY */}
             <AdminHeader title="Tổng quan hệ thống" />
