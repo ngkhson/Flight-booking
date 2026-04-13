@@ -6,7 +6,7 @@ const axiosClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 60000,
 });
 
 // 2. Request Interceptor: Tự động gắn Token
