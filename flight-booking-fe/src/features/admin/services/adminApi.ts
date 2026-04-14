@@ -65,7 +65,7 @@ export interface IRevenueChart {
 // Mặc định page: 0 theo chuẩn Spring Data JPA thông thường
 export const getFlights = async (params?: any): Promise<any> => {
     return await axiosClient.get('/v1/admin/flights', {
-        params: { page: 0, size: 100, ...params }
+        params: { page: 0, size: 10, ...params }
     });
 };
 

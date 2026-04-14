@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type FormEvent } from 'react';
+import { useState, useEffect, useCallback, useRef, type FormEvent } from 'react';
 import {
     getFlights, createFlight, updateFlight, deleteFlight,
     getAirports, getAirlines,
@@ -47,7 +47,42 @@ const selectCls = (disabled?: boolean) =>
 
 // ─── Reusable components ────────────────────────────────────────────────
 function SkeletonRow() {
-    return <tr className="animate-pulse">{Array.from({ length: 8 }).map((_, i) => <td key={i} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded w-3/4" /></td>)}</tr>;
+    // Skeleton widths designed to mimic real column content
+    const cols: { w: string; align?: string; extra?: 'time' | 'badge' | 'actions' }[] = [
+        { w: 'w-16' },                                    // Số hiệu (VN123)
+        { w: 'w-24' },                                    // Hãng hàng không
+        { w: 'w-36' },                                    // Lộ trình (HAN → SGN)
+        { w: 'w-28', extra: 'time' },                     // Giờ bay (2 dòng datetime)
+        { w: 'w-10', align: 'center' },                   // Ghế trống
+        { w: 'w-20', align: 'right' },                    // Giá vé từ
+        { w: 'w-20', align: 'center', extra: 'badge' },   // Trạng thái (badge)
+        { w: 'w-14', align: 'right', extra: 'actions' },  // Thao tác (buttons)
+    ];
+    return (
+        <tr className="animate-pulse">
+            {cols.map((col, i) => (
+                <td key={i} className={`px-5 py-4 ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''}`}>
+                    {col.extra === 'time' ? (
+                        <div className="space-y-2">
+                            <div className={`h-3.5 bg-gray-200 rounded-md ${col.w}`} />
+                            <div className="h-3 bg-gray-200 rounded-md w-20" />
+                        </div>
+                    ) : col.extra === 'badge' ? (
+                        <div className="flex justify-center">
+                            <div className="h-6 bg-gray-200 rounded-md w-20" />
+                        </div>
+                    ) : col.extra === 'actions' ? (
+                        <div className="flex justify-end gap-2">
+                            <div className="h-8 w-8 bg-gray-200 rounded-lg" />
+                            <div className="h-8 w-8 bg-gray-200 rounded-lg" />
+                        </div>
+                    ) : (
+                        <div className={`h-4 bg-gray-200 rounded-md ${col.w}`} />
+                    )}
+                </td>
+            ))}
+        </tr>
+    );
 }
 
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
@@ -367,17 +402,27 @@ export default function FlightManagement() {
     const [flights, setFlights] = useState<Flight[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [modalOpen, setModalOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<Flight | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Flight | null>(null);
     const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-    // STATE PHÂN TRANG
+    // ─── SERVER-SIDE PAGINATION STATE ──────────────────────────────────────────
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 8;
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalElements, setTotalElements] = useState(0);
+    const itemsPerPage = 10;
+    const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    // Debounced search: chờ 400ms trước khi gọi lại API, reset về trang 1
     useEffect(() => {
-        setCurrentPage(1);
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = setTimeout(() => {
+            setDebouncedSearch(search);
+            setCurrentPage(1);
+        }, 400);
+        return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
     }, [search]);
 
     useEffect(() => {
@@ -389,7 +434,16 @@ export default function FlightManagement() {
     const fetchFlights = useCallback(async () => {
         setLoading(true);
         try {
-            const res: any = await getFlights({ page: 0, size: 500 });
+            // ✅ Server-side pagination: Spring Data JPA dùng page 0-based
+            const res: any = await getFlights({
+                page: currentPage - 1,
+                size: itemsPerPage,
+                ...(debouncedSearch ? { keyword: debouncedSearch } : {}),
+            });
+
+            // ── Bóc tách response (hỗ trợ nhiều dạng API wrapper) ──
+            const responseData = res?.result || res?.data || res;
+            const pageData = responseData?.data || responseData;
 
             const extractArray = (obj: any): any[] => {
                 if (!obj) return [];
@@ -411,7 +465,14 @@ export default function FlightManagement() {
                 return [];
             };
 
-            const rawArray = extractArray(res);
+            const rawArray = extractArray(pageData);
+
+            // ── Trích xuất metadata phân trang từ server ──
+            const meta = (pageData && typeof pageData === 'object' && !Array.isArray(pageData)) ? pageData : responseData;
+            const serverTotalPages = meta?.totalPages || Math.ceil((meta?.totalElements || rawArray.length) / itemsPerPage) || 1;
+            const serverTotalElements = meta?.totalElements ?? rawArray.length;
+            setTotalPages(serverTotalPages);
+            setTotalElements(serverTotalElements);
 
             const mappedFlights = rawArray.map((f: any, index: number) => {
                 const originStr = typeof f.origin === 'object' && f.origin !== null
@@ -449,23 +510,11 @@ export default function FlightManagement() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [currentPage, itemsPerPage, debouncedSearch]);
 
     useEffect(() => { fetchFlights(); }, [fetchFlights]);
 
-    const filtered = flights.filter(f => {
-        if (!search) return true;
-        const q = search.toLowerCase();
-        return (f.flightNumber || '').toLowerCase().includes(q)
-            || (f.origin || '').toLowerCase().includes(q)
-            || (f.destination || '').toLowerCase().includes(q);
-    });
-
-    const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-    const paginatedFlights = filtered.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
+    // ✅ Phân trang do Server xử lý — flights[] đã là dữ liệu của trang hiện tại
 
     const handleSaved = () => {
         fetchFlights();
@@ -502,7 +551,7 @@ export default function FlightManagement() {
             </div>
 
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto min-h-[420px]">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50 text-xs uppercase text-gray-500 border-b border-gray-100 font-bold">
                             <tr>
@@ -517,11 +566,11 @@ export default function FlightManagement() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {loading ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />) :
-                                paginatedFlights.length === 0 ? (
+                            {loading ? Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />) :
+                                flights.length === 0 ? (
                                     <tr><td colSpan={8} className="p-12 text-center text-gray-400">Không tìm thấy chuyến bay nào.</td></tr>
-                                ) : paginatedFlights.map(f => (
-                                    <tr key={f.id} className="hover:bg-indigo-50/40 transition-colors group">
+                                ) : flights.map(f => (
+                                    <tr key={f.id} className="hover:bg-indigo-50/40 transition-colors group animate-in fade-in duration-300">
                                         <td className="px-5 py-4 font-mono font-bold text-indigo-700">{f.flightNumber}</td>
                                         <td className="px-5 py-4 text-gray-700 font-medium">{f.airlineName}</td>
                                         <td className="px-5 py-4 font-bold text-gray-800">{f.origin} <span className="text-gray-400 font-normal mx-1">→</span> {f.destination}</td>
@@ -549,10 +598,10 @@ export default function FlightManagement() {
                 </div>
 
                 {/* ─── PHÂN TRANG (PAGINATION) ────────────────────────────────────── */}
-                {!loading && filtered.length > 0 && (
+                {!loading && totalElements > 0 && (
                     <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <span className="text-xs text-gray-500 whitespace-nowrap">
-                            Hiển thị <span className="font-bold text-gray-700">{(currentPage - 1) * itemsPerPage + 1}</span> đến <span className="font-bold text-gray-700">{Math.min(currentPage * itemsPerPage, filtered.length)}</span> trong số <span className="font-bold text-gray-700">{filtered.length}</span> chuyến bay
+                            Hiển thị <span className="font-bold text-gray-700">{(currentPage - 1) * itemsPerPage + 1}</span> đến <span className="font-bold text-gray-700">{Math.min(currentPage * itemsPerPage, totalElements)}</span> trong số <span className="font-bold text-gray-700">{totalElements}</span> chuyến bay
                         </span>
 
                         <div className="flex flex-wrap items-center justify-end gap-4 w-full">
