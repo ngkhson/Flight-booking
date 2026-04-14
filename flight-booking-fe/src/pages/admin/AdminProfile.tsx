@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { User, Lock, Eye, EyeOff, Save, KeyRound } from 'lucide-react';
 import AdminHeader from '../../components/admin/layout/AdminHeader';
 import { getMyProfile, updateMyProfile, changeMyPassword } from '../../features/admin/services/adminApi';
