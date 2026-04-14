@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import {
     getFlights, createFlight, updateFlight, deleteFlight,
-    type IFlight
+    getAirports, getAirlines,
+    type IFlight, type CreateFlightPayload, type UpdateFlightPayload
 } from '../../features/admin/services/adminApi';
 
 // ─── Local extended type ──────────────────────────────────────────────────────
@@ -40,14 +41,11 @@ const getMinPrice = (classes: any[]): number => {
     return Math.min(...classes.map((c) => c.basePrice || 0));
 };
 
-// ─── Validation & Interface ───────────────────────────────────────────────────
-export interface FlightPayload {
-    flightNumber: string; airlineCode: string; aircraftCode: string; origin: string; destination: string; departureTime: string; arrivalTime: string; availableSeats: number; price: number; status: string;
-}
+const inputCls = (hasError?: string, disabled?: boolean) =>
+    `w-full px-3 py-2 text-sm border rounded-lg transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'} ${disabled ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`;
 
-const EMPTY_PAYLOAD: FlightPayload = {
-    flightNumber: '', airlineCode: '', aircraftCode: '', origin: '', destination: '', departureTime: '', arrivalTime: '', availableSeats: 0, price: 0, status: 'SCHEDULED',
-};
+const selectCls = (disabled?: boolean) =>
+    `w-full px-3 py-2 text-sm border border-gray-300 rounded-lg transition focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none bg-white ${disabled ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`;
 
 // ─── Reusable components ────────────────────────────────────────────────
 function SkeletonRow() {
@@ -64,98 +62,287 @@ function Field({ label, error, children }: { label: string; error?: string; chil
     );
 }
 
-const inputCls = (hasError?: string) => `w-full px-3 py-2 text-sm border rounded-lg transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'}`;
+// ─── Flight Modal ──────────────────────────────────────────────────────────
+interface FlightFormState {
+    flightNumber: string;
+    airlineCode: string;
+    aircraftCode: string;
+    originCode: string;
+    destinationCode: string;
+    departureTime: string;
+    arrivalTime: string;
+    status: string;
+}
 
-// ─── Modals ────────────────────────────────────────────────────────────────
+const EMPTY_FORM: FlightFormState = {
+    flightNumber: '', airlineCode: '', aircraftCode: '',
+    originCode: '', destinationCode: '',
+    departureTime: '', arrivalTime: '', status: 'SCHEDULED',
+};
+
+interface AirportOption { code: string; name: string; }
+interface AirlineOption { code: string; name: string; }
+
 function FlightModal({ open, editTarget, onClose, onSaved }: any) {
-    const [form, setForm] = useState<FlightPayload>(EMPTY_PAYLOAD);
+    const [form, setForm] = useState<FlightFormState>(EMPTY_FORM);
     const [submitting, setSubmitting] = useState(false);
     const [apiErr, setApiErr] = useState<string | null>(null);
 
+    // Dropdown data
+    const [airports, setAirports] = useState<AirportOption[]>([]);
+    const [airlines, setAirlines] = useState<AirlineOption[]>([]);
+    const [dropdownLoading, setDropdownLoading] = useState(false);
+
+    // Fetch dropdown data when modal opens
+    useEffect(() => {
+        if (!open) return;
+        let cancelled = false;
+        const fetchDropdowns = async () => {
+            setDropdownLoading(true);
+            try {
+                const [airportRes, airlineRes] = await Promise.all([getAirports(), getAirlines()]);
+
+                const extractArray = (obj: any): any[] => {
+                    if (!obj) return [];
+                    if (Array.isArray(obj)) return obj;
+                    if (obj.result?.data && Array.isArray(obj.result.data)) return obj.result.data;
+                    if (obj.result?.content && Array.isArray(obj.result.content)) return obj.result.content;
+                    if (Array.isArray(obj.result)) return obj.result;
+                    if (obj.data?.data && Array.isArray(obj.data.data)) return obj.data.data;
+                    if (obj.data?.content && Array.isArray(obj.data.content)) return obj.data.content;
+                    if (Array.isArray(obj.data)) return obj.data;
+                    if (Array.isArray(obj.content)) return obj.content;
+                    return [];
+                };
+
+                if (!cancelled) {
+                    const rawAirports = extractArray(airportRes);
+                    setAirports(rawAirports.map((a: any) => ({ code: a.code || a.iataCode || '', name: a.name || a.cityName || '' })).filter((a: AirportOption) => a.code));
+
+                    const rawAirlines = extractArray(airlineRes);
+                    setAirlines(rawAirlines.map((a: any) => ({ code: a.code || a.iataCode || '', name: a.name || '' })).filter((a: AirlineOption) => a.code));
+                }
+            } catch (err) {
+                console.error('Error fetching dropdown data:', err);
+            } finally {
+                if (!cancelled) setDropdownLoading(false);
+            }
+        };
+        fetchDropdowns();
+        return () => { cancelled = true; };
+    }, [open]);
+
+    // Populate form when editing
     useEffect(() => {
         if (!open) return;
         setApiErr(null);
         if (editTarget) {
+            const originCode = typeof editTarget.origin === 'object' ? (editTarget.origin.code || '') : (editTarget.origin || '');
+            const destCode = typeof editTarget.destination === 'object' ? (editTarget.destination.code || '') : (editTarget.destination || '');
+            const airlineCode = typeof editTarget.airline === 'object' ? (editTarget.airline.code || '') : (editTarget.airlineCode || editTarget.airlineName || '');
             setForm({
-                flightNumber: editTarget.flightNumber, airlineCode: editTarget.airlineName || '', aircraftCode: '',
-                origin: editTarget.origin, destination: editTarget.destination,
-                departureTime: toDatetimeLocal(editTarget.departureTime), arrivalTime: toDatetimeLocal(editTarget.arrivalTime),
-                availableSeats: getTotalSeats(editTarget.classes), price: getMinPrice(editTarget.classes), status: editTarget.status,
+                flightNumber: editTarget.flightNumber || '',
+                airlineCode: airlineCode,
+                aircraftCode: editTarget.aircraftCode || editTarget.aircraft?.code || '',
+                originCode: originCode,
+                destinationCode: destCode,
+                departureTime: toDatetimeLocal(editTarget.departureTime),
+                arrivalTime: toDatetimeLocal(editTarget.arrivalTime),
+                status: editTarget.status || 'SCHEDULED',
             });
-        } else setForm(EMPTY_PAYLOAD);
+        } else {
+            setForm(EMPTY_FORM);
+        }
     }, [open, editTarget]);
 
-    const patch = (key: keyof FlightPayload, value: any) => setForm((prev) => ({ ...prev, [key]: value }));
+    const patch = (key: keyof FlightFormState, value: string) => setForm(prev => ({ ...prev, [key]: value }));
+
+    const isEdit = !!editTarget;
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        setSubmitting(true); setApiErr(null);
+        setSubmitting(true);
+        setApiErr(null);
         try {
-            if (editTarget) {
-                await updateFlight(editTarget.id, { departureTime: form.departureTime, arrivalTime: form.arrivalTime, status: form.status });
-            } else {
-                const finalPayload = {
-                    flightNumber: form.flightNumber.toUpperCase(), airlineCode: form.airlineCode.toUpperCase(), aircraftCode: form.aircraftCode.toUpperCase(),
-                    originCode: form.origin.toUpperCase(), destinationCode: form.destination.toUpperCase(),
-                    departureTime: `${form.departureTime}:00`, arrivalTime: `${form.arrivalTime}:00`,
-                    // Truyền thêm số ghế và giá vé nếu BE hỗ trợ
-                    availableSeats: Number(form.availableSeats), price: Number(form.price)
+            if (isEdit) {
+                const updatePayload: UpdateFlightPayload = {
+                    departureTime: form.departureTime.length === 16 ? `${form.departureTime}:00` : form.departureTime,
+                    arrivalTime: form.arrivalTime.length === 16 ? `${form.arrivalTime}:00` : form.arrivalTime,
+                    status: form.status,
                 };
-                await createFlight(finalPayload as any);
+                await updateFlight(editTarget.id, updatePayload);
+            } else {
+                const createPayload: CreateFlightPayload = {
+                    flightNumber: form.flightNumber.toUpperCase(),
+                    airlineCode: form.airlineCode.toUpperCase(),
+                    aircraftCode: form.aircraftCode.toUpperCase(),
+                    originCode: form.originCode.toUpperCase(),
+                    destinationCode: form.destinationCode.toUpperCase(),
+                    departureTime: form.departureTime.length === 16 ? `${form.departureTime}:00` : form.departureTime,
+                    arrivalTime: form.arrivalTime.length === 16 ? `${form.arrivalTime}:00` : form.arrivalTime,
+                };
+                await createFlight(createPayload);
             }
             onSaved();
             onClose();
         } catch (err: any) {
-            setApiErr(err.response?.data?.message || 'Lỗi hệ thống (Kiểm tra dữ liệu nhập)');
-        } finally { setSubmitting(false); }
+            const msg = err.response?.data?.message || err.response?.data?.error || 'Lỗi hệ thống (Kiểm tra dữ liệu nhập)';
+            setApiErr(typeof msg === 'string' ? msg : JSON.stringify(msg));
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     if (!open) return null;
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-                <div className="px-6 py-4 border-b flex justify-between items-center"><h2 className="font-bold text-gray-800">{editTarget ? 'Sửa chuyến bay' : 'Thêm chuyến bay mới'}</h2><button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button></div>
-                <form id="flight-form" onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-4">
-                    {apiErr && <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">⚠️ {apiErr}</div>}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Field label="Số hiệu"><input required type="text" value={form.flightNumber} onChange={e => patch('flightNumber', e.target.value)} className={inputCls()} disabled={!!editTarget} /></Field>
-                        <Field label="Mã Hãng"><input required type="text" value={form.airlineCode} onChange={e => patch('airlineCode', e.target.value)} className={inputCls()} disabled={!!editTarget} /></Field>
-                        <Field label="Mã máy bay"><input required type="text" value={form.aircraftCode} onChange={e => patch('aircraftCode', e.target.value)} className={inputCls()} disabled={!!editTarget} /></Field>
-                        <Field label="Trạng thái"><select value={form.status} onChange={e => patch('status', e.target.value)} className={inputCls()}>{STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}</select></Field>
-                        <Field label="Sân bay đi (IATA)"><input required type="text" maxLength={3} value={form.origin} onChange={e => patch('origin', e.target.value)} className={inputCls()} disabled={!!editTarget} /></Field>
-                        <Field label="Sân bay đến (IATA)"><input required type="text" maxLength={3} value={form.destination} onChange={e => patch('destination', e.target.value)} className={inputCls()} disabled={!!editTarget} /></Field>
-                        <Field label="Giờ khởi hành"><input required type="datetime-local" value={form.departureTime} onChange={e => patch('departureTime', e.target.value)} className={inputCls()} /></Field>
-                        <Field label="Giờ hạ cánh"><input required type="datetime-local" value={form.arrivalTime} onChange={e => patch('arrivalTime', e.target.value)} className={inputCls()} /></Field>
+                {/* Header */}
+                <div className="px-6 py-4 border-b flex justify-between items-center">
+                    <div>
+                        <h2 className="font-bold text-gray-800 text-lg">{isEdit ? '✏️ Sửa chuyến bay' : '➕ Thêm chuyến bay mới'}</h2>
+                        <p className="text-xs text-gray-400 mt-0.5">{isEdit ? 'Chỉ được sửa thời gian và trạng thái' : 'Điền đầy đủ thông tin để tạo chuyến bay'}</p>
+                    </div>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl transition">✕</button>
+                </div>
 
-                        {/* 🚀 THÊM INPUT SỐ GHÊ VÀ GIÁ VÉ Ở ĐÂY
-                        <Field label="Tổng số ghế (Dự kiến)">
+                {/* Form */}
+                <form id="flight-form" onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-5">
+                    {apiErr && <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm border border-red-200">⚠️ {apiErr}</div>}
+
+                    {dropdownLoading && (
+                        <div className="flex items-center gap-2 text-xs text-indigo-500">
+                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                            Đang tải dữ liệu dropdown...
+                        </div>
+                    )}
+
+                    {/* Row 1: Flight Number + Airline */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="Số hiệu chuyến bay">
                             <input
-                                required
-                                type="number"
-                                min="1"
-                                value={form.availableSeats || ''}
-                                onChange={e => patch('availableSeats', e.target.value)}
-                                className={inputCls()}
-                                disabled={!!editTarget} // Chỉ nhập khi thêm mới
+                                required type="text" placeholder="VD: VN123"
+                                value={form.flightNumber}
+                                onChange={e => patch('flightNumber', e.target.value)}
+                                className={inputCls(undefined, isEdit)}
+                                disabled={isEdit}
                             />
                         </Field>
-                        <Field label="Giá vé cơ bản (VND)">
-                            <input
+                        <Field label="Hãng hàng không">
+                            <select
                                 required
-                                type="number"
-                                min="0"
-                                step="1000"
-                                value={form.price || ''}
-                                onChange={e => patch('price', e.target.value)}
-                                className={inputCls()}
-                                disabled={!!editTarget} // Chỉ nhập khi thêm mới
-                            />
-                        </Field> */}
+                                value={form.airlineCode}
+                                onChange={e => patch('airlineCode', e.target.value)}
+                                className={selectCls(isEdit)}
+                                disabled={isEdit}
+                            >
+                                <option value="">— Chọn hãng bay —</option>
+                                {airlines.map(a => <option key={a.code} value={a.code}>{a.name} ({a.code})</option>)}
+                            </select>
+                        </Field>
                     </div>
+
+                    {/* Row 2: Aircraft + Status */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="Mã máy bay">
+                            <input
+                                required type="text" placeholder="VD: A321"
+                                value={form.aircraftCode}
+                                onChange={e => patch('aircraftCode', e.target.value)}
+                                className={inputCls(undefined, isEdit)}
+                                disabled={isEdit}
+                            />
+                        </Field>
+                        {isEdit ? (
+                            <Field label="Trạng thái">
+                                <select
+                                    value={form.status}
+                                    onChange={e => patch('status', e.target.value)}
+                                    className={selectCls(false)}
+                                >
+                                    {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
+                                </select>
+                            </Field>
+                        ) : (
+                            <Field label="Trạng thái">
+                                <input
+                                    type="text" value="SCHEDULED (Mặc định)"
+                                    className={inputCls(undefined, true)}
+                                    disabled
+                                />
+                            </Field>
+                        )}
+                    </div>
+
+                    {/* Row 3: Origin + Destination */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="Sân bay đi">
+                            <select
+                                required
+                                value={form.originCode}
+                                onChange={e => patch('originCode', e.target.value)}
+                                className={selectCls(isEdit)}
+                                disabled={isEdit}
+                            >
+                                <option value="">— Chọn sân bay đi —</option>
+                                {airports.map(a => <option key={a.code} value={a.code}>{a.code} - {a.name}</option>)}
+                            </select>
+                        </Field>
+                        <Field label="Sân bay đến">
+                            <select
+                                required
+                                value={form.destinationCode}
+                                onChange={e => patch('destinationCode', e.target.value)}
+                                className={selectCls(isEdit)}
+                                disabled={isEdit}
+                            >
+                                <option value="">— Chọn sân bay đến —</option>
+                                {airports.map(a => <option key={a.code} value={a.code}>{a.code} - {a.name}</option>)}
+                            </select>
+                        </Field>
+                    </div>
+
+                    {/* Row 4: Departure + Arrival Time */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="Giờ khởi hành">
+                            <input
+                                required type="datetime-local"
+                                value={form.departureTime}
+                                onChange={e => patch('departureTime', e.target.value)}
+                                className={inputCls()}
+                            />
+                        </Field>
+                        <Field label="Giờ hạ cánh">
+                            <input
+                                required type="datetime-local"
+                                value={form.arrivalTime}
+                                onChange={e => patch('arrivalTime', e.target.value)}
+                                className={inputCls()}
+                            />
+                        </Field>
+                    </div>
+
+                    {/* Info note for edit mode */}
+                    {isEdit && (
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 flex items-start gap-2">
+                            <span className="text-base">💡</span>
+                            <span>Chỉ có thể thay đổi <strong>thời gian khởi hành</strong>, <strong>thời gian hạ cánh</strong> và <strong>trạng thái</strong>. Các trường còn lại đã bị khóa.</span>
+                        </div>
+                    )}
                 </form>
+
+                {/* Footer */}
                 <div className="p-6 border-t flex justify-end gap-3">
-                    <button onClick={onClose} className="px-4 py-2 bg-gray-100 rounded-lg text-sm">Hủy</button>
-                    <button type="submit" form="flight-form" disabled={submitting} className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold disabled:bg-indigo-300">{submitting ? 'Đang lưu...' : 'Lưu thông tin'}</button>
+                    <button onClick={onClose} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200 transition">Hủy</button>
+                    <button type="submit" form="flight-form" disabled={submitting} className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold disabled:bg-indigo-300 hover:bg-indigo-700 transition shadow-md">
+                        {submitting ? (
+                            <span className="flex items-center gap-2">
+                                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                                Đang lưu...
+                            </span>
+                        ) : 'Lưu thông tin'}
+                    </button>
                 </div>
             </div>
         </div>

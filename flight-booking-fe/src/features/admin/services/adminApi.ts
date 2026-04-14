@@ -23,16 +23,19 @@ export interface IFlight {
     classes: IFlightClass[];
 }
 
-export interface FlightPayload {
+export interface CreateFlightPayload {
     flightNumber: string;
-    airlineCode?: string;
-    aircraftCode?: string;
-    origin: string;
-    destination: string;
+    airlineCode: string;
+    aircraftCode: string;
+    originCode: string;
+    destinationCode: string;
     departureTime: string;
     arrivalTime: string;
-    availableSeats?: number;
-    price?: number;
+}
+
+export interface UpdateFlightPayload {
+    departureTime: string;
+    arrivalTime: string;
     status: string;
 }
 
@@ -66,12 +69,21 @@ export const getFlights = async (params?: any): Promise<any> => {
     });
 };
 
-export const createFlight = async (payload: FlightPayload): Promise<any> => {
+export const createFlight = async (payload: CreateFlightPayload): Promise<any> => {
     return await axiosClient.post('/v1/admin/flights', payload);
 };
 
-export const updateFlight = async (id: string, payload: Partial<FlightPayload>): Promise<any> => {
+export const updateFlight = async (id: string, payload: UpdateFlightPayload): Promise<any> => {
     return await axiosClient.patch(`/v1/admin/flights/${id}`, payload);
+};
+
+// ─── API LẤY DANH SÁCH SÂN BAY & HÃNG BAY (cho Dropdown) ─────────────────────
+export const getAirports = async (): Promise<any> => {
+    return await axiosClient.get('/v1/airports', { params: { size: 500 } });
+};
+
+export const getAirlines = async (): Promise<any> => {
+    return await axiosClient.get('/v1/airlines', { params: { size: 500 } });
 };
 
 export const deleteFlight = async (id: string): Promise<any> => {
@@ -149,7 +161,7 @@ export const getRoles = async () => {
 export interface ITransaction {
     amount: number;
     paymentMethod: string;
-    status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
+    status: 'PENDING' | 'SUCCESS' | 'FAILED';
     transactionNo: string;
     bankRefNo: string;
     gatewayResponse: string;
