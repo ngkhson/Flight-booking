@@ -21,7 +21,6 @@ const STATUS_CONFIG: Record<string, { label: string, color: string, icon: any }>
     SUCCESS: { label: 'Thành công', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
     PENDING: { label: 'Đang xử lý', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Clock },
     FAILED: { label: 'Thất bại', color: 'bg-rose-100 text-rose-700 border-rose-200', icon: XCircle },
-    REFUNDED: { label: 'Đã hoàn tiền', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: RefreshCcw }
 };
 
 // ─── SKELETON LOADER ────────────────────────────────────────────────────────
@@ -59,9 +58,19 @@ export default function TransactionManagement() {
         setApiError(null);
         try {
             // Loại bỏ các trường rỗng để tránh gửi URL thừa thãi
-            const cleanParams = Object.fromEntries(
-                Object.entries(filterParams).filter(([_, v]) => v !== '')
-            );
+            const cleanParams: Record<string, string | number> = {};
+
+            if (filterParams.keyword) cleanParams.keyword = filterParams.keyword;
+            if (filterParams.status) cleanParams.status = filterParams.status;
+
+            // Format ngày: HTML date input trả về "YYYY-MM-DD"
+            // Spring Boot LocalDateTime cần ISO datetime đầy đủ → append thời gian
+            if (filterParams.startDate) {
+                cleanParams.startDate = `${filterParams.startDate}T00:00:00`;
+            }
+            if (filterParams.endDate) {
+                cleanParams.endDate = `${filterParams.endDate}T23:59:59`;
+            }
 
             const response = await getTransactions({
                 page: currentPage,
@@ -75,9 +84,9 @@ export default function TransactionManagement() {
             setTransactions(responseData?.data || []);
             setTotalPages(responseData?.totalPages || 1);
             setTotalElements(responseData?.totalElements || 0);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Lỗi lấy dữ liệu giao dịch:", error);
-            setApiError("Không thể kết nối đến máy chủ. Vui lòng thử lại sau.");
+            setApiError(error?.response?.data?.message || "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.");
         } finally {
             setIsLoading(false);
         }

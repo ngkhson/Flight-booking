@@ -23,16 +23,19 @@ export interface IFlight {
     classes: IFlightClass[];
 }
 
-export interface FlightPayload {
+export interface CreateFlightPayload {
     flightNumber: string;
-    airlineCode?: string;
-    aircraftCode?: string;
-    origin: string;
-    destination: string;
+    airlineCode: string;
+    aircraftCode: string;
+    originCode: string;
+    destinationCode: string;
     departureTime: string;
     arrivalTime: string;
-    availableSeats?: number;
-    price?: number;
+}
+
+export interface UpdateFlightPayload {
+    departureTime: string;
+    arrivalTime: string;
     status: string;
 }
 
@@ -66,12 +69,21 @@ export const getFlights = async (params?: any): Promise<any> => {
     });
 };
 
-export const createFlight = async (payload: FlightPayload): Promise<any> => {
+export const createFlight = async (payload: CreateFlightPayload): Promise<any> => {
     return await axiosClient.post('/v1/admin/flights', payload);
 };
 
-export const updateFlight = async (id: string, payload: Partial<FlightPayload>): Promise<any> => {
+export const updateFlight = async (id: string, payload: UpdateFlightPayload): Promise<any> => {
     return await axiosClient.patch(`/v1/admin/flights/${id}`, payload);
+};
+
+// ─── API LẤY DANH SÁCH SÂN BAY & HÃNG BAY (cho Dropdown) ─────────────────────
+export const getAirports = async (): Promise<any> => {
+    return await axiosClient.get('/v1/airports', { params: { size: 500 } });
+};
+
+export const getAirlines = async (): Promise<any> => {
+    return await axiosClient.get('/v1/airlines', { params: { size: 500 } });
 };
 
 export const deleteFlight = async (id: string): Promise<any> => {
@@ -88,18 +100,46 @@ export const syncFlights = async () => {
 };
 
 // =====================================================================
-// 3. API QUẢN LÝ ĐẶT VÉ (BOOKINGS)
+// 3. API QUẢN LÝ ĐẶT VÉ (BOOKINGS) — 1-based page
 // =====================================================================
 
-// ĐÃ SỬA: Xoá /v1 và đặt page: 1 theo AdminBookingController.java của bạn
-export const getBookings = async (params?: any) => {
-    return await axiosClient.get('/admin/bookings', {
-        params: { page: 1, size: 100, ...params }
-    });
+export interface IBooking {
+    id: string;
+    pnrCode: string;
+    contactName: string;
+    contactPhone?: string;
+    contactEmail?: string;
+    flightNumber: string;
+    origin: any;
+    destination: any;
+    departureTime: string;
+    status: string;
+    totalAmount: number;
+    createdAt: string;
+}
+
+export interface IBookingSearchRequest {
+    pnrCode?: string;
+    contactPhone?: string;
+    contactEmail?: string;
+    status?: string;
+    fromDate?: string;
+    toDate?: string;
+    page?: number;
+    size?: number;
+}
+
+// Booking API dùng 1-based page — FE truyền page trực tiếp (1, 2, 3...)
+export const getBookings = async (params: IBookingSearchRequest = { page: 1, size: 10 }): Promise<any> => {
+    return await axiosClient.get('/admin/bookings', { params });
 };
 
-export const updateBookingStatus = async (id: string, status: string) => {
-    return await axiosClient.patch(`/admin/bookings/${id}`, { status });
+// Mock API: Backend chưa có endpoint public cho update booking status
+export const updateBookingStatus = async (id: string, status: string): Promise<any> => {
+    console.warn(`[MOCK] updateBookingStatus(${id}, ${status}) — BE chưa có endpoint`);
+    return new Promise((resolve) => {
+        setTimeout(() => resolve({ result: { id, status, success: true } }), 500);
+    });
 };
 
 // =====================================================================
@@ -149,7 +189,7 @@ export const getRoles = async () => {
 export interface ITransaction {
     amount: number;
     paymentMethod: string;
-    status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
+    status: 'PENDING' | 'SUCCESS' | 'FAILED';
     transactionNo: string;
     bankRefNo: string;
     gatewayResponse: string;

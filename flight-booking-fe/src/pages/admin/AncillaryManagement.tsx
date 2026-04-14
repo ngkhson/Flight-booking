@@ -7,7 +7,7 @@ import {
 } from '../../features/admin/services/adminApi';
 
 // Cập nhật Enum Types theo đúng Backend của bạn
-const CATALOG_TYPES = ['BAGGAGE', 'MEAL', 'SEAT', 'INSURANCE', 'OTHER'];
+const CATALOG_TYPES = ['BAGGAGE', 'MEAL', 'SEAT'];
 
 const formatCurrency = (amount: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 
