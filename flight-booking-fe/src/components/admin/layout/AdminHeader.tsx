@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { LogOut, User } from 'lucide-react'; 
+import { User } from 'lucide-react'; // ✅ Đã xóa import LogOut (không cần nữa)
 import { useNavigate } from 'react-router-dom';
 
 export default function AdminHeader({ title = "Tổng quan hệ thống" }: { title?: string }) {
@@ -21,24 +21,22 @@ export default function AdminHeader({ title = "Tổng quan hệ thống" }: { ti
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // ─── Các hàm xử lý sự kiện ──────────────
-    const handleLogout = () => {
-        setIsProfileOpen(false);
-        // localStorage.removeItem('token'); // Xoá token nếu có
-        navigate('/login');
-    };
-
+    // ─── Hàm chuyển hướng đến trang Profile của Admin ──────────────
+    // ✅ FIX: Chuyển từ '/profile' (Customer) sang '/admin/profile' (Admin)
     const handleGoToProfile = () => {
         setIsProfileOpen(false);
-        navigate('/profile'); 
+        navigate('/admin/profile'); 
     };
 
+    // ✅ ĐÃ XÓA: handleLogout — Nút "Đăng xuất" đã có sẵn trên Sidebar
+
     return (
-        <div className="flex items-center justify-between gap-4 mb-8 relative z-50">
+        // ✅ RESPONSIVE: flex-col trên mobile, flex-row trên md+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-6 md:mb-8 relative z-50">
             {/* TIÊU ĐỀ TRANG */}
-            <h1 className="text-2xl font-bold text-gray-900 whitespace-nowrap">{title}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 whitespace-nowrap">{title}</h1>
             
-            <div className="flex items-center shrink-0">
+            <div className="flex items-center shrink-0 self-end sm:self-auto">
                 {/* MENU TÀI KHOẢN ADMIN */}
                 <div className="relative" ref={profileRef}>
                     <div 
@@ -55,12 +53,14 @@ export default function AdminHeader({ title = "Tổng quan hệ thống" }: { ti
 
                     {/* DROPDOWN MENU */}
                     {isProfileOpen && (
-                        <div className="absolute right-0 top-[calc(100%+8px)] w-48 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 p-1">
+                        <div className="absolute right-0 top-[calc(100%+8px)] w-48 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-[999] animate-in fade-in slide-in-from-top-2 p-1">
+                            {/* Thông tin tài khoản */}
                             <div className="px-4 py-3 border-b border-gray-100 mb-1">
                                 <p className="text-xs text-gray-500">Đăng nhập với tư cách</p>
                                 <p className="text-sm font-bold text-gray-900 truncate">admin@system.com</p>
                             </div>
                             
+                            {/* ✅ Nút "Thông tin cá nhân" — điều hướng sang /admin/profile */}
                             <button 
                                 onClick={handleGoToProfile}
                                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 rounded-lg transition font-medium"
@@ -68,14 +68,7 @@ export default function AdminHeader({ title = "Tổng quan hệ thống" }: { ti
                                 <User size={16} /> Thông tin cá nhân
                             </button>
 
-                            <div className="h-[1px] bg-gray-100 my-1 mx-2"></div>
-                            
-                            <button 
-                                onClick={handleLogout}
-                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition font-bold"
-                            >
-                                <LogOut size={16} /> Đăng xuất
-                            </button>
+                            {/* ✅ ĐÃ XÓA: Nút "Đăng xuất" và đường kẻ phân cách */}
                         </div>
                     )}
                 </div>

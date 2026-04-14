@@ -138,6 +138,10 @@ export const deleteUser = async (userId: string) => {
     return await axiosClient.delete(`/users/${userId}`);
 };
 
+export const resetUserPassword = async (userId: string, newPassword: string) => {
+    return await axiosClient.patch(`/users/${userId}/reset-password`, { newPassword });
+};
+
 export const getRoles = async () => {
     return await axiosClient.get('/roles');
 };
@@ -149,7 +153,7 @@ export interface ITransaction {
     transactionNo: string;
     bankRefNo: string;
     gatewayResponse: string;
-    createdAt: string; 
+    createdAt: string;
 }
 
 export interface ITransactionSearchRequest {
@@ -217,4 +221,17 @@ export const updateAncillaryCatalog = async (id: string, payload: IAncillaryCata
 
 export const deleteAncillaryCatalog = async (id: string): Promise<any> => {
     return await axiosClient.delete(`/ancillary-catalogs/${id}`);
+};
+// ─── API THÔNG TIN CÁ NHÂN & MẬT KHẨU (PROFILE) ───────────────────────────────
+
+export const getMyProfile = async (): Promise<any> => {
+    return await axiosClient.get('/users/my-infor');
+};
+
+export const updateMyProfile = async (payload: { fullName: string; phone: string }): Promise<any> => {
+    return await axiosClient.put('/users/my-infor', payload);
+};
+
+export const changeMyPassword = async (payload: { oldPassword: string; newPassword: string; confirmPassword: string }): Promise<any> => {
+    return await axiosClient.patch('/users/change-password', payload);
 };

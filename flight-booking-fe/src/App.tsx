@@ -13,6 +13,8 @@ import UserManagement from './pages/admin/UserManagement';
 // 🚀 IMPORT TRANG QUẢN LÝ GIAO DỊCH MỚI TẠO
 import TransactionManagement from './pages/admin/TransactionManagement';
 import AncillaryManagement from './pages/admin/AncillaryManagement';
+// ✅ IMPORT TRANG PROFILE ADMIN MỚI TẠO
+import AdminProfile from './pages/admin/AdminProfile';
 
 // Customer Pages
 import { HomePage } from './pages/customer/HomePage';
@@ -96,6 +98,9 @@ function App() {
           
           {/* 🚀 ROUTE GIAO DỊCH (Cho phép Admin và Kế toán xem) */}
           <Route path="transactions" element={<TransactionManagement />} />
+
+          {/* ✅ ROUTE PROFILE ADMIN */}
+          <Route path="profile" element={<AdminProfile />} />
 
           {/* Phân quyền UserManagement chỉ dành riêng cho ADMIN */}
           <Route
