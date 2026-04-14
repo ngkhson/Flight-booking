@@ -8,20 +8,18 @@ import {
 // ─── Local extended type ──────────────────────────────────────────────────────
 type Flight = IFlight & { id: string };
 
-const STATUS_OPTIONS: string[] = ['SCHEDULED', 'DELAYED', 'CANCELLED', 'COMPLETED'];
+const STATUS_OPTIONS: string[] = ['SCHEDULED', 'DELAYED', 'CANCELLED'];
 
 const STATUS_STYLES: Record<string, string> = {
     SCHEDULED: 'bg-blue-100 text-blue-700',
     DELAYED: 'bg-yellow-100 text-yellow-700',
     CANCELLED: 'bg-red-100 text-red-700',
-    COMPLETED: 'bg-green-100 text-green-700',
 };
 
 const STATUS_LABELS: Record<string, string> = {
     SCHEDULED: 'Đã lên lịch',
     DELAYED: 'Trễ chuyến',
     CANCELLED: 'Đã huỷ',
-    COMPLETED: 'Hoàn thành',
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

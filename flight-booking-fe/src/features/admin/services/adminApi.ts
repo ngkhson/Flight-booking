@@ -100,18 +100,46 @@ export const syncFlights = async () => {
 };
 
 // =====================================================================
-// 3. API QUẢN LÝ ĐẶT VÉ (BOOKINGS)
+// 3. API QUẢN LÝ ĐẶT VÉ (BOOKINGS) — 1-based page
 // =====================================================================
 
-// ĐÃ SỬA: Xoá /v1 và đặt page: 1 theo AdminBookingController.java của bạn
-export const getBookings = async (params?: any) => {
-    return await axiosClient.get('/admin/bookings', {
-        params: { page: 1, size: 100, ...params }
-    });
+export interface IBooking {
+    id: string;
+    pnrCode: string;
+    contactName: string;
+    contactPhone?: string;
+    contactEmail?: string;
+    flightNumber: string;
+    origin: any;
+    destination: any;
+    departureTime: string;
+    status: string;
+    totalAmount: number;
+    createdAt: string;
+}
+
+export interface IBookingSearchRequest {
+    pnrCode?: string;
+    contactPhone?: string;
+    contactEmail?: string;
+    status?: string;
+    fromDate?: string;
+    toDate?: string;
+    page?: number;
+    size?: number;
+}
+
+// Booking API dùng 1-based page — FE truyền page trực tiếp (1, 2, 3...)
+export const getBookings = async (params: IBookingSearchRequest = { page: 1, size: 10 }): Promise<any> => {
+    return await axiosClient.get('/admin/bookings', { params });
 };
 
-export const updateBookingStatus = async (id: string, status: string) => {
-    return await axiosClient.patch(`/admin/bookings/${id}`, { status });
+// Mock API: Backend chưa có endpoint public cho update booking status
+export const updateBookingStatus = async (id: string, status: string): Promise<any> => {
+    console.warn(`[MOCK] updateBookingStatus(${id}, ${status}) — BE chưa có endpoint`);
+    return new Promise((resolve) => {
+        setTimeout(() => resolve({ result: { id, status, success: true } }), 500);
+    });
 };
 
 // =====================================================================
