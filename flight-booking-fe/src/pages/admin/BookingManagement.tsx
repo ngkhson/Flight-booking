@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, type ChangeEvent } from 'react';
 import {
     getBookings,
-    updateBookingStatus,
 } from '../../features/admin/services/adminApi';
 
 // ─── Tự định nghĩa Interface ──────────────────────────────────────────────────
@@ -240,7 +239,9 @@ export default function BookingsPage() {
 
     const handleStatusChange = async (id: string, newStatus: Booking['status']) => {
         try {
-            await updateBookingStatus(id, newStatus);
+            console.log(`Mock status update for ${id} to ${newStatus}. Route now uses BookingsPage.tsx which has real APIs.`);
+            // Mock delay
+            await new Promise(resolve => setTimeout(resolve, 500));
             setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status: newStatus } : b));
             setToast({ msg: `Đã cập nhật đơn sang: ${STATUS_LABELS[newStatus]}.`, type: 'success' });
         } catch (e: any) {
