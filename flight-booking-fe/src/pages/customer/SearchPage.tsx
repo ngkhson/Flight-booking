@@ -48,6 +48,7 @@ export const SearchPage = () => {
       totalPax = adults + children;
   }
 
+  console.log("Dữ liệu tìm kiếm đang có:", JSON.stringify(activeParams, null, 2));
   // console.log("Tổng khách tính được chuẩn xác:", totalPax);
 
   // ==========================================
