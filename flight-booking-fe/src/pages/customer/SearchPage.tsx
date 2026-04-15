@@ -6,21 +6,50 @@ import { flightApi } from '@/api/flightApi';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { resetStep } from '@/store/bookingSlice';
+import { type RootState } from '@/store/store';
 
 export const SearchPage = () => {
-  const location = useLocation();
+  const location = useLocation(); 
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [apiFlights, setApiFlights] = useState<Flight[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // --- THÊM STATE QUẢN LÝ KHỨ HỒI ---
   const [currentSearchParams, setCurrentSearchParams] = useState<any>(null);
-  const [step, setStep] = useState(1); // 1 = Chọn chiều đi, 2 = Chọn chiều về
+  const [step, setStep] = useState(1); 
   const [outboundFlight, setOutboundFlight] = useState<any>(null);
+
+  // 👇 THÊM LẠI 2 DÒNG BỊ THIẾU Ở ĐÂY 👇
+  const reduxSearchConfigs = useSelector((state: RootState) => state.booking.searchConfigs);
+  const locationState = location.state || {};
+  // 👆 ============================= 👆
+
+  // 3. Gom lại: Ưu tiên form hiện tại > Router > Redux
+  const activeParams = currentSearchParams || locationState || reduxSearchConfigs || {};
+
+  // 4. Tính toán totalPax dựa CHÍNH XÁC vào cấu trúc đã tìm thấy
+  let totalPax = 1; // Mặc định là 1
+
+  if (typeof activeParams.passengers === 'number') {
+      // Nếu có sẵn tổng số khách (như trong log bạn gửi là 7)
+      totalPax = activeParams.passengers;
+  } else if (activeParams.rawPassengers) {
+      // Nếu có object rawPassengers (khi lấy từ form)
+      const adults = Number(activeParams.rawPassengers.adult) || 1;
+      const children = Number(activeParams.rawPassengers.child) || 0;
+      totalPax = adults + children;
+  } else {
+      // Dự phòng trường hợp lấy từ Redux (nếu Redux lưu kiểu khác)
+      const adults = Number(activeParams.adults) || Number(activeParams.adult) || 1;
+      const children = Number(activeParams.children) || Number(activeParams.child) || 0;
+      totalPax = adults + children;
+  }
+
+  console.log("Dữ liệu tìm kiếm đang có:", JSON.stringify(activeParams, null, 2));
+  // console.log("Tổng khách tính được chuẩn xác:", totalPax);
 
   // ==========================================
   // 1. TÍNH TOÁN DỮ LIỆU ĐỘNG TỪ API FLIGHTS
@@ -219,6 +248,7 @@ export const SearchPage = () => {
   const currentOrigin = step === 1 ? currentSearchParams?.origin : currentSearchParams?.destination;
   const currentDest = step === 1 ? currentSearchParams?.destination : currentSearchParams?.origin;
 
+
   return (
     <div className="bg-slate-50 min-h-screen pb-20">
       <section className="bg-blue-600 py-24 text-center text-white relative">
@@ -321,7 +351,8 @@ export const SearchPage = () => {
                     <FlightCard 
                       key={flight.id} 
                       flight={flight} 
-                      onSelect={(classInfo) => handleSelectFlight(flight, classInfo)} 
+                      onSelect={(classInfo) => handleSelectFlight(flight, classInfo)}
+                      totalPassengers={totalPax} 
                     />
                   ))
                 )}

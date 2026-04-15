@@ -145,22 +145,71 @@ export const PromoFlightCard = ({ flight }: { flight: PromoFlight }) => {
 
               {/* 3 LOẠI KHÁCH */}
               <div className="grid grid-cols-3 gap-3 mb-6">
-                <Counter label="Người lớn" val={passengers.adults} min={1} onChange={(v: number) => setPassengers({ ...passengers, adults: v })} />
-                <Counter label="Trẻ em" val={passengers.children} min={0} onChange={(v: number) => setPassengers({ ...passengers, children: v })} />
-                <Counter label="Em bé" val={passengers.infants} min={0} onChange={(v: number) => setPassengers({ ...passengers, infants: v })} />
+                <Counter 
+                  label="Người lớn" 
+                  val={passengers.adults} 
+                  min={1} 
+                  onChange={(v: number) => {
+                    // Logic an toàn: Nếu giảm số người lớn xuống thấp hơn số em bé hiện tại,
+                    // thì phải tự động ép số em bé giảm theo để không bị vi phạm luật.
+                    setPassengers({ 
+                      ...passengers, 
+                      adults: v, 
+                      infants: passengers.infants > v ? v : passengers.infants 
+                    });
+                  }} 
+                />
+                <Counter 
+                  label="Trẻ em" 
+                  val={passengers.children} 
+                  min={0} 
+                  onChange={(v: number) => setPassengers({ ...passengers, children: v })} 
+                />
+                
+                {/* 👇 TRUYỀN MAX = SỐ NGƯỜI LỚN VÀO ĐÂY 👇 */}
+                <Counter 
+                  label="Em bé" 
+                  val={passengers.infants} 
+                  min={0} 
+                  max={passengers.adults} 
+                  onChange={(v: number) => setPassengers({ ...passengers, infants: v })} 
+                />
               </div>
 
               {/* 4 HẠNG VÉ TỪ API */}
               <p className="text-[10px] font-bold text-slate-400 uppercase mb-3 flex items-center gap-1"><Tag size={12} /> Hạng vé khả dụng</p>
               <div className="grid grid-cols-2 gap-2 mb-6">
-                {availableClasses.map((cls: any) => (
-                  <button key={cls.className} onClick={() => setSelectedClass(cls.className)}
-                    className={`flex flex-col items-start p-3 rounded-xl border-2 transition-all ${selectedClass === cls.className ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-100 text-slate-500'
-                      }`}>
-                    <span className="text-[10px] font-bold uppercase">{cls.className.replace('_', ' ')}</span>
-                    <span className="text-xs font-bold">{cls.basePrice.toLocaleString()}đ</span>
-                  </button>
-                ))}
+                {availableClasses.map((cls: any) => {
+                  // 👇 TÍNH TOÁN SỐ GHẾ YÊU CẦU VÀ KIỂM TRA 👇
+                  const requiredSeats = passengers.adults + passengers.children + passengers.infants; // Tổng số khách cần chỗ ngồi
+                  // Đề phòng trường hợp API trả về thiếu availableSeats, mặc định cho 99
+                  const availableSeats = cls.availableSeats !== undefined ? cls.availableSeats : 99; 
+                  const isNotEnoughSeats = availableSeats < requiredSeats;
+                  const isSelected = selectedClass === cls.className;
+
+                  return (
+                    <button 
+                      key={cls.className} 
+                      onClick={() => setSelectedClass(cls.className)}
+                      disabled={isNotEnoughSeats}
+                      className={`flex flex-col items-start p-3 rounded-xl border-2 transition-all ${
+                        isNotEnoughSeats 
+                          ? 'border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed' // Nút bị vô hiệu hóa
+                          : isSelected 
+                            ? 'border-blue-600 bg-blue-50 text-blue-600' // Nút đang được chọn
+                            : 'border-slate-100 text-slate-500 hover:border-blue-300' // Nút bình thường
+                      }`}
+                    >
+                      <span className="text-[10px] font-bold uppercase">{cls.className.replace('_', ' ')}</span>
+                      <span className="text-xs font-bold">{cls.basePrice.toLocaleString()}đ</span>
+                      
+                      {/* 👇 HIỂN THỊ SỐ GHẾ TRỐNG 👇 */}
+                      <span className={`text-[10px] italic mt-1 ${isNotEnoughSeats ? 'text-red-500 font-bold' : 'text-slate-400'}`}>
+                        Còn {availableSeats} chỗ {isNotEnoughSeats && `(Cần ${requiredSeats})`}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="bg-slate-900 rounded-2xl p-4 mb-4 text-white flex justify-between items-center">
@@ -168,7 +217,23 @@ export const PromoFlightCard = ({ flight }: { flight: PromoFlight }) => {
                 <span className="text-xl font-black text-orange-400">{priceInfo.total.toLocaleString()} đ</span>
               </div>
 
-              <Button onClick={handleBooking} className="w-full bg-blue-600 py-6 rounded-2xl font-bold text-lg">Xác nhận thanh toán</Button>
+              {/* 👇 KIỂM TRA KHÓA NÚT THANH TOÁN 👇 */}
+              {(() => {
+                const requiredSeats = passengers.adults + passengers.children;
+                const currentClassInfo = availableClasses.find((c: any) => c.className === selectedClass);
+                const currentAvailable = currentClassInfo?.availableSeats !== undefined ? currentClassInfo.availableSeats : 99;
+                const isConfirmDisabled = currentAvailable < requiredSeats;
+
+                return (
+                  <Button 
+                    onClick={handleBooking} 
+                    disabled={isConfirmDisabled}
+                    className={`w-full py-6 rounded-2xl font-bold text-lg ${isConfirmDisabled ? 'bg-slate-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+                  >
+                    {isConfirmDisabled ? 'Không đủ ghế trống' : 'Xác nhận thanh toán'}
+                  </Button>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -177,13 +242,33 @@ export const PromoFlightCard = ({ flight }: { flight: PromoFlight }) => {
   );
 };
 
-const Counter = ({ label, val, min, onChange }: any) => (
+const Counter = ({ label, val, min, max, onChange }: any) => (
   <div className="bg-slate-50 p-2 rounded-xl border text-center">
     <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">{label}</p>
     <div className="flex items-center justify-between">
-      <button onClick={() => val > min && onChange(val - 1)} className="w-6 h-6 bg-white rounded-full shadow-sm border">-</button>
+      {/* Nút Trừ (-) */}
+      <button 
+        onClick={() => val > min && onChange(val - 1)} 
+        disabled={val <= min}
+        className={`w-6 h-6 rounded-full shadow-sm border flex items-center justify-center transition-all ${
+          val <= min ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-white text-slate-800 hover:bg-slate-100'
+        }`}
+      >
+        -
+      </button>
+      
       <span className="font-bold text-sm">{val}</span>
-      <button onClick={() => onChange(val + 1)} className="w-6 h-6 bg-white rounded-full shadow-sm border">+</button>
+      
+      {/* Nút Cộng (+) */}
+      <button 
+        onClick={() => (max === undefined || val < max) && onChange(val + 1)} 
+        disabled={max !== undefined && val >= max}
+        className={`w-6 h-6 rounded-full shadow-sm border flex items-center justify-center transition-all ${
+          (max !== undefined && val >= max) ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-white text-slate-800 hover:bg-slate-100'
+        }`}
+      >
+        +
+      </button>
     </div>
   </div>
 );

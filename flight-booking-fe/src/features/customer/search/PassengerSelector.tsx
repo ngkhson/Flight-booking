@@ -14,13 +14,28 @@ interface Props {
 
 export const PassengerSelector = ({ value, onChange }: Props) => {
   const updatePassenger = (type: keyof PassengerState, operation: 'add' | 'sub') => {
-    const currentValue = value[type];
-    let newValue = operation === 'add' ? currentValue + 1 : currentValue - 1;
+    // Tách riêng 3 biến ra để dễ thao tác
+    let { adult, child, infant } = value;
 
-    if (newValue < 0) newValue = 0;
-    if (type === 'adult' && newValue < 1) newValue = 1;
+    if (type === 'adult') {
+      adult = operation === 'add' ? adult + 1 : adult - 1;
+      if (adult < 1) adult = 1; // Tối thiểu 1 người lớn
+      
+      // 👇 BẢO VỆ DỮ LIỆU: Nếu giảm người lớn, tự động ép số em bé giảm theo nếu vượt quá
+      if (infant > adult) infant = adult; 
+      
+    } else if (type === 'child') {
+      child = operation === 'add' ? child + 1 : child - 1;
+      if (child < 0) child = 0;
+      
+    } else if (type === 'infant') {
+      infant = operation === 'add' ? infant + 1 : infant - 1;
+      if (infant < 0) infant = 0;
+      if (infant > adult) infant = adult; // An toàn thêm 1 lớp nữa
+    }
 
-    onChange({ ...value, [type]: newValue });
+    // Đẩy cả cục object mới lên cho form tổng nhận
+    onChange({ adult, child, infant });
   };
 
   const totalPassengers = value.adult + value.child + value.infant;
@@ -50,17 +65,28 @@ export const PassengerSelector = ({ value, onChange }: Props) => {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
+                  
+                  {/* 👇 NÚT TRỪ 👇 */}
                   <button 
                     onClick={() => updatePassenger(type, 'sub')} 
-                    className="w-8 h-8 rounded-full border border-slate-300 flex items-center justify-center hover:bg-slate-100 disabled:opacity-50"
+                    className="w-8 h-8 rounded-full border border-slate-300 flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={type === 'adult' ? value.adult <= 1 : value[type] <= 0}
                   >
                     <Minus className="w-4 h-4" />
                   </button>
+                  
                   <span className="w-4 text-center font-medium">{value[type]}</span>
-                  <button onClick={() => updatePassenger(type, 'add')} className="w-8 h-8 rounded-full border border-slate-300 flex items-center justify-center hover:bg-slate-100">
+                  
+                  {/* 👇 NÚT CỘNG 👇 */}
+                  <button 
+                    onClick={() => updatePassenger(type, 'add')} 
+                    className="w-8 h-8 rounded-full border border-slate-300 flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    // KHÓA NÚT CỘNG NẾU LÀ EM BÉ VÀ SỐ EM BÉ ĐÃ ĐẠT BẰNG SỐ NGƯỜI LỚN
+                    disabled={type === 'infant' && value.infant >= value.adult}
+                  >
                     <Plus className="w-4 h-4" />
                   </button>
+                  
                 </div>
               </div>
             ))}

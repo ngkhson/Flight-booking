@@ -45,7 +45,7 @@ export const AdvancedSearchWidget = ({ onSearch, loading }: Props) => {
       date: departureDate ? format(departureDate, "yyyy-MM-dd") : "",
       tripType, 
       returnDate: (tripType === 'round-trip' && returnDate) ? format(returnDate, "yyyy-MM-dd") : "",
-      passengers: passengers.adult + passengers.child, 
+      passengers: passengers.adult + passengers.child + passengers.infant, // Tổng số khách
       rawPassengers: passengers
     };
     

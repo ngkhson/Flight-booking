@@ -28,10 +28,11 @@ export interface Flight {
 
 interface FlightCardProps {
   flight: Flight;
-  onSelect?: (selectedClassInfo: FlightClass) => void; 
+  onSelect?: (selectedClassInfo: FlightClass) => void;
+  totalPassengers?: number; 
 }
 
-export const FlightCard = ({ flight, onSelect }: FlightCardProps) => {
+export const FlightCard = ({ flight, onSelect, totalPassengers = 1 }: FlightCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Hàm xử lý khi nhấn chọn một hạng ghế cụ thể
@@ -111,26 +112,40 @@ export const FlightCard = ({ flight, onSelect }: FlightCardProps) => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {flight.classes?.map((cls, idx) => (
-              <div key={idx} className="bg-white border border-slate-200 rounded-lg p-4 hover:border-blue-400 transition-all shadow-sm flex flex-col justify-between">
-                <div>
-                  <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase leading-none">
-                    {cls.className.replace('_', ' ')}
-                  </span>
-                  <p className="text-lg font-extrabold text-slate-800 mt-2">
-                    {cls.basePrice.toLocaleString('vi-VN')} đ
-                  </p>
-                  <p className="text-[10px] text-slate-400 italic">Còn {cls.availableSeats} chỗ</p>
+            {flight.classes?.map((cls, idx) => {
+              // 👇 KIỂM TRA SỐ GHẾ TRỐNG 👇
+              const isNotEnoughSeats = cls.availableSeats < totalPassengers;
+
+              return (
+                <div key={idx} className={`bg-white border rounded-lg p-4 transition-all shadow-sm flex flex-col justify-between ${isNotEnoughSeats ? 'border-slate-100 opacity-60' : 'border-slate-200 hover:border-blue-400'}`}>
+                  <div>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase leading-none ${isNotEnoughSeats ? 'text-slate-500 bg-slate-100' : 'text-blue-600 bg-blue-50'}`}>
+                      {cls.className.replace('_', ' ')}
+                    </span>
+                    <p className={`text-lg font-extrabold mt-2 ${isNotEnoughSeats ? 'text-slate-500' : 'text-slate-800'}`}>
+                      {cls.basePrice.toLocaleString('vi-VN')} đ
+                    </p>
+                    <p className={`text-[10px] italic ${isNotEnoughSeats ? 'text-red-500 font-bold' : 'text-slate-400'}`}>
+                      Còn {cls.availableSeats} chỗ (Cần {totalPassengers})
+                    </p>
+                  </div>
+                  
+                  {/* 👇 NÚT BẤM VÔ HIỆU HÓA NẾU KHÔNG ĐỦ GHẾ 👇 */}
+                  <Button 
+                    size="sm" 
+                    onClick={() => handleSelectClass(cls)}
+                    disabled={isNotEnoughSeats}
+                    className={`mt-4 w-full font-bold text-xs ${
+                      isNotEnoughSeats 
+                        ? 'bg-slate-200 text-slate-500 cursor-not-allowed hover:bg-slate-200' 
+                        : 'bg-slate-50 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-100'
+                    }`}
+                  >
+                    {isNotEnoughSeats ? 'Không đủ ghế' : 'Chọn hạng này'}
+                  </Button>
                 </div>
-                <Button 
-                  size="sm" 
-                  onClick={() => handleSelectClass(cls)}
-                  className="mt-4 w-full bg-slate-50 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-100 font-bold text-xs"
-                >
-                  Chọn hạng này
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
