@@ -437,7 +437,7 @@ function BookingDetailModal({ bookingId, isOpen, onClose, fallbackBooking }: Det
                                             <tbody className="divide-y divide-amber-100/60">
                                                 {ancillaries.map((a: any, idx: number) => (
                                                     <tr key={a.id || idx} className="hover:bg-amber-50/80 transition-colors">
-                                                        <td className="px-4 py-2.5 font-semibold text-gray-800">{a.name || a.ancillaryName || '—'}</td>
+                                                        <td className="px-4 py-2.5 font-semibold text-gray-800">{a.name || a.ancillaryName || a.code || a.type || '—'}</td>
                                                         <td className="px-4 py-2.5 text-gray-500">{a.type || a.code || a.ancillaryCode || '—'}</td>
                                                         <td className="px-4 py-2.5 text-gray-500">{a.passengerName || '—'}</td>
                                                         <td className="px-4 py-2.5 text-right font-bold text-amber-700">{fmtVND(a.price ?? a.amount)}</td>
