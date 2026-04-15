@@ -129,17 +129,101 @@ export interface IBookingSearchRequest {
     size?: number;
 }
 
+// ─── Booking Detail Interfaces ────────────────────────────────────────────────
+export interface IBookingPassenger {
+    id: string;
+    fullName: string;
+    type: string;
+    gender?: string;
+    dateOfBirth?: string;
+    nationality?: string;
+    seatNumber?: string;
+}
+
+export interface IBookingTicket {
+    id: string;
+    ticketNumber?: string;
+    passengerName?: string;
+    seatNumber?: string;
+    className?: string;
+    price?: number;
+    status?: string;
+}
+
+export interface IBookingAncillary {
+    id: string;
+    name: string;
+    type?: string;
+    code?: string;
+    price: number;
+    quantity?: number;
+    passengerName?: string;
+}
+
+export interface IBookingContact {
+    fullName?: string;
+    phone?: string;
+    email?: string;
+}
+
+export interface IBookingBaseDetails {
+    contact?: IBookingContact;
+    passengers?: IBookingPassenger[];
+    tickets?: IBookingTicket[];
+    ancillaries?: IBookingAncillary[];
+}
+
+export interface IBookingTransaction {
+    id?: string;
+    transactionNo?: string;
+    amount?: number;
+    paymentMethod?: string;
+    status?: string;
+    bankRefNo?: string;
+    gatewayResponse?: string;
+    createdAt?: string;
+}
+
+export interface IBookingDetailResponse {
+    id: string;
+    pnrCode: string;
+    contactName?: string;
+    contactPhone?: string;
+    contactEmail?: string;
+    flightNumber?: string;
+    origin?: any;
+    destination?: any;
+    departureTime?: string;
+    status: string;
+    totalAmount: number;
+    createdAt?: string;
+    baseDetails?: IBookingBaseDetails;
+    transactions?: IBookingTransaction[];
+}
+
 // Booking API dùng 1-based page — FE truyền page trực tiếp (1, 2, 3...)
 export const getBookings = async (params: IBookingSearchRequest = { page: 1, size: 10 }): Promise<any> => {
     return await axiosClient.get('/admin/bookings', { params });
 };
 
-// Mock API: Backend chưa có endpoint public cho update booking status
-export const updateBookingStatus = async (id: string, status: string): Promise<any> => {
-    console.warn(`[MOCK] updateBookingStatus(${id}, ${status}) — BE chưa có endpoint`);
-    return new Promise((resolve) => {
-        setTimeout(() => resolve({ result: { id, status, success: true } }), 500);
-    });
+// Hủy vé: PATCH /admin/bookings/{bookingId}/cancel
+export const cancelBooking = async (bookingId: string): Promise<any> => {
+    return await axiosClient.patch(`/admin/bookings/${bookingId}/cancel`);
+};
+
+// Gửi lại Email xác nhận: POST /admin/bookings/{bookingId}/resend-email
+export const resendBookingEmail = async (bookingId: string): Promise<any> => {
+    return await axiosClient.post(`/admin/bookings/${bookingId}/resend-email`);
+};
+
+// Kiểm tra thanh toán theo PNR: GET /admin/bookings/verify-payment/{pnrCode}
+export const verifyPayment = async (pnrCode: string): Promise<any> => {
+    return await axiosClient.get(`/admin/bookings/verify-payment/${pnrCode}`);
+};
+
+// Xem chi tiết booking: GET /admin/bookings/{bookingId}
+export const getBookingDetail = async (bookingId: string): Promise<any> => {
+    return await axiosClient.get(`/admin/bookings/${bookingId}`);
 };
 
 // =====================================================================

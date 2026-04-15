@@ -8,7 +8,7 @@ import { ScrollToTop } from './components/customer/ScrollToTop';
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import FlightManagement from './pages/admin/FlightManagement';
-import BookingManagement from './pages/admin/BookingManagement';
+import BookingsPage from './pages/admin/BookingsPage';
 import UserManagement from './pages/admin/UserManagement';
 // 🚀 IMPORT TRANG QUẢN LÝ GIAO DỊCH MỚI TẠO
 import TransactionManagement from './pages/admin/TransactionManagement';
@@ -93,7 +93,7 @@ function App() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="flights" element={<FlightManagement />} />
-          <Route path="bookings" element={<BookingManagement />} />
+          <Route path="bookings" element={<BookingsPage />} />
           <Route path="ancillaries" element={<AncillaryManagement />} />
           
           {/* 🚀 ROUTE GIAO DỊCH (Cho phép Admin và Kế toán xem) */}
