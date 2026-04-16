@@ -58,51 +58,6 @@ export interface IRevenueChart {
     revenue: number;
 }
 
-// =====================================================================
-// 2. API QUẢN LÝ CHUYẾN BAY (FLIGHTS)
-// =====================================================================
-
-// Mặc định page: 0 theo chuẩn Spring Data JPA thông thường
-export const getFlights = async (params?: any): Promise<any> => {
-    return await axiosClient.get('/v1/admin/flights', {
-        params: { page: 0, size: 10, ...params }
-    });
-};
-
-export const createFlight = async (payload: CreateFlightPayload): Promise<any> => {
-    return await axiosClient.post('/v1/admin/flights', payload);
-};
-
-export const updateFlight = async (id: string, payload: UpdateFlightPayload): Promise<any> => {
-    return await axiosClient.patch(`/v1/admin/flights/${id}`, payload);
-};
-
-// ─── API LẤY DANH SÁCH SÂN BAY & HÃNG BAY (cho Dropdown) ─────────────────────
-export const getAirports = async (): Promise<any> => {
-    return await axiosClient.get('/v1/airports', { params: { size: 500 } });
-};
-
-export const getAirlines = async (): Promise<any> => {
-    return await axiosClient.get('/v1/airlines', { params: { size: 500 } });
-};
-
-export const deleteFlight = async (id: string): Promise<any> => {
-    // Chuyển sang CANCELLED thay vì xoá cứng
-    return await axiosClient.patch(`/v1/admin/flights/${id}`, { status: 'CANCELLED' });
-};
-
-export const updateFlightPrice = async (flightClassId: string, pricePayload: any) => {
-    return await axiosClient.put(`/v1/admin/flights/prices/${flightClassId}`, pricePayload);
-};
-
-export const syncFlights = async () => {
-    return await axiosClient.post('/v1/admin/flights/sync-now');
-};
-
-// =====================================================================
-// 3. API QUẢN LÝ ĐẶT VÉ (BOOKINGS) — 1-based page
-// =====================================================================
-
 export interface IBooking {
     id: string;
     pnrCode: string;
@@ -200,6 +155,105 @@ export interface IBookingDetailResponse {
     baseDetails?: IBookingBaseDetails;
     transactions?: IBookingTransaction[];
 }
+// ─── TRANSACTION INTERFACES ───────────────────────────────────────────────────
+export interface ITransaction {
+    amount: number;
+    paymentMethod: string;
+    status: 'PENDING' | 'SUCCESS' | 'FAILED';
+    transactionNo: string;
+    bankRefNo: string;
+    gatewayResponse: string;
+    createdAt: string;
+}
+
+export interface ITransactionSearchRequest {
+    keyword?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    size?: number;
+}
+// ─── ANCILLARY CATALOG INTERFACES ─────────────────────────────────────────────
+export interface IAncillaryCatalog {
+    id: string;
+    code: string;
+    type: string;
+    name: string;
+    price: number;
+    status: 'ACTIVE' | 'INACTIVE';
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface IAncillaryCatalogSearchRequest {
+    keyword?: string;
+    type?: string;
+    status?: string;
+    page?: number;
+    size?: number;
+}
+
+export interface IAncillaryCatalogCreationRequest {
+    code: string;
+    type: string;
+    name: string;
+    price: number;
+    status: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface IAncillaryCatalogUpdateRequest {
+    type: string;
+    name: string;
+    price: number;
+    status: 'ACTIVE' | 'INACTIVE';
+}
+
+// =====================================================================
+// 2. API QUẢN LÝ CHUYẾN BAY (FLIGHTS)
+// =====================================================================
+
+// Mặc định page: 0 theo chuẩn Spring Data JPA thông thường
+export const getFlights = async (params?: any): Promise<any> => {
+    return await axiosClient.get('/v1/admin/flights', {
+        params: { page: 0, size: 10, ...params }
+    });
+};
+
+export const createFlight = async (payload: CreateFlightPayload): Promise<any> => {
+    return await axiosClient.post('/v1/admin/flights', payload);
+};
+
+export const updateFlight = async (id: string, payload: UpdateFlightPayload): Promise<any> => {
+    return await axiosClient.patch(`/v1/admin/flights/${id}`, payload);
+};
+
+// ─── API LẤY DANH SÁCH SÂN BAY & HÃNG BAY (cho Dropdown) ─────────────────────
+export const getAirports = async (): Promise<any> => {
+    return await axiosClient.get('/v1/airports', { params: { size: 500 } });
+};
+
+export const getAirlines = async (): Promise<any> => {
+    return await axiosClient.get('/v1/airlines', { params: { size: 500 } });
+};
+
+export const deleteFlight = async (id: string): Promise<any> => {
+    // Chuyển sang CANCELLED thay vì xoá cứng
+    return await axiosClient.patch(`/v1/admin/flights/${id}`, { status: 'CANCELLED' });
+};
+
+export const updateFlightPrice = async (flightClassId: string, pricePayload: any) => {
+    return await axiosClient.put(`/v1/admin/flights/prices/${flightClassId}`, pricePayload);
+};
+
+export const syncFlights = async () => {
+    return await axiosClient.post('/v1/admin/flights/sync-now');
+};
+
+// =====================================================================
+// 3. API QUẢN LÝ ĐẶT VÉ (BOOKINGS) — 1-based page
+// =====================================================================
+
 
 // Booking API dùng 1-based page — FE truyền page trực tiếp (1, 2, 3...)
 export const getBookings = async (params: IBookingSearchRequest = { page: 1, size: 10 }): Promise<any> => {
@@ -269,25 +323,7 @@ export const resetUserPassword = async (userId: string, newPassword: string) => 
 export const getRoles = async () => {
     return await axiosClient.get('/roles');
 };
-// ─── TRANSACTION INTERFACES ───────────────────────────────────────────────────
-export interface ITransaction {
-    amount: number;
-    paymentMethod: string;
-    status: 'PENDING' | 'SUCCESS' | 'FAILED';
-    transactionNo: string;
-    bankRefNo: string;
-    gatewayResponse: string;
-    createdAt: string;
-}
 
-export interface ITransactionSearchRequest {
-    keyword?: string;
-    status?: string;
-    startDate?: string;
-    endDate?: string;
-    page?: number;
-    size?: number;
-}
 
 // ─── API LẤY DANH SÁCH GIAO DỊCH ──────────────────────────────────────────────
 // Dùng axiosClient và trả về Promise<any> để tránh lỗi Interface không tồn tại
@@ -295,40 +331,7 @@ export const getTransactions = async (params: ITransactionSearchRequest = { page
     return await axiosClient.get('/admin/transactions', { params });
 };
 
-// ─── ANCILLARY CATALOG INTERFACES ─────────────────────────────────────────────
-export interface IAncillaryCatalog {
-    id: string;
-    code: string;
-    type: string;
-    name: string;
-    price: number;
-    status: 'ACTIVE' | 'INACTIVE';
-    createdAt: string;
-    updatedAt: string;
-}
 
-export interface IAncillaryCatalogSearchRequest {
-    keyword?: string;
-    type?: string;
-    status?: string;
-    page?: number;
-    size?: number;
-}
-
-export interface IAncillaryCatalogCreationRequest {
-    code: string;
-    type: string;
-    name: string;
-    price: number;
-    status: 'ACTIVE' | 'INACTIVE';
-}
-
-export interface IAncillaryCatalogUpdateRequest {
-    type: string;
-    name: string;
-    price: number;
-    status: 'ACTIVE' | 'INACTIVE';
-}
 
 // ─── API DỊCH VỤ PHỤ TRỢ ──────────────────────────────────────────────────────
 export const searchAncillaryCatalogs = async (params: IAncillaryCatalogSearchRequest = { page: 1, size: 10 }): Promise<any> => {
