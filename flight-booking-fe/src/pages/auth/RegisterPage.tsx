@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { userApi } from "@/api/userApi";
 
-// 1. Định nghĩa luật bắt lỗi
+const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
+
 const registerSchema = z.object({
   fullName: z.string().min(2, "Họ tên phải có ít nhất 2 ký tự"),
   email: z.string().email("Vui lòng nhập đúng định dạng email"),
-  phone: z.string().min(10, "Số điện thoại không hợp lệ"),
+  phone: z.string().regex(phoneRegex, "Số điện thoại không hợp lệ (VD: 0912345678)"),
   password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
 });
 
@@ -92,7 +93,13 @@ export const RegisterPage = () => {
             <label className="text-sm font-semibold text-slate-700 block mb-1">Số điện thoại</label>
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-              <Input {...register("phone")} placeholder="0987xxxxxx" disabled={isLoading} className="pl-10 h-12" />
+              {/* 👇 Đã xóa cục cấu hình rườm rà trong register 👇 */}
+              <Input 
+                {...register("phone")} 
+                placeholder="0987xxxxxx" 
+                disabled={isLoading} 
+                className={`pl-10 h-12 ${errors.phone ? 'border-red-500 focus-visible:ring-red-500' : ''}`} 
+              />
             </div>
             {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
           </div>
