@@ -16,7 +16,7 @@ export const ProfilePage = () => {
   const [message, setMessage] = useState({ type: "", text: "" });
 
   // 1. LẤY THÊM HÀM 'reset' TỪ useForm
-  const { register, handleSubmit, reset } = useForm({
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
     defaultValues: {
       fullName: user?.fullName || "",
       phone: user?.phone || "",
@@ -89,18 +89,48 @@ export const ProfilePage = () => {
             </h3>
             <form onSubmit={handleSubmit(onUpdateProfile)} className="space-y-4">
               <div className="grid grid-cols-1 gap-4">
+                
+                {/* Họ và tên */}
                 <div>
                   <label className="text-sm font-medium mb-1 block">Họ và tên</label>
-                  <Input {...register("fullName")} className="h-11" placeholder="Nhập họ và tên" />
+                  <Input 
+                    {...register("fullName", { 
+                        required: "Vui lòng nhập họ và tên",
+                        minLength: { value: 2, message: "Họ và tên phải có ít nhất 2 ký tự" }
+                    })} 
+                    className={`h-11 ${errors.fullName ? 'border-red-500 focus-visible:ring-red-500' : ''}`} 
+                    placeholder="Nhập họ và tên" 
+                  />
+                  {errors.fullName && <p className="text-red-500 text-xs mt-1">{(errors.fullName as any).message}</p>}
                 </div>
+
+                {/* Email (Disabled) */}
                 <div>
                   <label className="text-sm font-medium mb-1 block">Email (Không thể thay đổi)</label>
-                  <Input {...register("email")} disabled className="h-11 bg-slate-50 text-slate-500" />
+                  <Input 
+                    {...register("email")} 
+                    disabled 
+                    className="h-11 bg-slate-50 text-slate-500" 
+                  />
                 </div>
+
+                {/* Số điện thoại */}
                 <div>
                   <label className="text-sm font-medium mb-1 block">Số điện thoại</label>
-                  <Input {...register("phone")} className="h-11" placeholder="Nhập số điện thoại" />
+                  <Input 
+                    {...register("phone", { 
+                        required: "Vui lòng nhập số điện thoại",
+                        pattern: {
+                            value: /(84|0[3|5|7|8|9])+([0-9]{8})\b/,
+                            message: "Số điện thoại không hợp lệ (VD: 0912345678)"
+                        }
+                    })} 
+                    className={`h-11 ${errors.phone ? 'border-red-500 focus-visible:ring-red-500' : ''}`} 
+                    placeholder="Nhập số điện thoại" 
+                  />
+                  {errors.phone && <p className="text-red-500 text-xs mt-1">{(errors.phone as any).message}</p>}
                 </div>
+
               </div>
               <Button disabled={loading} className="bg-blue-600 hover:bg-blue-700 px-8 h-11 mt-6">
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 

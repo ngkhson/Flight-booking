@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Lock, Loader2, AlertCircle } from "lucide-react";
+import { Lock, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react"; // Bổ sung Eye, EyeOff
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { userApi } from "@/api/userApi";
@@ -9,6 +9,11 @@ export const ChangePasswordSection = () => {
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
     const [successMsg, setSuccessMsg] = useState("");
+
+    // 👇 KHAI BÁO STATE ẨN/HIỆN CHO TỪNG Ô 👇
+    const [showOldPass, setShowOldPass] = useState(false);
+    const [showNewPass, setShowNewPass] = useState(false);
+    const [showConfirmPass, setShowConfirmPass] = useState(false);
 
     const {
         register,
@@ -74,41 +79,74 @@ export const ChangePasswordSection = () => {
             )}
 
             <form onSubmit={handleSubmit(onChangePass)} className="space-y-4 max-w-md">
+                {/* 1. MẬT KHẨU CŨ */}
                 <div>
                     <label className="text-sm font-medium mb-1 block">Mật khẩu hiện tại</label>
-                    <Input
-                        type="password"
-                        {...register("oldPassword", { required: "Vui lòng nhập mật khẩu cũ" })}
-                        placeholder="••••••••"
-                        className={`h-11 ${errors.oldPassword ? 'border-red-500' : ''}`}
-                    />
+                    <div className="relative">
+                        <Input
+                            type={showOldPass ? "text" : "password"}
+                            {...register("oldPassword", { required: "Vui lòng nhập mật khẩu cũ" })}
+                            placeholder="••••••••"
+                            className={`h-11 pr-10 ${errors.oldPassword ? 'border-red-500' : ''}`}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowOldPass(!showOldPass)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                            tabIndex={-1}
+                        >
+                            {showOldPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                    </div>
                 </div>
 
+                {/* 2. MẬT KHẨU MỚI */}
                 <div>
                     <label className="text-sm font-medium mb-1 block">Mật khẩu mới</label>
-                    <Input
-                        type="password"
-                        {...register("newPassword", {
-                            required: "Vui lòng nhập mật khẩu mới",
-                            minLength: { value: 6, message: "Mật khẩu phải ít nhất 6 ký tự" }
-                        })}
-                        placeholder="••••••••"
-                        className={`h-11 ${errors.newPassword ? 'border-red-500' : ''}`}
-                    />
+                    <div className="relative">
+                        <Input
+                            type={showNewPass ? "text" : "password"}
+                            {...register("newPassword", {
+                                required: "Vui lòng nhập mật khẩu mới",
+                                minLength: { value: 6, message: "Mật khẩu phải ít nhất 6 ký tự" }
+                            })}
+                            placeholder="••••••••"
+                            className={`h-11 pr-10 ${errors.newPassword ? 'border-red-500' : ''}`}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowNewPass(!showNewPass)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                            tabIndex={-1}
+                        >
+                            {showNewPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                    </div>
                     {errors.newPassword && <p className="text-red-500 text-xs mt-1">{(errors.newPassword as any).message}</p>}
                 </div>
 
+                {/* 3. XÁC NHẬN MẬT KHẨU MỚI */}
                 <div>
                     <label className="text-sm font-medium mb-1 block">Xác nhận mật khẩu mới</label>
-                    <Input
-                        type="password"
-                        {...register("confirmPassword", {
-                            required: "Vui lòng xác nhận lại mật khẩu",
-                            validate: value => value === newPassword || "Mật khẩu xác nhận không khớp"
-                        })}
-                        placeholder="••••••••"
-                        className={`h-11 ${errors.confirmPassword ? 'border-red-500' : ''}`}
-                    />
+                    <div className="relative">
+                        <Input
+                            type={showConfirmPass ? "text" : "password"}
+                            {...register("confirmPassword", {
+                                required: "Vui lòng xác nhận lại mật khẩu",
+                                validate: value => value === newPassword || "Mật khẩu xác nhận không khớp"
+                            })}
+                            placeholder="••••••••"
+                            className={`h-11 pr-10 ${errors.confirmPassword ? 'border-red-500' : ''}`}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowConfirmPass(!showConfirmPass)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                            tabIndex={-1}
+                        >
+                            {showConfirmPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                    </div>
                     {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{(errors.confirmPassword as any).message}</p>}
                 </div>
 

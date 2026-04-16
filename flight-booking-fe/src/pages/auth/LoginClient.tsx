@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Mail, Lock, LogIn, Loader2 } from "lucide-react";
+import { Mail, Lock, LogIn, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDispatch } from "react-redux";
@@ -31,6 +31,7 @@ export const LoginClient = () => {
   // State quản lý lúc đang chờ API và Lỗi từ Backend
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -154,11 +155,22 @@ export const LoginClient = () => {
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
               <Input
                 {...register("password")}
-                type="password"
+                type={showPassword ? "text" : "password"} // 👈 THAY ĐỔI Ở ĐÂY
                 placeholder="••••••••"
                 disabled={isLoading}
-                className={`pl-10 h-12 ${errors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                // 👇 Thêm pr-10 để text không đè lên nút con mắt
+                className={`pl-10 pr-10 h-12 ${errors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
               />
+              
+              {/* 👇 THÊM NÚT ẨN/HIỆN MẬT KHẨU VÀO ĐÂY 👇 */}
+              <button
+                type="button" // Bắt buộc phải là type="button" để không làm submit form
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                tabIndex={-1} // Bỏ qua tab index để người dùng tab không bị dính vào nút này
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
             {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
           </div>
