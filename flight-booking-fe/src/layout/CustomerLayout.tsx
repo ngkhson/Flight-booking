@@ -1,8 +1,9 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useLogout } from '@/hooks/useLogout';
-import { LogOut, User, Ticket, MapPin, Mail, Phone, PlaneTakeoff, Menu, X } from 'lucide-react'; // Đã thêm Menu, X
+// 👇 Đã import thêm Shield cho nút Admin
+import { LogOut, User, Ticket, MapPin, Mail, Phone, PlaneTakeoff, Menu, X, Shield } from 'lucide-react'; 
 import { type RootState } from '@/store/store';
-import { useEffect, useState } from "react"; // Đã thêm useState
+import { useEffect, useState } from "react"; 
 import { useDispatch, useSelector } from "react-redux";
 import { setCredentials } from "@/store/authSlice";
 import { userApi } from "@/api/userApi";
@@ -16,10 +17,8 @@ export const CustomerLayout = () => {
   const isAuthenticated = !!localStorage.getItem('accessToken');
   const token = localStorage.getItem('accessToken');
 
-  // 👇 STATE QUẢN LÝ ĐÓNG/MỞ MENU MOBILE 👇
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Đóng menu mobile mỗi khi chuyển trang
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
@@ -42,7 +41,6 @@ export const CustomerLayout = () => {
 
   return (
     <div className="min-h-screen flex flex-col font-sans text-slate-900">
-      {/* Cần thêm relative vào header để menu mobile thả xuống chuẩn xác */}
       <header className="bg-blue-600 text-white p-4 shadow-md sticky top-0 z-50 relative">
         <div className="container mx-auto flex justify-between items-center">
           
@@ -50,7 +48,7 @@ export const CustomerLayout = () => {
             ✈️ STINGAIR
           </Link>
 
-          {/* 👇 GIAO DIỆN DESKTOP (Ẩn trên màn hình nhỏ bằng hidden md:flex) 👇 */}
+          {/* 👇 GIAO DIỆN DESKTOP 👇 */}
           <nav className="hidden md:flex space-x-6 items-center">
             <Link to="/search" className="font-medium hover:text-blue-200 transition-colors">
               Tìm vé
@@ -58,9 +56,20 @@ export const CustomerLayout = () => {
 
             {isAuthenticated ? (
               <div className="flex items-center gap-6">
+
                 <Link to="/my-bookings" className="font-medium hover:text-blue-200 transition-colors flex items-center gap-1">
                   <Ticket size={18} /> Vé của tôi
                 </Link>
+
+                {/* 👇 NÚT ADMIN (DESKTOP) ĐÃ FIX LỖI ROLES 👇 */}
+                {user?.roles?.some((r: any) => r.name === 'ADMIN' || r.name === 'ROLE_ADMIN') && (
+                  <Link 
+                    to="/admin/dashboard" 
+                    className="font-bold text-white bg-blue-800/60 hover:bg-blue-800 px-3 py-1.5 rounded-lg border border-blue-400/50 transition-colors flex items-center gap-1.5"
+                  >
+                    <Shield size={16} className="text-blue-200" /> Quản trị
+                  </Link>
+                )}
 
                 <Link
                   to="/profile"
@@ -91,7 +100,7 @@ export const CustomerLayout = () => {
             )}
           </nav>
 
-          {/* 👇 NÚT HAMBURGER DÀNH CHO MOBILE (Ẩn trên màn hình to bằng md:hidden) 👇 */}
+          {/* NÚT HAMBURGER DÀNH CHO MOBILE */}
           <button 
             className="md:hidden text-white p-2 hover:bg-blue-700 rounded-lg transition-colors"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -100,7 +109,7 @@ export const CustomerLayout = () => {
           </button>
         </div>
 
-        {/* 👇 GIAO DIỆN MOBILE MENU (Chỉ hiện khi isMobileMenuOpen = true) 👇 */}
+        {/* 👇 GIAO DIỆN MOBILE MENU 👇 */}
         {isMobileMenuOpen && (
           <div className="absolute top-full left-0 w-full bg-blue-700 shadow-xl border-t border-blue-600 md:hidden flex flex-col animate-in slide-in-from-top-2 duration-200">
             <div className="flex flex-col p-4 space-y-4">
@@ -113,6 +122,16 @@ export const CustomerLayout = () => {
                   <Link to="/my-bookings" className="flex items-center gap-2 text-lg font-medium text-white hover:text-blue-200 py-2 border-b border-blue-600/50">
                     <Ticket size={20} /> Vé của tôi
                   </Link>
+
+                  {/* 👇 NÚT ADMIN (MOBILE) ĐÃ FIX LỖI ROLES 👇 */}
+                  {user?.roles?.some((r: any) => r.name === 'ADMIN' || r.name === 'ROLE_ADMIN') && (
+                    <Link 
+                      to="/admin/dashboard" 
+                      className="flex items-center gap-2 text-lg font-medium text-white hover:text-white py-2 border-b border-blue-600/50 -mx-4 px-4"
+                    >
+                      <Shield size={20} /> Trang Quản Trị
+                    </Link>
+                  )}
                   
                   <Link to="/profile" className="flex items-center gap-3 text-lg font-medium text-white hover:text-blue-200 py-2 border-b border-blue-600/50">
                     <User size={20} /> Tài khoản ({user?.fullName || "Khách hàng"})
