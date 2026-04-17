@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function AdminHeader({ title = "Tổng quan hệ thống" }: { title?: string }) {
     const navigate = useNavigate();
-    
+
     // States quản lý trạng thái mở/đóng menu profile
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -22,27 +22,24 @@ export default function AdminHeader({ title = "Tổng quan hệ thống" }: { ti
     }, []);
 
     // ─── Hàm chuyển hướng đến trang Profile của Admin ──────────────
-    // ✅ FIX: Chuyển từ '/profile' (Customer) sang '/admin/profile' (Admin)
     const handleGoToProfile = () => {
         setIsProfileOpen(false);
-        navigate('/admin/profile'); 
+        navigate('/admin/profile');
     };
 
-    // ✅ ĐÃ XÓA: handleLogout — Nút "Đăng xuất" đã có sẵn trên Sidebar
-
     return (
-        // ✅ RESPONSIVE: flex-col trên mobile, flex-row trên md+
+        // RESPONSIVE: flex-col trên mobile, flex-row trên md+
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-6 md:mb-8 relative z-50">
             {/* TIÊU ĐỀ TRANG */}
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 whitespace-nowrap">{title}</h1>
-            
+
             <div className="flex items-center shrink-0 self-end sm:self-auto">
                 {/* MENU TÀI KHOẢN ADMIN */}
                 <div className="relative" ref={profileRef}>
-                    <div 
+                    <div
                         onClick={() => setIsProfileOpen(!isProfileOpen)}
-                        className="flex items-center gap-2.5 bg-white border border-gray-200 rounded-xl px-3 py-2 cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition shadow-sm"
-                    >
+                        className="flex items-center gap-2.5 bg-white border border-gray-200 rounded-xl px-3 py-2 cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition shadow-sm">
+
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-inner">
                             AD
                         </div>
@@ -59,9 +56,9 @@ export default function AdminHeader({ title = "Tổng quan hệ thống" }: { ti
                                 <p className="text-xs text-gray-500">Đăng nhập với tư cách</p>
                                 <p className="text-sm font-bold text-gray-900 truncate">admin@system.com</p>
                             </div>
-                            
+
                             {/* ✅ Nút "Thông tin cá nhân" — điều hướng sang /admin/profile */}
-                            <button 
+                            <button
                                 onClick={handleGoToProfile}
                                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 rounded-lg transition font-medium"
                             >

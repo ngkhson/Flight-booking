@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type ChangeEvent } from 'react';
+import { useState, useEffect, useCallback, useRef, type ChangeEvent } from 'react';
 import {
     getBookings,
 } from '../../features/admin/services/adminApi';
@@ -145,16 +145,30 @@ export default function BookingsPage() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<FilterStatus>('ALL');
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-    // 🚀 Đã chỉnh sửa: 7 items per page
+    // ─── SERVER-SIDE PAGINATION STATE ──────────────────────────────────────────
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalElements, setTotalElements] = useState(0);
     const itemsPerPage = 8;
+    const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Reset về trang 1 mỗi khi đổi bộ lọc hoặc gõ tìm kiếm
+    // Debounce search: chờ 400ms trước khi gọi lại API, reset về trang 1
+    useEffect(() => {
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = setTimeout(() => {
+            setDebouncedSearch(search);
+            setCurrentPage(1);
+        }, 400);
+        return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
+    }, [search]);
+
+    // Reset về trang 1 mỗi khi đổi bộ lọc
     useEffect(() => {
         setCurrentPage(1);
-    }, [filter, search]);
+    }, [filter]);
 
     useEffect(() => {
         if (!toast) return;
@@ -165,26 +179,32 @@ export default function BookingsPage() {
     const fetchBookings = useCallback(async () => {
         setLoading(true);
         try {
-            // Lấy nhiều dữ liệu lên một lúc để Frontend tự phân trang
-            const res: any = await getBookings({ page: 1, size: 500 });
-
-            const extractArray = (obj: any): any[] => {
-                if (!obj) return [];
-                if (Array.isArray(obj)) return obj;
-                if (Array.isArray(obj.content)) return obj.content;
-                if (Array.isArray(obj.data)) return obj.data;
-                if (Array.isArray(obj.result)) return obj.result;
-                if (obj.result && typeof obj.result === 'object') {
-                    if (Array.isArray(obj.result.content)) return obj.result.content;
-                    if (Array.isArray(obj.result.data)) return obj.result.data;
-                }
-                if (obj.data && typeof obj.data === 'object') {
-                    if (Array.isArray(obj.data.content)) return obj.data.content;
-                }
-                return [];
+            // ✅ GET /admin/bookings — 1-based page index
+            // UI Page 1 → API page: 1 (gửi trực tiếp)
+            const params: Record<string, any> = {
+                page: currentPage,
+                size: itemsPerPage,
             };
 
-            const rawArray = extractArray(res);
+            // Gửi filter status lên server (nếu không phải 'ALL')
+            if (filter !== 'ALL') {
+                params.status = filter;
+            }
+
+            // Gửi keyword tìm kiếm lên server
+            if (debouncedSearch) {
+                params.keyword = debouncedSearch;
+            }
+
+            const res: any = await getBookings(params);
+
+            // ── Bóc tách PageResponse: res.result chứa { data, currentPage, totalPages, totalElements } ──
+            const pageResponse = res?.result || res?.data || res;
+
+            // Ưu tiên trường `data` theo contract PageResponse
+            const rawArray: any[] = Array.isArray(pageResponse?.data)
+                ? pageResponse.data
+                : Array.isArray(pageResponse) ? pageResponse : [];
 
             const mappedBookings = rawArray.map((b: any) => ({
                 id: b.id,
@@ -202,6 +222,10 @@ export default function BookingsPage() {
             }));
 
             setBookings(mappedBookings);
+
+            // ── Trích xuất metadata phân trang từ PageResponse ──
+            setTotalPages(pageResponse?.totalPages || Math.ceil((pageResponse?.totalElements || rawArray.length) / itemsPerPage) || 1);
+            setTotalElements(pageResponse?.totalElements ?? rawArray.length);
         } catch (err) {
             console.error("Lỗi lấy API Booking:", err);
             setBookings([]);
@@ -209,33 +233,11 @@ export default function BookingsPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [currentPage, itemsPerPage, filter, debouncedSearch]);
 
     useEffect(() => { fetchBookings(); }, [fetchBookings]);
 
-    const counts = bookings.reduce<Partial<Record<Booking['status'], number>>>((acc, b) => {
-        acc[b.status] = (acc[b.status] ?? 0) + 1;
-        return acc;
-    }, {});
-
-    const visible = bookings.filter((b) => {
-        if (filter !== 'ALL' && b.status !== filter) return false;
-        if (!search) return true;
-        const q = search.toLowerCase();
-        return (
-            (b.pnrCode || '').toLowerCase().includes(q) ||
-            (b.contactName || '').toLowerCase().includes(q) ||
-            (b.flightNumber || '').toLowerCase().includes(q) ||
-            (b.contactPhone || '').includes(q)
-        );
-    });
-
-    // 🚀 Tính toán dữ liệu cho trang hiện tại
-    const totalPages = Math.ceil(visible.length / itemsPerPage) || 1;
-    const paginatedBookings = visible.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
+    // ✅ Server-side pagination — bookings[] đã là dữ liệu của trang hiện tại
 
     const handleStatusChange = async (id: string, newStatus: Booking['status']) => {
         try {
@@ -278,11 +280,6 @@ export default function BookingsPage() {
                             ].join(' ')}
                         >
                             {opt.label}
-                            {!loading && opt.value !== 'ALL' && (
-                                <span className="ml-1.5 text-xs opacity-80 bg-black/10 px-1.5 py-0.5 rounded-md">
-                                    {counts[opt.value] ?? 0}
-                                </span>
-                            )}
                         </button>
                     ))}
                 </div>
@@ -316,13 +313,13 @@ export default function BookingsPage() {
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {loading ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />) :
-                                paginatedBookings.length === 0 ? (
+                                bookings.length === 0 ? (
                                     <tr>
                                         <td colSpan={8} className="px-5 py-12 text-center text-gray-400">
                                             Không tìm thấy đơn đặt vé nào.
                                         </td>
                                     </tr>
-                                ) : paginatedBookings.map((b) => (
+                                ) : bookings.map((b) => (
                                     <tr key={b.id} className="hover:bg-indigo-50/40 transition-colors group">
                                         <td className="px-5 py-4 font-mono font-bold text-indigo-700">{b.pnrCode}</td>
                                         <td className="px-5 py-4 text-gray-800 font-medium">
@@ -348,10 +345,10 @@ export default function BookingsPage() {
                 </div>
 
                 {/* ─── PHÂN TRANG (PAGINATION) ────────────────────────────────────── */}
-                {!loading && visible.length > 0 && (
+                {!loading && totalElements > 0 && (
                     <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <span className="text-xs text-gray-500 whitespace-nowrap">
-                            Hiển thị <span className="font-bold text-gray-700">{(currentPage - 1) * itemsPerPage + 1}</span> đến <span className="font-bold text-gray-700">{Math.min(currentPage * itemsPerPage, visible.length)}</span> trong số <span className="font-bold text-gray-700">{visible.length}</span> đơn
+                            Hiển thị <span className="font-bold text-gray-700">{(currentPage - 1) * itemsPerPage + 1}</span> đến <span className="font-bold text-gray-700">{Math.min(currentPage * itemsPerPage, totalElements)}</span> trong số <span className="font-bold text-gray-700">{totalElements}</span> đơn
                         </span>
 
                         <div className="flex flex-wrap items-center justify-end gap-4 w-full">
