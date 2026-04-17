@@ -69,6 +69,10 @@ export const getFlights = async (params?: any): Promise<any> => {
     });
 };
 
+export const searchFlights = async (params: any) => {
+    return await axiosClient.get('/v1/admin/flights/search', { params });
+};
+
 export const createFlight = async (payload: CreateFlightPayload): Promise<any> => {
     return await axiosClient.post('/v1/admin/flights', payload);
 };
