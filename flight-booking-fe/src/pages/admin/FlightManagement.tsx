@@ -434,45 +434,25 @@ export default function FlightManagement() {
     const fetchFlights = useCallback(async () => {
         setLoading(true);
         try {
-            // ✅ Server-side pagination: Spring Data JPA dùng page 0-based
+            // ✅ GET /v1/admin/flights — 0-based page index
+            // UI Page 1 → API page: 0
             const res: any = await getFlights({
                 page: currentPage - 1,
                 size: itemsPerPage,
                 ...(debouncedSearch ? { keyword: debouncedSearch } : {}),
             });
 
-            // ── Bóc tách response (hỗ trợ nhiều dạng API wrapper) ──
-            const responseData = res?.result || res?.data || res;
-            const pageData = responseData?.data || responseData;
+            // ── Bóc tách PageResponse: res.result chứa { data, currentPage, totalPages, totalElements } ──
+            const pageResponse = res?.result || res?.data || res;
 
-            const extractArray = (obj: any): any[] => {
-                if (!obj) return [];
-                if (Array.isArray(obj)) return obj;
-                if (Array.isArray(obj.content)) return obj.content;
-                if (Array.isArray(obj.data)) return obj.data;
-                if (Array.isArray(obj.result)) return obj.result;
-                if (Array.isArray(obj.items)) return obj.items;
-                if (obj.result && typeof obj.result === 'object') {
-                    if (Array.isArray(obj.result)) return obj.result;
-                    if (Array.isArray(obj.result.content)) return obj.result.content;
-                    if (Array.isArray(obj.result.data)) return obj.result.data;
-                }
-                if (obj.data && typeof obj.data === 'object') {
-                    if (Array.isArray(obj.data)) return obj.data;
-                    if (Array.isArray(obj.data.content)) return obj.data.content;
-                    if (Array.isArray(obj.data.result)) return obj.data.result;
-                }
-                return [];
-            };
+            // Ưu tiên trường `data` theo contract PageResponse
+            const rawArray: any[] = Array.isArray(pageResponse?.data)
+                ? pageResponse.data
+                : Array.isArray(pageResponse) ? pageResponse : [];
 
-            const rawArray = extractArray(pageData);
-
-            // ── Trích xuất metadata phân trang từ server ──
-            const meta = (pageData && typeof pageData === 'object' && !Array.isArray(pageData)) ? pageData : responseData;
-            const serverTotalPages = meta?.totalPages || Math.ceil((meta?.totalElements || rawArray.length) / itemsPerPage) || 1;
-            const serverTotalElements = meta?.totalElements ?? rawArray.length;
-            setTotalPages(serverTotalPages);
-            setTotalElements(serverTotalElements);
+            // ── Trích xuất metadata phân trang từ PageResponse ──
+            setTotalPages(pageResponse?.totalPages || Math.ceil((pageResponse?.totalElements || rawArray.length) / itemsPerPage) || 1);
+            setTotalElements(pageResponse?.totalElements ?? rawArray.length);
 
             const mappedFlights = rawArray.map((f: any, index: number) => {
                 const originStr = typeof f.origin === 'object' && f.origin !== null

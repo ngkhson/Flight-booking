@@ -49,12 +49,18 @@ export default function AncillaryManagement() {
         setIsLoading(true);
         try {
             const cleanParams = Object.fromEntries(Object.entries(filterParams).filter(([_, v]) => v !== ''));
+
+            // ✅ GET /ancillary-catalogs/search — 1-based page index
+            // UI Page 1 → API page: 1 (gửi trực tiếp)
             const res: any = await searchAncillaryCatalogs({ page: currentPage, size: 10, ...cleanParams });
-            const responseData = res?.result || res?.data || res;
+
+            // ── Bóc tách PageResponse: res.result chứa { data, currentPage, totalPages, totalElements } ──
+            const pageResponse = res?.result || res?.data || res;
             
-            setCatalogs(responseData?.data || []);
-            setTotalPages(responseData?.totalPages || 1);
-            setTotalElements(responseData?.totalElements || 0);
+            // Ưu tiên trường `data` theo contract PageResponse
+            setCatalogs(Array.isArray(pageResponse?.data) ? pageResponse.data : []);
+            setTotalPages(pageResponse?.totalPages || 1);
+            setTotalElements(pageResponse?.totalElements || 0);
         } catch (error) {
             console.error("Lỗi lấy dữ liệu:", error);
             showToast("Không thể tải dữ liệu dịch vụ.", "error");
