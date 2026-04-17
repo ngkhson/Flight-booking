@@ -468,7 +468,7 @@ export const AIRPORT_MAPPING: Record<string, AirportTranslation> = {
   'SEA': { city: 'Seattle', country: 'Mỹ', name: 'Sân bay Quốc tế Seattle-Tacoma' },
   'SEZ': { city: 'Mahé', country: 'Seychelles', name: 'Sân bay Quốc tế Seychelles' },
   'SFO': { city: 'San Francisco', country: 'Mỹ', name: 'Sân bay Quốc tế San Francisco' },
-  'SGN': { city: 'TP HCM', country: 'Việt Nam', name: 'Sân bay Quốc tế Tân Sơn Nhất' },
+  'SGN': { city: 'Hồ Chí Minh', country: 'Việt Nam', name: 'Sân bay Quốc tế Tân Sơn Nhất' },
   'SHA': { city: 'Thượng Hải', country: 'Trung Quốc', name: 'Sân bay Quốc tế Hồng Kiều Thượng Hải' },
   'SHE': { city: 'Thẩm Dương', country: 'Trung Quốc', name: 'Sân bay Quốc tế Đào Tiên Thẩm Dương' },
   'SHJ': { city: 'Sharjah', country: 'UAE', name: 'Sân bay Quốc tế Sharjah' },

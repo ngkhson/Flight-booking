@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Search } from 'lucide-react';
+import { MapPin, Search, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PassengerSelector, type PassengerState } from './PassengerSelector';
@@ -123,23 +123,48 @@ export const AdvancedSearchWidget = ({ onSearch, loading }: Props) => {
       <div className="flex flex-col lg:flex-row gap-3 items-end w-full">
         
         {/* 👇 KHU VỰC SÂN BAY: Cho flex-[2] để nó rộng gấp đôi các ô khác 👇 */}
-        <div className="flex flex-col md:flex-row gap-2 w-full lg:flex-[2] relative z-50">
+        <div className="flex flex-col md:flex-row gap-4 md:gap-6 w-full lg:flex-[2] relative z-50">
+          
           <div className="flex-1">
-            <label className="text-xs font-semibold text-slate-500 uppercase ml-1">Điểm đi</label>
+            <label className="text-xs font-semibold text-slate-500 uppercase ml-1 block mb-1">Điểm đi</label>
             <AirportSelector 
               value={origin} 
               onChange={setOrigin} 
-              placeholder="Chọn điểm khởi hành"
+              placeholder="Chọn khởi hành"
             />
           </div>
+
+          {/* 👇 NÚT ĐẢO CHIỀU (SWAP) 👇 */}
+          {/* <div className="absolute left-1/2 top-1/4 -translate-x-1/2 -translate-y-1/2 md:translate-y-[8px] z-10 flex items-center justify-center"> */}
+          <div className="absolute z-30 flex items-center justify-center
+            /* Mobile: Thụt vào lề phải, đẩy thấp xuống một chút ([55%]) để căn giữa trực quan */
+            right-4 top-[56.5%] -translate-y-1/2 
+            /* Desktop: Giữ nguyên vị trí chính giữa */
+            md:right-auto md:left-1/2 md:-translate-x-1/2 md:top-auto md:bottom-[35%] md:translate-y-1/2
+          ">
+            <button
+              type="button"
+              onClick={() => {
+                const temp = origin;
+                setOrigin(destination);
+                setDestination(temp);
+              }}
+              // Tăng nhẹ kích thước w-9 h-9 và thêm shadow-md để nút nổi bật hẳn lên
+              className="w-8 h-8 bg-white border border-slate-200 rounded-full shadow-md flex items-center justify-center text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition-all hover:scale-110 active:scale-95 group"
+            >
+              <ArrowRightLeft className="w-4 h-4 rotate-90 md:rotate-0 transition-transform group-hover:rotate-180" />
+            </button>
+          </div>
+
           <div className="flex-1">
-            <label className="text-xs font-semibold text-slate-500 uppercase ml-1">Điểm đến</label>
+            <label className="text-xs font-semibold text-slate-500 uppercase ml-1 block mb-1">Điểm đến</label>
             <AirportSelector 
               value={destination} 
               onChange={setDestination} 
               placeholder="Chọn điểm đến"
             />
           </div>
+          
         </div>
 
         {/* 👇 KHU VỰC NGÀY THÁNG: Cho flex-[1.2] để nó gọn lại một chút 👇 */}
