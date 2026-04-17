@@ -144,7 +144,7 @@ export const HomePage = () => {
         return str.trim().toUpperCase().slice(-3);
       };
 
-      const res: any = await flightApi.getAllFlights(1, 30);
+      const res: any = await flightApi.getAllFlights(1, 12);
       const flightArray: any[] = res.result?.data || res.result?.content || res.result || [];
 
       const finalPromos: any[] = [];

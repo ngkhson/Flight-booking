@@ -71,5 +71,15 @@ export const bookingApi = {
   // });
 // },
 
-  getBookingById: (id: string) => axiosClient.get(`/bookings/${id}`)
+  getBookingById: (id: string) => axiosClient.get(`/bookings/${id}`),
+
+  updatePassenger: (pnrCode: string, passengerId: string, data: {
+    firstName: string;
+    lastName: string;
+    dob: string;
+    gender: string;
+  }) => {
+    const url = `/bookings/${pnrCode}/passengers/${passengerId}`;
+    return axiosClient.put(url, data);
+  }
 };

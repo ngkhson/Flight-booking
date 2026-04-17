@@ -148,12 +148,25 @@ export const PassengerForm = ({ adultsCount, childrenCount, infantsCount }: Pass
             <Input 
               type="date" 
               {...register(`${type}.${index}.dob` as const)} 
+              
+              // 👇 1. CHẶN TRÀN 6 SỐ VÀ CHẶN CHỌN NGÀY TƯƠNG LAI
+              min="1900-01-01" 
+              max={new Date().toISOString().split("T")[0]} 
+              
+              // 👇 2. CHẶN GÕ CHỮ/KÝ TỰ LẠ TỪ BÀN PHÍM (Bảo vệ thêm)
+              onKeyDown={(e) => {
+                const invalidChars = ["-", "+", "e", "E", ".", ","];
+                if (invalidChars.includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              
               className={personErrors?.dob ? 'border-red-500 focus-visible:ring-red-500' : ''}
             />
             {personErrors?.dob && <p className="text-[10px] text-red-500 font-bold">{personErrors.dob.message}</p>}
           </div>
 
-          {/* SỐ CCCD */}
+          {/* SỐ CCCD / HỘ CHIẾU */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500 uppercase">
               {type === 'adults' ? 'Số CCCD / Hộ chiếu' : 'CCCD Người giám hộ'}
@@ -161,6 +174,18 @@ export const PassengerForm = ({ adultsCount, childrenCount, infantsCount }: Pass
             <Input 
               {...register(`${type}.${index}.idCard` as const)} 
               placeholder="Nhập số định danh" 
+              
+              // 👇 1. GIỚI HẠN TỐI ĐA 12 KÝ TỰ (Độ dài chuẩn của CCCD)
+              maxLength={12} 
+              
+              // 👇 2. TỰ ĐỘNG XÓA KÝ TỰ ĐẶC BIỆT & VIẾT HOA HỘ CHIẾU
+              onInput={(e) => {
+                // Hộ chiếu có thể có chữ (VD: B1234567) nên cho phép a-z, A-Z và số 0-9
+                e.currentTarget.value = e.currentTarget.value
+                  .replace(/[^a-zA-Z0-9]/g, '') // Xóa khoảng trắng và ký tự lạ (!@#$...)
+                  .toUpperCase();               // Tự động viết hoa chữ cái của hộ chiếu
+              }}
+              
               className={personErrors?.idCard ? 'border-red-500 focus-visible:ring-red-500' : ''}
             />
             {personErrors?.idCard && <p className="text-[10px] text-red-500">{personErrors.idCard.message}</p>}
