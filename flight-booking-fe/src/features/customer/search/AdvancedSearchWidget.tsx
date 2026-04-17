@@ -18,8 +18,8 @@ interface Props {
 export const AdvancedSearchWidget = ({ onSearch, loading }: Props) => {
   const location = useLocation();
   const [tripType, setTripType] = useState<'one-way' | 'round-trip'>('one-way');
-  const [origin, setOrigin] = useState("BNE");
-  const [destination, setDestination] = useState("SYD");
+  const [origin, setOrigin] = useState("HAN");
+  const [destination, setDestination] = useState("SGN");
   
   const [departureDate, setDepartureDate] = useState<Date | undefined>(new Date());
   const [returnDate, setReturnDate] = useState<Date | undefined>(); // 👈 1. Thêm state quản lý ngày về

@@ -4,7 +4,7 @@ export const AIRPORT_IMAGES: Record<string, string> = {
   // === VIỆT NAM ===
   'SGN': 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=800&q=80', // TP.HCM - Landmark 81
   'HAN': 'https://ik.imagekit.io/tvlk/dam/i/01k3wtedg6ne0a0ysg2vjps0t4.png?tr=q-70,c-at_max,w-1000,h-600',
-  'DAD': 'https://images.pexels.com/photos/2034351/pexels-photo-2034351.jpeg?auto=compress&cs=tinysrgb&w=800', // Đà Nẵng
+  'DAD': 'https://hoangphuan.com/wp-content/uploads/2024/06/tour-du-lich-da-nang-1.jpg', // Đà Nẵng
   'PQC': 'https://images.pexels.com/photos/2602537/pexels-photo-2602537.jpeg?auto=compress&cs=tinysrgb&w=800', // Phú Quốc
   'DLI': 'https://images.pexels.com/photos/4060416/pexels-photo-4060416.jpeg?auto=compress&cs=tinysrgb&w=800', // Đà Lạt
   'HPH': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Thanh_pho_Hai_Phong.jpg/800px-Thanh_pho_Hai_Phong.jpg', // Hải Phòng
