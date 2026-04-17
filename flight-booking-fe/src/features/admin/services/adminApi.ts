@@ -58,6 +58,55 @@ export interface IRevenueChart {
     revenue: number;
 }
 
+// =====================================================================
+// 2. API QUẢN LÝ CHUYẾN BAY (FLIGHTS)
+// =====================================================================
+
+// Mặc định page: 0 theo chuẩn Spring Data JPA thông thường
+export const getFlights = async (params?: any): Promise<any> => {
+    return await axiosClient.get('/v1/admin/flights', {
+        params: { page: 0, size: 10, ...params }
+    });
+};
+
+export const searchFlights = async (params: any) => {
+    return await axiosClient.get('/v1/admin/flights/search', { params });
+};
+
+export const createFlight = async (payload: CreateFlightPayload): Promise<any> => {
+    return await axiosClient.post('/v1/admin/flights', payload);
+};
+
+export const updateFlight = async (id: string, payload: UpdateFlightPayload): Promise<any> => {
+    return await axiosClient.patch(`/v1/admin/flights/${id}`, payload);
+};
+
+// ─── API LẤY DANH SÁCH SÂN BAY & HÃNG BAY (cho Dropdown) ─────────────────────
+export const getAirports = async (): Promise<any> => {
+    return await axiosClient.get('/v1/airports', { params: { size: 500 } });
+};
+
+export const getAirlines = async (): Promise<any> => {
+    return await axiosClient.get('/v1/airlines', { params: { size: 500 } });
+};
+
+export const deleteFlight = async (id: string): Promise<any> => {
+    // Chuyển sang CANCELLED thay vì xoá cứng
+    return await axiosClient.patch(`/v1/admin/flights/${id}`, { status: 'CANCELLED' });
+};
+
+export const updateFlightPrice = async (flightClassId: string, pricePayload: any) => {
+    return await axiosClient.put(`/v1/admin/flights/prices/${flightClassId}`, pricePayload);
+};
+
+export const syncFlights = async () => {
+    return await axiosClient.post('/v1/admin/flights/sync-now');
+};
+
+// =====================================================================
+// 3. API QUẢN LÝ ĐẶT VÉ (BOOKINGS) — 1-based page
+// =====================================================================
+
 export interface IBooking {
     id: string;
     pnrCode: string;

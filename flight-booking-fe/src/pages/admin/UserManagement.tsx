@@ -64,7 +64,9 @@ export default function UserManagement() {
     const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 8;
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalElements, setTotalElements] = useState(0);
+    const itemsPerPage = 10;
 
     // ── Modal States ──────────────────────────────────────────────────────────
     const [editingUser, setEditingUser] = useState<IUser | null>(null);
@@ -107,40 +109,23 @@ export default function UserManagement() {
         setIsLoading(true);
         setApiError(null);
         try {
-            const rawRes = await getUsers({ page: 0, size: 500 }) as unknown;
-            let userArray: IUser[] = [];
-
-            if (Array.isArray(rawRes)) {
-                userArray = rawRes as IUser[];
-            } else if (rawRes && typeof rawRes === 'object') {
-                const typedRes = rawRes as {
-                    data?: { content?: IUser[] } | IUser[];
-                    result?: { content?: IUser[] } | IUser[];
-                    content?: IUser[];
-                };
-
-                if (typedRes.data && !Array.isArray(typedRes.data) && Array.isArray(typedRes.data.content)) {
-                    userArray = typedRes.data.content;
-                } else if (typedRes.result && !Array.isArray(typedRes.result) && Array.isArray(typedRes.result.content)) {
-                    userArray = typedRes.result.content;
-                } else if (Array.isArray(typedRes.content)) {
-                    userArray = typedRes.content;
-                } else if (Array.isArray(typedRes.data)) {
-                    userArray = typedRes.data;
-                } else if (Array.isArray(typedRes.result)) {
-                    userArray = typedRes.result;
-                }
-            }
-
-            setUsers(userArray || []);
+            const rawRes = await getUsers({ page: currentPage - 1, size: itemsPerPage }) as any;
+            
+            const userList = rawRes.result?.data || rawRes.data?.data || rawRes.result?.content || rawRes.data?.content || (Array.isArray(rawRes) ? rawRes : []);
+            
+            setUsers(userList);
+            setTotalPages(rawRes.result?.totalPages || rawRes.data?.totalPages || 1);
+            setTotalElements(rawRes.result?.totalElements || rawRes.data?.totalElements || userList.length);
         } catch (err: unknown) {
             console.error('[UserManagement] getUsers failed:', err);
             setApiError('Không thể tải danh sách người dùng.');
             setUsers([]);
+            setTotalPages(1);
+            setTotalElements(0);
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [currentPage, itemsPerPage]);
 
     useEffect(() => { loadUsers(); }, [loadUsers]);
 
@@ -283,7 +268,7 @@ export default function UserManagement() {
     }, [pendingRoleChange, isRoleSubmitting, users, showToast, loadUsers]);
 
     // ── Lọc Dữ Liệu ───────────────────────────────────────────────────────────
-    const visible = (users || []).filter((u) => {
+    const paginatedUsers = (users || []).filter((u) => {
         if (!u) return false;
         const q = search.toLowerCase();
         const primaryRole = getPrimaryRole(u.roles || []);
@@ -295,12 +280,6 @@ export default function UserManagement() {
             (primaryRole && primaryRole.toLowerCase().includes(q))
         );
     });
-
-    const totalPages = Math.ceil(visible.length / itemsPerPage) || 1;
-    const paginatedUsers = visible.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
 
     const toastCls = (type: string) =>
         type === 'success' ? 'bg-green-50 border-green-200 text-green-700'
@@ -325,7 +304,7 @@ export default function UserManagement() {
                 {!isLoading && (
                     <div className="flex gap-2 text-xs font-medium">
                         <span className="px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 shadow-sm">
-                            👥 Tổng cộng {users.length} tài khoản
+                            👥 Tổng cộng {totalElements || users.length} tài khoản
                         </span>
                     </div>
                 )}
@@ -440,10 +419,10 @@ export default function UserManagement() {
                 </div>
 
                 {/* ─── PHÂN TRANG (PAGINATION) ────────────────────────────────────── */}
-                {!isLoading && visible.length > 0 && (
+                {!isLoading && users.length > 0 && (
                     <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-b-2xl">
                         <span className="text-xs text-gray-500 whitespace-nowrap">
-                            Hiển thị <span className="font-bold text-gray-700">{(currentPage - 1) * itemsPerPage + 1}</span> đến <span className="font-bold text-gray-700">{Math.min(currentPage * itemsPerPage, visible.length)}</span> trong số <span className="font-bold text-gray-700">{visible.length}</span> tài khoản
+                            Trang hiển thị: <span className="font-bold text-gray-700">{currentPage}</span> / <span className="font-bold text-gray-700">{totalPages}</span>
                         </span>
 
                         <div className="flex flex-wrap items-center justify-end gap-4 w-full">

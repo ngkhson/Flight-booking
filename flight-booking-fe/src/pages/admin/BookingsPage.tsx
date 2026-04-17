@@ -392,25 +392,25 @@ function BookingDetailModal({ bookingId, isOpen, onClose, fallbackBooking }: Det
                                             // Lấy seat từ tickets nếu có
                                             const seatNumber = p.seatNumber || p.tickets?.[0]?.seatNumber;
                                             return (
-                                            <div key={p.id || idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-gradient-to-r from-indigo-50/50 to-white border border-indigo-100/60 rounded-xl px-4 py-3 gap-2">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                                                        {idx + 1}
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-sm font-bold text-gray-800">{passengerName}</div>
-                                                        <div className="text-xs text-gray-400 flex items-center gap-2 flex-wrap">
-                                                            <span className="bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">{p.type || p.passengerType || 'ADULT'}</span>
-                                                            {p.gender && <span>• {p.gender}</span>}
-                                                            {p.nationality && <span>• {p.nationality}</span>}
+                                                <div key={p.id || idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-gradient-to-r from-indigo-50/50 to-white border border-indigo-100/60 rounded-xl px-4 py-3 gap-2">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                                            {idx + 1}
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-bold text-gray-800">{passengerName}</div>
+                                                            <div className="text-xs text-gray-400 flex items-center gap-2 flex-wrap">
+                                                                <span className="bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">{p.type || p.passengerType || 'ADULT'}</span>
+                                                                {p.gender && <span>• {p.gender}</span>}
+                                                                {p.nationality && <span>• {p.nationality}</span>}
+                                                            </div>
                                                         </div>
                                                     </div>
+                                                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                                                        {p.dateOfBirth && <span>🎂 {fmtDate(p.dateOfBirth)?.split(',')[0]}</span>}
+                                                        {seatNumber && <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">💺 {seatNumber}</span>}
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-4 text-xs text-gray-500">
-                                                    {p.dateOfBirth && <span>🎂 {fmtDate(p.dateOfBirth)?.split(',')[0]}</span>}
-                                                    {seatNumber && <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">💺 {seatNumber}</span>}
-                                                </div>
-                                            </div>
                                             );
                                         })}
                                     </div>
@@ -578,9 +578,27 @@ export default function BookingsPage() {
                 size: pageSize,
             };
 
-            if (filterParams.keyword) {
-                params.pnrCode = filterParams.keyword;
+            const kw = filterParams.keyword?.trim() || "";
+            if (kw) {
+                if (kw.includes('@')) {
+                    params.contactEmail = kw;
+                    params.pnrCode = undefined;
+                    params.contactPhone = undefined;
+                } else if (/^[\d\s\+]+$/.test(kw)) {
+                    params.contactPhone = kw;
+                    params.pnrCode = undefined;
+                    params.contactEmail = undefined;
+                } else {
+                    params.pnrCode = kw;
+                    params.contactEmail = undefined;
+                    params.contactPhone = undefined;
+                }
+            } else {
+                params.pnrCode = undefined;
+                params.contactEmail = undefined;
+                params.contactPhone = undefined;
             }
+
             if (filterParams.status) {
                 params.status = filterParams.status;
             }
