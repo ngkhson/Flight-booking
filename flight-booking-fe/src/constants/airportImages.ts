@@ -5,15 +5,15 @@ export const AIRPORT_IMAGES: Record<string, string> = {
   'SGN': 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=800&q=80', // TP.HCM - Landmark 81
   'HAN': 'https://ik.imagekit.io/tvlk/dam/i/01k3wtedg6ne0a0ysg2vjps0t4.png?tr=q-70,c-at_max,w-1000,h-600',
   'DAD': 'https://hoangphuan.com/wp-content/uploads/2024/06/tour-du-lich-da-nang-1.jpg', // Đà Nẵng
-  'PQC': 'https://images.pexels.com/photos/2602537/pexels-photo-2602537.jpeg?auto=compress&cs=tinysrgb&w=800', // Phú Quốc
-  'DLI': 'https://images.pexels.com/photos/4060416/pexels-photo-4060416.jpeg?auto=compress&cs=tinysrgb&w=800', // Đà Lạt
-  'HPH': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Thanh_pho_Hai_Phong.jpg/800px-Thanh_pho_Hai_Phong.jpg', // Hải Phòng
-  'HUI': 'https://images.pexels.com/photos/2673324/pexels-photo-2673324.jpeg?auto=compress&cs=tinysrgb&w=800', // Huế
-  'CXR': 'https://images.pexels.com/photos/1683492/pexels-photo-1683492.jpeg?auto=compress&cs=tinysrgb&w=800', // Nha Trang
-  'VDO': 'https://images.pexels.com/photos/3354641/pexels-photo-3354641.jpeg?auto=compress&cs=tinysrgb&w=800', // Hạ Long (Gần Vân Đồn)
-  'VCL': 'https://images.pexels.com/photos/1591373/pexels-photo-1591373.jpeg?auto=compress&cs=tinysrgb&w=800', // Hội An (Gần Chu Lai)
-  'THD': 'https://images.pexels.com/photos/12304381/pexels-photo-12304381.jpeg?auto=compress&cs=tinysrgb&w=800', // Thanh Hóa
-  'VCA': 'https://images.pexels.com/photos/14801124/pexels-photo-14801124.jpeg?auto=compress&cs=tinysrgb&w=800', // Cần Thơ
+  'PQC': 'https://bcp.cdnchinhphu.vn/334894974524682240/2025/6/23/phu-quoc-17506756503251936667562.jpg', // Phú Quốc
+  'DLI': 'https://www.dulichdongnai.com.vn/UserFiles/Images/2021/DLat/DNT%20da-lat.jpg', // Đà Lạt
+  'HPH': 'https://bcp.cdnchinhphu.vn/334894974524682240/2023/12/3/6c2a27c4e9d617884ec7-1458d2ddfe164132b95ec163ccc8e4ea-1701595864429488932869.jpg', // Hải Phòng
+  'HUI': 'https://res.klook.com/image/upload/fl_lossy.progressive,q_60/v1756112161/destination/o9z67xq2yzkcxsrdrsjw.jpg', // Huế
+  'CXR': 'https://cdn2.tuoitre.vn/471584752817336320/2023/4/18/tp-nha-trang-16818161974101240202452.jpeg', // Nha Trang
+  'VDO': 'https://bizweb.dktcdn.net/100/101/075/files/ha-long-bay.jpg?v=1767845461645', // Hạ Long (Gần Vân Đồn)
+  'VCL': 'https://image.vietnam.travel/sites/default/files/styles/top_banner/public/2022-05/shutterstock_1303493764_0.jpg?itok=957WuKlT', // Hội An (Gần Chu Lai)
+  'THD': 'https://intour.vn/upload/img/0f70a9710eb8c8bd31bb847ec81b5dd0/2022/03/24/gia_ve_cac_diem_tham_quan_tai_thanh_hoa_moi_nhat_1648099703.jpg', // Thanh Hóa
+  'VCA': 'https://cdn-media.sforum.vn/storage/app/media/ctv_seo4/danh-lam-thang-canh-can-tho-thumb.jpg', // Cần Thơ
 
   // === MỚI BỔ SUNG ===
   'JNB': 'https://www.andbeyond.com/wp-content/uploads/sites/5/Johannesburg-Skyline.jpg', // Johannesburg

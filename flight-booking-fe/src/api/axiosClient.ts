@@ -46,12 +46,7 @@ axiosClient.interceptors.response.use(
           console.error("Token hết hạn hoặc chưa đăng nhập!");
           localStorage.removeItem('accessToken');
 
-          // Phân luồng: Admin bị đá về /admin/login, Khách bị đá về /login
-          // if (window.location.pathname.startsWith('/admin')) {
-          //   window.location.href = '/admin/login';
-          // } else {
-          //   window.location.href = '/login';
-          // }
+          // Phân luồng: về /login
           window.location.href = '/login';
         }
       }
