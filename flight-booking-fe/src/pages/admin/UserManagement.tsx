@@ -109,13 +109,22 @@ export default function UserManagement() {
         setIsLoading(true);
         setApiError(null);
         try {
-            const rawRes = await getUsers({ page: currentPage - 1, size: itemsPerPage }) as any;
+            const res = await getUsers({ page: currentPage - 1, size: itemsPerPage }) as any;
             
-            const userList = rawRes.result?.data || rawRes.data?.data || rawRes.result?.content || rawRes.data?.content || (Array.isArray(rawRes) ? rawRes : []);
+            // 1. Get the main payload object safely
+            const payload = res?.result || res?.data || res;
             
-            setUsers(userList);
-            setTotalPages(rawRes.result?.totalPages || rawRes.data?.totalPages || 1);
-            setTotalElements(rawRes.result?.totalElements || rawRes.data?.totalElements || userList.length);
+            // 2. Extract the array safely (check 'data', 'content', or if the payload itself is an array)
+            const usersArray = payload?.data || payload?.content || (Array.isArray(payload) ? payload : []);
+            
+            // 3. Extract pagination metadata safely
+            const totalPagesCount = payload?.totalPages || 1;
+            const totalItemsCount = payload?.totalElements || usersArray.length;
+
+            // 4. Update states
+            setUsers(usersArray);
+            setTotalPages(totalPagesCount);
+            setTotalElements(totalItemsCount);
         } catch (err: unknown) {
             console.error('[UserManagement] getUsers failed:', err);
             setApiError('Không thể tải danh sách người dùng.');
