@@ -47,11 +47,12 @@ axiosClient.interceptors.response.use(
           localStorage.removeItem('accessToken');
 
           // Phân luồng: Admin bị đá về /admin/login, Khách bị đá về /login
-          if (window.location.pathname.startsWith('/admin')) {
-            window.location.href = '/admin/login';
-          } else {
-            window.location.href = '/login';
-          }
+          // if (window.location.pathname.startsWith('/admin')) {
+          //   window.location.href = '/admin/login';
+          // } else {
+          //   window.location.href = '/login';
+          // }
+          window.location.href = '/login';
         }
       }
     }
