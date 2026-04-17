@@ -72,18 +72,21 @@ export default function TransactionManagement() {
                 cleanParams.endDate = `${filterParams.endDate}T23:59:59`;
             }
 
+            // ✅ GET /admin/transactions — 1-based page index
+            // UI Page 1 → API page: 1 (gửi trực tiếp)
             const response = await getTransactions({
                 page: currentPage,
                 size: pageSize,
                 ...cleanParams
             });
 
-            /// Bóc tách lớp result/data do axiosClient trả về
-            const responseData = response?.result || response?.data || response;
+            // ── Bóc tách PageResponse: res.result chứa { data, currentPage, totalPages, totalElements } ──
+            const pageResponse = response?.result || response?.data || response;
 
-            setTransactions(responseData?.data || []);
-            setTotalPages(responseData?.totalPages || 1);
-            setTotalElements(responseData?.totalElements || 0);
+            // Ưu tiên trường `data` theo contract PageResponse
+            setTransactions(Array.isArray(pageResponse?.data) ? pageResponse.data : []);
+            setTotalPages(pageResponse?.totalPages || 1);
+            setTotalElements(pageResponse?.totalElements || 0);
         } catch (error: any) {
             console.error("Lỗi lấy dữ liệu giao dịch:", error);
             setApiError(error?.response?.data?.message || "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.");
