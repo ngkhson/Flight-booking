@@ -40,24 +40,44 @@ export const AirportSelector = ({ value, onChange, placeholder = "Nhập thành 
   // Gọi API lấy danh sách sân bay 1 lần duy nhất khi load component
   useEffect(() => {
     const fetchAirports = async () => {
+      // 1. Kiểm tra Cache trong LocalStorage
+      const CACHE_KEY = 'STINGAIR_AIRPORTS_CACHE';
+      const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000; // Hạn sử dụng: 24 giờ (tính bằng mili-giây)
+      
+      const cachedString = localStorage.getItem(CACHE_KEY);
+      
+      if (cachedString) {
+        try {
+          const cachedData = JSON.parse(cachedString);
+          const now = new Date().getTime();
+          
+          // Kiểm tra xem dữ liệu đã hết hạn chưa
+          if (now - cachedData.timestamp < CACHE_EXPIRATION_MS) {
+            // Còn hạn -> Lôi ra dùng luôn, siêu mượt!
+            setAirports(cachedData.data);
+            return; 
+          }
+          // Nếu hết hạn, code sẽ tự động chạy tiếp xuống dưới để gọi API mới
+        } catch (e) {
+          console.error("Lỗi đọc cache sân bay", e);
+        }
+      }
+
+      // 2. Nếu không có cache hoặc cache hết hạn -> Bắt đầu gọi API
       setIsLoading(true);
       try {
-        // 1. Gọi trang đầu tiên để lấy data và biết tổng số trang
         const firstPageRes: any = await axiosClient.get('/v1/airports?page=1');
         
         if (firstPageRes.code === 1000 && firstPageRes.result) {
           const { totalPages, data: firstPageData } = firstPageRes.result;
           let allAirports = [...firstPageData]; 
 
-          // 2. Nếu có nhiều hơn 1 trang, gọi nốt các trang còn lại CÙNG LÚC
           if (totalPages > 1) {
             const promises = [];
             for (let i = 2; i <= totalPages; i++) {
               promises.push(axiosClient.get(`/v1/airports?page=${i}`));
             }
-
             const remainingPagesRes = await Promise.all(promises);
-
             remainingPagesRes.forEach((res: any) => {
               if (res.code === 1000 && res.result && res.result.data) {
                 allAirports = [...allAirports, ...res.result.data];
@@ -65,7 +85,7 @@ export const AirportSelector = ({ value, onChange, placeholder = "Nhập thành 
             });
           }
 
-          // 3. Map dữ liệu kết hợp với File Map nội bộ
+          // Map dữ liệu kết hợp với File Map nội bộ
           const formattedData = allAirports.map((a: any) => {
             const mappedInfo = AIRPORT_MAPPING[a.code];
             return {
@@ -77,6 +97,12 @@ export const AirportSelector = ({ value, onChange, placeholder = "Nhập thành 
           });
           
           setAirports(formattedData);
+
+          // 3. LƯU DỮ LIỆU MỚI VÀO CACHE KÈM THỜI GIAN HIỆN TẠI
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            timestamp: new Date().getTime(),
+            data: formattedData
+          }));
         }
       } catch (error) {
         console.error("Lỗi gom danh sách sân bay:", error);
