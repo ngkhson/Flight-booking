@@ -9,9 +9,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { resetStep } from '@/store/bookingSlice';
 import { type RootState } from '@/store/store';
+import { AIRPORT_MAPPING } from '@/constants/airportData';
 
 export const SearchPage = () => {
-  const location = useLocation(); 
+  const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [apiFlights, setApiFlights] = useState<Flight[]>([]);
@@ -19,7 +20,7 @@ export const SearchPage = () => {
   const [hasSearched, setHasSearched] = useState(false);
 
   const [currentSearchParams, setCurrentSearchParams] = useState<any>(null);
-  const [step, setStep] = useState(1); 
+  const [step, setStep] = useState(1);
   const [outboundFlight, setOutboundFlight] = useState<any>(null);
 
   // 👇 THÊM LẠI 2 DÒNG BỊ THIẾU Ở ĐÂY 👇
@@ -34,18 +35,18 @@ export const SearchPage = () => {
   let totalPax = 1; // Mặc định là 1
 
   if (typeof activeParams.passengers === 'number') {
-      // Nếu có sẵn tổng số khách (như trong log bạn gửi là 7)
-      totalPax = activeParams.passengers;
+    // Nếu có sẵn tổng số khách (như trong log bạn gửi là 7)
+    totalPax = activeParams.passengers;
   } else if (activeParams.rawPassengers) {
-      // Nếu có object rawPassengers (khi lấy từ form)
-      const adults = Number(activeParams.rawPassengers.adult) || 1;
-      const children = Number(activeParams.rawPassengers.child) || 0;
-      totalPax = adults + children;
+    // Nếu có object rawPassengers (khi lấy từ form)
+    const adults = Number(activeParams.rawPassengers.adult) || 1;
+    const children = Number(activeParams.rawPassengers.child) || 0;
+    totalPax = adults + children;
   } else {
-      // Dự phòng trường hợp lấy từ Redux (nếu Redux lưu kiểu khác)
-      const adults = Number(activeParams.adults) || Number(activeParams.adult) || 1;
-      const children = Number(activeParams.children) || Number(activeParams.child) || 0;
-      totalPax = adults + children;
+    // Dự phòng trường hợp lấy từ Redux (nếu Redux lưu kiểu khác)
+    const adults = Number(activeParams.adults) || Number(activeParams.adult) || 1;
+    const children = Number(activeParams.children) || Number(activeParams.child) || 0;
+    totalPax = adults + children;
   }
 
   console.log("Dữ liệu tìm kiếm đang có:", JSON.stringify(activeParams, null, 2));
@@ -54,7 +55,7 @@ export const SearchPage = () => {
   // ==========================================
   // 1. TÍNH TOÁN DỮ LIỆU ĐỘNG TỪ API FLIGHTS
   // ==========================================
-  
+
   // Quét danh sách các hãng bay có chuyến
   const availableAirlines = useMemo(() => {
     if (!apiFlights.length) return [];
@@ -118,15 +119,15 @@ export const SearchPage = () => {
 
   const handleNewSearch = (params: any) => {
     setCurrentSearchParams(params);
-    setStep(1); 
-    setOutboundFlight(null); 
+    setStep(1);
+    setOutboundFlight(null);
     handleFetchFlightsForStep(params, 1);
   };
 
   const handleFetchFlightsForStep = async (searchParams: any, targetStep: number) => {
     setLoading(true);
     setHasSearched(true);
-    resetFilters(); 
+    resetFilters();
 
     try {
       const origin = targetStep === 1 ? searchParams.origin : searchParams.destination;
@@ -137,13 +138,13 @@ export const SearchPage = () => {
       const res: any = await flightApi.searchFlights(apiPayload);
 
       if (res.code === 1000 && res.result) {
-        
+
         // 👇 BƯỚC SỬA LỖI: Tìm chính xác mảng dữ liệu đang nằm ở đâu
         const flightArray = Array.isArray(res.result) ? res.result : res.result?.data;
 
         // Kiểm tra chắc chắn nó là mảng rồi mới map
         if (Array.isArray(flightArray)) {
-          
+
           const mappedFlights = flightArray.map((item: any) => {
             const minPrice = item.classes && item.classes.length > 0
               ? Math.min(...item.classes.map((c: any) => c.basePrice)) : 0;
@@ -166,18 +167,18 @@ export const SearchPage = () => {
               destinationCode: item.destination,
               price: minPrice,
               classes: item.classes,
-              
+
               // 👇 2. TRẢ VỀ CẢ 2 TRƯỜNG ĐỂ CHIỀU LÒNG TYPESCRIPT 👇
-              durationMinutes: totalMinutes, 
+              durationMinutes: totalMinutes,
               duration: `${hours}h ${mins}m`, // Tạo ra chuỗi "Xh Ym" xịn xò
-              
+
               stops: 0,
               aircraft: "Airbus A321",
             };
           });
-          
+
           setApiFlights(mappedFlights);
-          
+
         } else {
           console.error("Dữ liệu chuyến bay từ Backend không chứa mảng hợp lệ:", res.result);
           setApiFlights([]); // Set mảng rỗng để giao diện không bị sập
@@ -197,18 +198,18 @@ export const SearchPage = () => {
     if (currentSearchParams?.tripType === 'round-trip' && step === 1) {
       setOutboundFlight(selectedFlightData);
       setStep(2);
-      window.scrollTo(0, 0); 
+      window.scrollTo(0, 0);
       handleFetchFlightsForStep(currentSearchParams, 2);
     } else {
       dispatch(resetStep());
-      navigate('/booking', { 
-        state: { 
-          outboundFlight: step === 1 ? selectedFlightData : outboundFlight, 
+      navigate('/booking', {
+        state: {
+          outboundFlight: step === 1 ? selectedFlightData : outboundFlight,
           returnFlight: step === 2 ? selectedFlightData : null,
           isRoundTrip: currentSearchParams?.tripType === 'round-trip',
           passengers: currentSearchParams?.passengers,
           rawPassengers: currentSearchParams?.rawPassengers
-        } 
+        }
       });
     }
   };
@@ -237,7 +238,7 @@ export const SearchPage = () => {
       isTimeInBlocks(arrTime, landingBlocks)
     );
   });
-  
+
   const sortedFlights = [...filteredFlights].sort((a, b) => {
     if (sortBy === 'price_asc') return a.price - b.price;
     if (sortBy === 'price_desc') return b.price - a.price;
@@ -253,13 +254,13 @@ export const SearchPage = () => {
     <div className="bg-slate-50 min-h-screen pb-20">
       <section className="bg-blue-600 py-24 text-center text-white relative">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-500 to-blue-700 opacity-90"></div>
-        
+
         <div className="container mx-auto px-4 relative z-10 text-center">
-          
+
           <div className="mb-6 flex flex-col items-center w-full">
             <h2 className="text-white text-3xl font-bold flex items-center justify-center gap-3 text-center">
               {step === 2 && (
-                <button 
+                <button
                   onClick={() => { setStep(1); handleFetchFlightsForStep(currentSearchParams, 1); }}
                   className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition shrink-0"
                   title="Quay lại chuyến đi"
@@ -267,15 +268,17 @@ export const SearchPage = () => {
                   <ArrowLeft className="w-5 h-5 text-white" />
                 </button>
               )}
-              
+
               {/* 👇 KIỂM TRA DỮ LIỆU Ở ĐÂY 👇 */}
               {currentOrigin && currentDest ? (
-                <span>{currentOrigin} ✈ {currentDest}</span>
+                <span>{AIRPORT_MAPPING[currentOrigin]?.city || currentOrigin}
+                  {' '}✈{' '}
+                  {AIRPORT_MAPPING[currentDest]?.city || currentDest}</span>
               ) : (
                 <span>Khám phá các điểm đến</span>
               )}
             </h2>
-            
+
             {currentSearchParams?.tripType === 'round-trip' && (
               <div className="mt-3 inline-block bg-orange-500 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-md">
                 Bước {step} / 2: Chọn chuyến {step === 1 ? 'ĐI' : 'VỀ'}
@@ -301,9 +304,9 @@ export const SearchPage = () => {
             minPriceLimit={minPriceLimit}
             maxPriceLimit={maxPriceLimit}
             maxDurationLimit={maxDurationLimit}
-            
+
             selectedAirlines={selectedAirlines} onAirlineChange={(a, c) => setSelectedAirlines(p => c ? [...p, a] : p.filter(x => x !== a))}
-            maxPrice={maxPrice} 
+            maxPrice={maxPrice}
             onPriceChange={setMaxPrice}
             stops={stops} onStopsChange={(s, c) => setStops(p => c ? [...p, s] : p.filter(x => x !== s))}
             maxDuration={maxDuration} onMaxDurationChange={setMaxDuration}
@@ -348,11 +351,11 @@ export const SearchPage = () => {
                   </div>
                 ) : (
                   sortedFlights.map((flight) => (
-                    <FlightCard 
-                      key={flight.id} 
-                      flight={flight} 
+                    <FlightCard
+                      key={flight.id}
+                      flight={flight}
                       onSelect={(classInfo) => handleSelectFlight(flight, classInfo)}
-                      totalPassengers={totalPax} 
+                      totalPassengers={totalPax}
                     />
                   ))
                 )}

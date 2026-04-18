@@ -124,8 +124,8 @@ export const PassengerForm = ({ adultsCount, childrenCount, infantsCount }: Pass
             <label className="text-xs font-bold text-slate-500">HỌ TÊN</label>
             <Input 
               {...register(`${type}.${index}.fullName` as const)} 
-              placeholder="NGUYEN VAN A" 
-              className={`uppercase ${personErrors?.fullName ? 'border-red-500 focus-visible:ring-red-500' : ''}`} 
+              placeholder="Nguyễn Văn A" 
+              className={`${personErrors?.fullName ? 'border-red-500 focus-visible:ring-red-500' : ''}`} 
             />
             {personErrors?.fullName && <p className="text-[10px] text-red-500">{personErrors.fullName.message}</p>}
           </div>
