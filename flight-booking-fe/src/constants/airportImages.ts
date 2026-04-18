@@ -14,6 +14,7 @@ export const AIRPORT_IMAGES: Record<string, string> = {
   'VCL': 'https://image.vietnam.travel/sites/default/files/styles/top_banner/public/2022-05/shutterstock_1303493764_0.jpg?itok=957WuKlT', // Hội An (Gần Chu Lai)
   'THD': 'https://intour.vn/upload/img/0f70a9710eb8c8bd31bb847ec81b5dd0/2022/03/24/gia_ve_cac_diem_tham_quan_tai_thanh_hoa_moi_nhat_1648099703.jpg', // Thanh Hóa
   'VCA': 'https://cdn-media.sforum.vn/storage/app/media/ctv_seo4/danh-lam-thang-canh-can-tho-thumb.jpg', // Cần Thơ
+  'VII': 'https://vanhoavaphattrien.vn/uploads/images/2025/05/15/img-1747221363087-1747223952134-1747278695.jpg', // Nghệ An
 
   // === MỚI BỔ SUNG ===
   'JNB': 'https://www.andbeyond.com/wp-content/uploads/sites/5/Johannesburg-Skyline.jpg', // Johannesburg
