@@ -15,6 +15,7 @@ export const AIRPORT_IMAGES: Record<string, string> = {
   'THD': 'https://intour.vn/upload/img/0f70a9710eb8c8bd31bb847ec81b5dd0/2022/03/24/gia_ve_cac_diem_tham_quan_tai_thanh_hoa_moi_nhat_1648099703.jpg', // Thanh Hóa
   'VCA': 'https://cdn-media.sforum.vn/storage/app/media/ctv_seo4/danh-lam-thang-canh-can-tho-thumb.jpg', // Cần Thơ
   'VII': 'https://vanhoavaphattrien.vn/uploads/images/2025/05/15/img-1747221363087-1747223952134-1747278695.jpg', // Nghệ An
+  'UIH': 'https://hanoitourist.vn/sites/default/files/inline-images/kinh-nghiem-du-lich-quy-nhon.jpg',
 
   // === MỚI BỔ SUNG ===
   'JNB': 'https://www.andbeyond.com/wp-content/uploads/sites/5/Johannesburg-Skyline.jpg', // Johannesburg
@@ -24,7 +25,12 @@ export const AIRPORT_IMAGES: Record<string, string> = {
   'OSS': 'https://tourdulichmy.vn/view/admin/Themes/kcfinder/upload/images/san-diego-mixtourist.jpg', // Osh (Fallback cảnh đẹp)
   'ORY': 'https://images.pexels.com/photos/1530283/pexels-photo-1530283.jpeg?auto=compress&cs=tinysrgb&w=800', // Paris Orly
   'ALA': 'https://datviettour.com.vn/uploads/images/chau-a/kazakhstan/danh-thang/danh_thang_3.jpg', // Almaty
-  'CAN': 'https://transviet.com.vn/Media/Uploads/bai-viet-2025/du-lich-quang-chau/du-lich-quang-chau-1.jpg', // Guangzhou
+  'CAN': 'https://transviet.com.vn/Media/Uploads/bai-viet-2025/du-lich-quang-chau/du-lich-quang-chau-1.jpg',
+  'RMQ': 'https://trieuhaotravel.vn/Uploads/files/unnamed__2025_05_28T101310_951.png',
+  'KHH': 'https://hanotour.com.vn/images/news/2024/12/10/original/cao-hung-dai-loan_1733820143.jpg',
+  'KMG': 'https://booking.pystravel.vn/uploads/posts/avatar/1677661295.jpg',
+  'SAI': 'https://vj-prod-website-cms.s3.ap-southeast-1.amazonaws.com/depositphotos75809575xl-1714097930352.jpg',
+  'XMN': 'https://cdn.saigontimestravel.com/storage/images/retail/wp-content/uploads/2024/09/Ha-Mon-Trung-Quoc.jpg',
 
   // === QUỐC TẾ KHÁC ===
   'BKK': 'https://images.pexels.com/photos/1007657/pexels-photo-1007657.jpeg?auto=compress&cs=tinysrgb&w=800', // Bangkok
