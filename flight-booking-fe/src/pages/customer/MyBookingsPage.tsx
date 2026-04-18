@@ -485,7 +485,7 @@ export const MyBookingsPage = () => {
                           <div>
                             <div className="flex items-center gap-3">
                               <p className="font-black text-slate-800 uppercase tracking-wide">
-                                {passenger.lastName} {passenger.firstName}
+                                {passenger.firstName} {passenger.lastName}
                               </p>
 
                               {/* 👇 NÚT SỬA CHỈ HIỆN KHI CHƯA BAY 👇 */}
