@@ -24,6 +24,7 @@ export const AIRPORT_IMAGES: Record<string, string> = {
   'OSS': 'https://tourdulichmy.vn/view/admin/Themes/kcfinder/upload/images/san-diego-mixtourist.jpg', // Osh (Fallback cảnh đẹp)
   'ORY': 'https://images.pexels.com/photos/1530283/pexels-photo-1530283.jpeg?auto=compress&cs=tinysrgb&w=800', // Paris Orly
   'ALA': 'https://datviettour.com.vn/uploads/images/chau-a/kazakhstan/danh-thang/danh_thang_3.jpg', // Almaty
+  'CAN': 'https://transviet.com.vn/Media/Uploads/bai-viet-2025/du-lich-quang-chau/du-lich-quang-chau-1.jpg', // Guangzhou
 
   // === QUỐC TẾ KHÁC ===
   'BKK': 'https://images.pexels.com/photos/1007657/pexels-photo-1007657.jpeg?auto=compress&cs=tinysrgb&w=800', // Bangkok
@@ -33,7 +34,8 @@ export const AIRPORT_IMAGES: Record<string, string> = {
   'DPS': 'https://images.pexels.com/photos/2166559/pexels-photo-2166559.jpeg?auto=compress&cs=tinysrgb&w=800', // Bali
   'REP': 'https://images.pexels.com/photos/161401/angkor-wat-temple-cambodia-161401.jpeg?auto=compress&cs=tinysrgb&w=800', // Siem Reap
   'MNL': 'https://images.pexels.com/photos/5842106/pexels-photo-5842106.jpeg?auto=compress&cs=tinysrgb&w=800', // Manila
-  'ICN': 'https://images.pexels.com/photos/2372977/pexels-photo-2372977.jpeg?auto=compress&cs=tinysrgb&w=800', // Seoul
+  'ICN': 'https://www.agoda.com/wp-content/uploads/2024/08/Namsan-Tower-during-autumn-in-Seoul-South-Korea.jpg', // Seoul
+  'GMP': 'https://www.agoda.com/wp-content/uploads/2024/08/Namsan-Tower-during-autumn-in-Seoul-South-Korea.jpg', // Seoul
   'NRT': 'https://images.pexels.com/photos/1822605/pexels-photo-1822605.jpeg?auto=compress&cs=tinysrgb&w=800', // Tokyo
   'KIX': 'https://images.pexels.com/photos/1440476/pexels-photo-1440476.jpeg?auto=compress&cs=tinysrgb&w=800', // Osaka
   'TPE': 'https://images.pexels.com/photos/1119561/pexels-photo-1119561.jpeg?auto=compress&cs=tinysrgb&w=800', // Taipei
